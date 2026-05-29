@@ -115,7 +115,7 @@ function detectCurrency(): string {
   } catch { return 'INR' }
 }
 
-const FEATURE_ROWS: { feature: string; free: string | null; academic: string | null; pro: string }[] = [
+const FEATURE_ROWS: { feature: string; free: string | null; academic: string | null; pro: string | null }[] = [
   { feature: 'Resume generations',     free: '2 per 30 days',     academic: 'Unlimited',              pro: 'Unlimited' },
   { feature: 'Career tracks',          free: '1 track',           academic: 'Up to 3 tracks',         pro: 'Unlimited tracks' },
   { feature: 'Job discovery feed',     free: 'Full access',       academic: 'Full access',            pro: 'Full + priority queue' },
