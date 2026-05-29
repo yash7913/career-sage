@@ -54,8 +54,8 @@ function CountUp({ target, suffix = '' }: { target: number; suffix?: string }) {
 }
 
 const NAV_SECTIONS = [
-  ['How it works', 'how-it-works'],
   ['Platform', 'platform'],
+  ['How it works', 'how-it-works'],
   ['Telemetry', 'telemetry'],
   ['Pricing', 'pricing'],
 ]
@@ -283,19 +283,37 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const [activeSection, setActiveSection] = useState('')
 
-  useEffect(() => {
+useEffect(() => {
     const observers: IntersectionObserver[] = []
     NAV_SECTIONS.forEach(([, id]) => {
       const el = document.getElementById(id)
       if (!el) return
       const obs = new IntersectionObserver(
         ([e]) => { if (e.isIntersecting) setActiveSection(id) },
-        { threshold: 0.2 }
+        { threshold: 0, rootMargin: '-80px 0px -55% 0px' }
       )
       obs.observe(el)
       observers.push(obs)
     })
-    return () => observers.forEach(o => o.disconnect())
+
+    const handleScrollBottom = () => {
+      const scrolledToBottom =
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 100
+      if (scrolledToBottom) setActiveSection('pricing')
+    }
+
+    window.addEventListener('scroll', handleScrollBottom)
+    return () => {
+      observers.forEach(o => o.disconnect())
+      window.removeEventListener('scroll', handleScrollBottom)
+    }
+  }, [])
+const [showTop, setShowTop] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => setShowTop(window.scrollY > 400)
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   return (
@@ -532,7 +550,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── How it works ── */}
-      <section id="how-it-works" className="section-anchor" style={{ maxWidth: '1200px', margin: '0 auto 5rem', padding: '0 5%' }}>
+      <section id="how-it-works" className="section-anchor" style={{ maxWidth: '1200px', margin: '0 auto 8rem', padding: '0 5%' }}>
         <Reveal>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', alignItems: 'flex-start', marginBottom: '2rem' }}>
             <div>
@@ -727,6 +745,27 @@ export default function LandingPage() {
         <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.2)', margin: 0 }}>© 2026 Career Sage · enterprise edition</p>
         <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.12)', margin: 0, fontFamily: 'monospace' }}>v1.0 · build 0x7jfx</p>
       </footer>
+
+{showTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          style={{
+            position: 'fixed', bottom: '2rem', right: '2rem',
+            width: '44px', height: '44px',
+            borderRadius: '999px',
+            background: 'rgba(22,27,34,0.95)',
+            border: `1px solid ${BORDER}`,
+            color: 'rgba(255,255,255,0.6)',
+            fontSize: '18px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            backdropFilter: 'blur(12px)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            zIndex: 99,
+          }}
+        >
+          ↑
+        </button>
+      )}
 
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
     </main>
