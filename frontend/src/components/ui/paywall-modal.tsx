@@ -22,7 +22,7 @@ export default function PaywallModal({ onClose }: { onClose: () => void }) {
           Generation limit reached
         </h2>
         <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px', margin: '0 0 1.5rem', lineHeight: 1.6 }}>
-          You've used your 2 free generations this month. Upgrade to Pro for unlimited resume and cover letter generation.
+          you&apos;ve used your 2 free generations this month. Upgrade to Pro for unlimited resume and cover letter generation.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <button style={{

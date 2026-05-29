@@ -42,6 +42,7 @@ export function TierProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false)
     }
     fetchTier()
+// eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const maxGenerations = tier === 'GENERAL_FREE' ? 2 : 999
