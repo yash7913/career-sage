@@ -70,7 +70,7 @@ const modules = [
   { num: '01', title: 'Distributed ingest engine', desc: 'Crawls 250+ ATS portals, LinkedIn, and Naukri every 12 hours — deduplicates cross-posted listings into a single canonical record.' },
   { num: '02', title: 'Unified profile graph', desc: 'Upload resumes, decks, or notes in any format. Extracts skills, education, and impact metrics into a semantic profile in under 4.5 seconds.' },
   { num: '03', title: 'Semantic match and rank', desc: 'Vector embeddings per career track rank every role by skill overlap (40%), seniority (30%), and impact correlation (30%).' },
-  { num: '04', title: 'Generative asset workspace', desc: 'Claude rewrites your resume and cover letter per job description in a live-streamed split pane. First token in 1.2 seconds.' },
+  { num: '04', title: 'Generative asset workspace', desc: 'CareerSage rewrites your resume and cover letter per job description in a live-streamed split pane. First token in 1.2 seconds.' },
   { num: '05', title: 'Auto-synced pipeline tracker', desc: 'Downloading a tailored resume auto-logs a Kanban card. Drag through Draft → Applied → Interviewing → Offer.' },
 ]
 
@@ -85,7 +85,7 @@ const faqs = [
   { q: 'What are career tracks and why do I need them?', a: 'A career track is a lens on your experience. Targeting Analytics and Product Management simultaneously? Each track emphasises different skills from the same uploaded documents, runs its own ranked feed, and generates track-specific resumes — without managing two separate accounts.' },
   { q: 'Where does the salary data come from?', a: 'Compensation ranges are pulled from Levels.fyi and mapped to the company, job title, and seniority level of each matched role. You see estimated base, equity, and bonus breakdowns inside the job card — before you apply.' },
   { q: 'How does the Academic tier work?', a: 'Sign in with a verified .edu or .ac.in email and Career Sage automatically assigns you the Academic tier — infinite generation cycles, profile vector analytics, and full platform access at no cost. No application or approval needed.' },
-  { q: 'Can I control how the AI writes my resume?', a: 'Yes. Before every generation, type a custom direction — for example "prioritise my large-scale data pipeline work over generic delivery metrics." That constraint is injected directly into the Claude prompt so the output reflects your intent, not just the JD.' },
+  { q: 'Can I control how the AI writes my resume?', a: 'Yes. Before every generation, type a custom direction — for example "prioritise my large-scale data pipeline work over generic delivery metrics." That constraint is injected directly into the CareerSage prompt so the output reflects your intent, not just the JD.' },
 ]
 
 const BILLING = [
@@ -645,7 +645,7 @@ const [showTop, setShowTop] = useState(false)
               { feature: 'Match scoring', sage: 'Weighted vector match per track — skills 40%, seniority 30%, impact 30%. Updates with your profile.', others: 'Keyword match against one uploaded resume.', traditional: 'You scroll and judge relevance yourself.' },
               { feature: 'Salary intel', sage: 'Live Levels.fyi base, equity, and bonus ranges mapped to every job card before you apply.', others: 'Broad market estimates. Rarely role-specific.', traditional: 'No data. Research it yourself.' },
               { feature: 'Multi-track', sage: 'Analytics and PM tracks simultaneously from the same vault. Separate feed and resume per track.', others: 'One profile for all roles.', traditional: 'One CV sent everywhere.' },
-              { feature: 'Resume gen', sage: 'Claude rewrites every bullet per JD, guided by your direction prompt. Streams in 1.2s.', others: 'Template substitution. Same structure, different keywords.', traditional: '2+ hours tailoring each application manually.' },
+              { feature: 'Resume gen', sage: 'CareerSage rewrites every bullet per JD, guided by your direction prompt. Streams in 1.2s.', others: 'Template substitution. Same structure, different keywords.', traditional: '2+ hours tailoring each application manually.' },
               { feature: 'Interview intel', sage: 'Round breakdown and expected question types per company and role, inside every job card.', others: 'Generic tips. Not role or company specific.', traditional: 'Glassdoor research on your own time.' },
               { feature: 'Pipeline', sage: 'Kanban auto-logs a card on download. Drag through Draft → Applied → Interviewing → Offer.', others: 'Manual status updates after each action.', traditional: 'A spreadsheet, if you remember to update it.' },
             ].map((row, i) => (
@@ -753,14 +753,18 @@ const [showTop, setShowTop] = useState(false)
             position: 'fixed', bottom: '2rem', right: '2rem',
             width: '44px', height: '44px',
             borderRadius: '999px',
-            background: 'rgba(22,27,34,0.95)',
-            border: `1px solid ${BORDER}`,
-            color: 'rgba(255,255,255,0.6)',
+            background: '#0f1a16',
+            color: TEAL,
             fontSize: '18px', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             backdropFilter: 'blur(12px)',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            boxShadow: '0 0 0 1px rgba(16,185,129,0.15), 0 0 20px rgba(16,185,129,0.15)',
             zIndex: 99,
+            padding: '1px',
+            backgroundImage: 'linear-gradient(#0f1a16, #0f1a16), linear-gradient(135deg, rgba(16,185,129,0.8) 0%, rgba(6,182,212,0.4) 40%, rgba(16,185,129,0.6) 100%)',
+            backgroundOrigin: 'border-box',
+            backgroundClip: 'padding-box, border-box',
+            border: '1px solid transparent',
           }}
         >
           ↑
