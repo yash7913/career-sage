@@ -233,8 +233,8 @@ export default function DiscoveryFeed({ userId, tracks }: { userId: string; trac
           </button>
         </div>
       ) : (
-        jobs.map(job => (
-          <JobCard key={job.ranking_id} job={job} onStar={handleStar} />
+jobs.map(job => (
+          <JobCard key={job.ranking_id} job={job} userId={userId} trackId={activeTrack?.track_id || ''} onStar={handleStar} />
         ))
       )}
     </div>

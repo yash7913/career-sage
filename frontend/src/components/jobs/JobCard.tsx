@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import GenerationWorkspace from '@/components/generate/GenerationWorkspace'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -39,9 +40,10 @@ function MatchBadge({ score }: { score: number }) {
   )
 }
 
-export default function JobCard({ job, onStar }: { job: Job; onStar: (id: string, starred: boolean) => void }) {
+export default function JobCard({ job, userId, trackId, onStar }: { job: Job; userId: string; trackId: string; onStar: (id: string, starred: boolean) => void }) {
   const [expanded, setExpanded] = useState(false)
   const [starred, setStarred] = useState(job.is_starred)
+  const [showWorkspace, setShowWorkspace] = useState(false)
 
   const handleStar = async () => {
     const newVal = !starred
@@ -158,7 +160,9 @@ export default function JobCard({ job, onStar }: { job: Job; onStar: (id: string
       {/* Action buttons */}
 {/* Action buttons */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px' }}>
-        <button style={{ padding: '9px', borderRadius: '8px', background: '#fff', color: '#000', border: 'none', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+<button
+          onClick={() => setShowWorkspace(true)}
+          style={{ padding: '9px', borderRadius: '8px', background: '#fff', color: '#000', border: 'none', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
           📄 Tailor resume
         </button>
         <button style={{ padding: '9px', borderRadius: '8px', background: CARD2, color: 'rgba(255,255,255,0.7)', border: `1px solid ${BORDER}`, fontSize: '13px', cursor: 'pointer' }}>
@@ -172,4 +176,12 @@ export default function JobCard({ job, onStar }: { job: Job; onStar: (id: string
       </div>
     </div>
   )
+{showWorkspace && (
+        <GenerationWorkspace
+          job={job}
+          userId={userId}
+          trackId={trackId}
+          onClose={() => setShowWorkspace(false)}
+        />
+      )}
 }
