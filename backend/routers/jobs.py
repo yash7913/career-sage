@@ -1,6 +1,89 @@
-from fastapi import APIRouter
-router = APIRouter()
+from fastapi import APIRouter, HTTPException, Query
+from typing import Optional
+import os
+from supabase import create_client
+from dotenv import load_dotenv
+load_dotenv()
 
-@router.get("/")
-def get_jobs():
-    return {"message": "jobs router — wired up Day 4"}
+router = APIRouter()
+supabase = create_client(
+    os.getenv("SUPABASE_URL"),
+    os.getenv("SUPABASE_SERVICE_KEY")
+)
+
+@router.post("/match")
+async def match_jobs(user_id: str, track_id: str):
+    try:
+        from services.matching import match_jobs_for_track
+        result = await match_jobs_for_track(user_id, track_id)
+        return {"status": "ok", "result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/feed")
+async def get_feed(
+    user_id: str,
+    track_id: str,
+    limit: int = Query(default=20, le=50),
+    offset: int = Query(default=0)
+):
+    try:
+        rankings = supabase.table("user_job_rankings")\
+            .select("*, aggregated_jobs(*)")\
+            .eq("user_id", user_id)\
+            .eq("track_id", track_id)\
+            .order("match_percentage_score", desc=True)\
+            .range(offset, offset + limit - 1)\
+            .execute()
+
+        if not rankings.data:
+            return {"jobs": [], "total": 0}
+
+        jobs = []
+        for r in rankings.data:
+            job = r.get("aggregated_jobs") or {}
+            jobs.append({
+                "ranking_id": r["ranking_id"],
+                "match_percentage_score": r["match_percentage_score"],
+                "identified_skill_gaps": r.get("identified_skill_gaps") or [],
+                "is_starred": r.get("is_starred") or False,
+                "job_id": job.get("id"),
+                "company_name": job.get("company_name"),
+                "job_title": job.get("job_title"),
+                "location": job.get("location"),
+                "skills_needed": job.get("skills_needed") or [],
+                "source_link": job.get("source_link"),
+                "job_description": (job.get("job_description") or "")[:500],
+                "estimated_salary_min": job.get("estimated_salary_min"),
+                "estimated_salary_max": job.get("estimated_salary_max"),
+                "estimated_interview_rounds": job.get("estimated_interview_rounds"),
+                "interview_breakdown_notes": job.get("interview_breakdown_notes"),
+            })
+
+        return {"jobs": jobs, "total": len(jobs)}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.patch("/rankings/{ranking_id}/star")
+async def toggle_star(ranking_id: str):
+    try:
+        current = supabase.table("user_job_rankings")\
+            .select("is_starred")\
+            .eq("ranking_id", ranking_id)\
+            .execute()
+
+        if not current.data:
+            raise HTTPException(status_code=404, detail="Ranking not found")
+
+        new_val = not current.data[0]["is_starred"]
+        supabase.table("user_job_rankings")\
+            .update({"is_starred": new_val})\
+            .eq("ranking_id", ranking_id)\
+            .execute()
+
+        return {"status": "ok", "is_starred": new_val}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
