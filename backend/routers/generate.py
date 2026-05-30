@@ -173,8 +173,7 @@ async def stream_generation(prompt: str, user_id: str,
                 full_content += text
                 yield f"data: {json.dumps({'text': text})}\n\n"
 
-        if full_content:
-            increment_generation_count(user_id)
+
 
             if asset_type == "resume":
                 save_version(
@@ -300,5 +299,15 @@ async def get_limit(user_id: str):
         }
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+class IncrementRequest(BaseModel):
+    user_id: str
+
+@router.post("/increment")
+async def increment_count(req: IncrementRequest):
+    try:
+        increment_generation_count(req.user_id)
+        return {"status": "ok"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
