@@ -319,70 +319,7 @@ const [showTop, setShowTop] = useState(false)
   return (
     <main style={{ background: BG, minHeight: '100vh', color: '#fff', fontFamily: 'system-ui, -apple-system, sans-serif', overflowX: 'hidden' }}>
 
-      <style>{`
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-        @keyframes shimmer {
-          0% { background-position: -200% center }
-          100% { background-position: 200% center }
-        }
-        @keyframes mirror {
-          0% { transform: translateX(-100%) skewX(-20deg); opacity: 0; }
-          40% { opacity: 0.4; }
-          100% { transform: translateX(400%) skewX(-20deg); opacity: 0; }
-        }
-        .metallic {
-          background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 20%, #94a3b8 45%, #cbd5e1 70%, #ffffff 100%);
-          background-size: 200% auto;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          animation: shimmer 6s linear infinite;
-        }
-        .nav-fixed {
-          position: fixed;
-          top: 0; left: 0; right: 0;
-          z-index: 100;
-          padding: 14px 5%;
-          background: rgba(13,17,23,0.88);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-        }
-        .module-box {
-          padding: 1.25rem 1.75rem;
-          border: 1px solid rgba(255,255,255,0.07);
-          border-radius: 12px;
-          margin-bottom: 8px;
-          background: rgba(22,27,34,0.8);
-          transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
-          cursor: default;
-          display: grid;
-          grid-template-columns: 40px 1fr;
-          gap: 1rem;
-          align-items: center;
-        }
-        .module-box:hover {
-          border-color: rgba(16,185,129,0.55);
-          background: rgba(16,185,129,0.04);
-          box-shadow: 0 0 20px rgba(16,185,129,0.08);
-        }
-        .module-box:hover .module-title { color: #ffffff !important; }
-        .module-box:hover .module-desc { color: rgba(255,255,255,0.7) !important; }
-        .section-anchor { scroll-margin-top: 88px; }
-        .telemetry-card {
-          position: relative;
-          overflow: hidden;
-        }
-        .telemetry-card::after {
-          content: '';
-          position: absolute;
-          top: 0; left: 0;
-          width: 40%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
-          animation: mirror 4s ease-in-out infinite;
-          animation-delay: var(--mirror-delay, 0s);
-        }
-      `}</style>
+
 
       {/* ── Fixed navbar ── */}
       <div className="nav-fixed">
