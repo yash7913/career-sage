@@ -1,4 +1,5 @@
 'use client'
+import VersionHistory from './VersionHistory'
 import { useState, useRef, useEffect } from 'react'
 
 const TEAL = '#10B981'
@@ -83,6 +84,9 @@ function parseOutputSections(content: string): { resume: string; keywords: strin
 }
 
 export default function GenerationWorkspace({ job, userId, trackId, onClose }: GenerationWorkspaceProps) {
+  const [activeVersionId, setActiveVersionId] = useState<string>('')
+  const [loadingVersion, setLoadingVersion] = useState(false)
+  const [versionRefresh, setVersionRefresh] = useState(0)
   const [activeTab, setActiveTab] = useState<'resume' | 'cover_letter'>('resume')
   const [outputTab, setOutputTab] = useState<'output' | 'keywords' | 'recruiter'>('output')
   const [userTweak, setUserTweak] = useState('')
@@ -160,10 +164,11 @@ export default function GenerationWorkspace({ job, userId, trackId, onClose }: G
           } catch { continue }
         }
       }
-    } catch (e) {
+	} catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong')
     } finally {
       setStreaming(false)
+      setVersionRefresh(prev => prev + 1)
     }
   }
 
