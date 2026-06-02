@@ -194,37 +194,97 @@ const handleDownload = async () => {
       }),
     })
 
-    const filename = `${job.company_name}_${job.job_title}`
-      .replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_.-]/g, '')
-
     onDownload?.()
 
-    const printWindow = window.open('', '_blank')
-    if (!printWindow) return
+    const { jsPDF } = await import('jspdf')
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' })
 
-    const html = sections.resume
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/^# (.*)/gm, '<h1>$1</h1>')
-      .replace(/^## (.*)/gm, '<h2>$1</h2>')
-      .replace(/^### (.*)/gm, '<h3>$1</h3>')
-      .replace(/^[•\-] (.*)/gm, '<li>$1</li>')
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/\n/g, '<br/>')
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+    const margin = 48
+    const maxWidth = pageWidth - margin * 2
+    let y = margin
 
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>${filename}</title>
-      <style>
-        body{font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.5;margin:2cm;color:#000}
-        h1{font-size:16pt;margin-bottom:4px}
-        h2{font-size:12pt;border-bottom:1px solid #ccc;padding-bottom:2px;margin-top:14px}
-        h3{font-size:11pt;margin-bottom:2px}
-        li{margin-bottom:3px}p{margin:6px 0}
-        @media print{body{margin:1.5cm}}
-      </style></head><body><p>${html}</p>
-      <script>window.onload=function(){window.print()}</script>
-      </body></html>`)
-    printWindow.document.close()
+    const lines = sections.resume.split('\n')
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+
+      if (!trimmed) {
+        y += 8
+        continue
+      }
+
+      if (trimmed.startsWith('# ')) {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(18)
+        doc.setTextColor(0, 0, 0)
+        const text = trimmed.replace(/^# /, '')
+        const wrapped = doc.splitTextToSize(text, maxWidth)
+        if (y + 24 > pageHeight - margin) { doc.addPage(); y = margin }
+        doc.text(wrapped, margin, y)
+        y += wrapped.length * 22 + 4
+      } else if (trimmed.startsWith('## ')) {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(12)
+        doc.setTextColor(0, 0, 0)
+        const text = trimmed.replace(/^## /, '')
+        const wrapped = doc.splitTextToSize(text, maxWidth)
+        if (y + 18 > pageHeight - margin) { doc.addPage(); y = margin }
+        y += 6
+        doc.text(wrapped, margin, y)
+        y += wrapped.length * 16 + 2
+        doc.setDrawColor(200, 200, 200)
+        doc.line(margin, y, pageWidth - margin, y)
+        y += 6
+      } else if (trimmed.startsWith('### ')) {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(11)
+        doc.setTextColor(30, 30, 30)
+        const text = trimmed.replace(/^### /, '')
+        const wrapped = doc.splitTextToSize(text, maxWidth)
+        if (y + 16 > pageHeight - margin) { doc.addPage(); y = margin }
+        doc.text(wrapped, margin, y)
+        y += wrapped.length * 14 + 4
+      } else if (trimmed.startsWith('• ') || trimmed.startsWith('- ')) {
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        doc.setTextColor(40, 40, 40)
+        const text = trimmed.replace(/^[•\-] /, '')
+        const cleanText = text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1')
+        const wrapped = doc.splitTextToSize(`• ${cleanText}`, maxWidth - 12)
+        if (y + wrapped.length * 13 > pageHeight - margin) { doc.addPage(); y = margin }
+        doc.text(wrapped, margin + 8, y)
+        y += wrapped.length * 13 + 2
+      } else if (trimmed.startsWith('|')) {
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(9)
+        doc.setTextColor(60, 60, 60)
+        const cleanLine = trimmed.replace(/\|/g, ' ').replace(/\s+/g, ' ').trim()
+        const wrapped = doc.splitTextToSize(cleanLine, maxWidth)
+        if (y + 13 > pageHeight - margin) { doc.addPage(); y = margin }
+        doc.text(wrapped, margin, y)
+        y += wrapped.length * 12 + 1
+      } else {
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        doc.setTextColor(40, 40, 40)
+        const cleanText = trimmed
+          .replace(/\*\*(.*?)\*\*/g, '$1')
+          .replace(/\*(.*?)\*/g, '$1')
+        const wrapped = doc.splitTextToSize(cleanText, maxWidth)
+        if (y + wrapped.length * 13 > pageHeight - margin) { doc.addPage(); y = margin }
+        doc.text(wrapped, margin, y)
+        y += wrapped.length * 13 + 3
+      }
+    }
+
+    const company = job.company_name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '')
+    const title = job.job_title.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '')
+    const shortJobId = job.job_id.slice(0, 8).toUpperCase()
+    const filename = `${company}_${title}_${shortJobId}.pdf`
+
+    doc.save(filename)
   }
 
   const handleCopy = async () => {
