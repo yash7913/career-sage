@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 import os
@@ -85,5 +86,56 @@ async def toggle_star(ranking_id: str):
         return {"status": "ok", "is_starred": new_val}
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+class ManualJobRequest(BaseModel):
+    user_id: str
+    track_id: str
+    text_or_url: str
+
+@router.post("/manual")
+async def add_manual_job(req: ManualJobRequest):
+    try:
+        from services.job_parser import parse_job_input
+        from services.scraper_service import make_job_id, dedup_and_save
+        from services.matching import match_jobs_for_track
+
+        parsed = await parse_job_input(req.text_or_url)
+
+        job_id = make_job_id(
+            parsed.get("company_name", ""),
+            parsed.get("job_title", ""),
+            parsed.get("source_link", req.text_or_url)
+        )
+
+        job = {
+            "job_id": job_id,
+            "company_name": parsed.get("company_name", "Unknown"),
+            "job_title": parsed.get("job_title", "Unknown"),
+            "location": parsed.get("location", "Not specified"),
+            "job_description": parsed.get("job_description", ""),
+            "skills_needed": parsed.get("skills_needed", []),
+            "source_link": parsed.get("source_link", ""),
+        }
+
+        result = dedup_and_save([job])
+        print(f"Manual job saved: {result}")
+
+        saved_job = supabase.table("aggregated_jobs")\
+            .select("id")\
+            .eq("job_id", job_id)\
+            .execute()
+
+        if saved_job.data:
+            actual_job_id = saved_job.data[0]["id"]
+            await match_jobs_for_track(req.user_id, req.track_id)
+            return {
+                "status": "ok",
+                "job": {**job, "id": actual_job_id},
+                "message": f"Added {parsed.get('job_title')} at {parsed.get('company_name')} to your feed"
+            }
+
+        return {"status": "ok", "job": job}
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

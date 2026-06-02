@@ -1,4 +1,5 @@
 'use client'
+import ManualJobInput from './ManualJobInput'
 import { useState, useEffect } from 'react'
 import JobCard from './JobCard'
 
@@ -40,7 +41,6 @@ export default function DiscoveryFeed({ userId, tracks, onDownload }: { userId: 
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(false)
   const [matching, setMatching] = useState(false)
-  const [manualUrl, setManualUrl] = useState('')
   const [showManual, setShowManual] = useState(false)
 
   useEffect(() => {
@@ -82,30 +82,7 @@ export default function DiscoveryFeed({ userId, tracks, onDownload }: { userId: 
     ))
   }
 
-  const handleManualUrl = async () => {
-    if (!manualUrl.trim() || !activeTrack) return
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/manual`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: userId,
-            track_id: activeTrack.track_id,
-            url: manualUrl.trim(),
-          }),
-        }
-      )
-      if (res.ok) {
-        setManualUrl('')
-        setShowManual(false)
-        await fetchFeed(activeTrack.track_id)
-      }
-    } catch (e) {
-      console.error('Manual URL error:', e)
-    }
-  }
+
 
   if (tracks.length === 0) return null
 
@@ -163,37 +140,16 @@ export default function DiscoveryFeed({ userId, tracks, onDownload }: { userId: 
         </div>
       </div>
 
-      {/* Manual URL input */}
-      {showManual && (
-        <div style={{
-          background: CARD, border: `1px solid ${BORDER}`,
-          borderRadius: '12px', padding: '1rem',
-          marginBottom: '1rem',
-          display: 'flex', gap: '10px',
-        }}>
-          <input
-            value={manualUrl}
-            onChange={e => setManualUrl(e.target.value)}
-            placeholder="Paste a job URL or job description text..."
-            style={{
-              flex: 1, padding: '9px 12px', borderRadius: '8px',
-              background: 'rgba(255,255,255,0.05)',
-              border: `1px solid ${BORDER}`,
-              color: '#fff', fontSize: '13px', outline: 'none',
-            }}
-          />
-          <button
-            onClick={handleManualUrl}
-            style={{
-              padding: '9px 16px', borderRadius: '8px',
-              background: TEAL, color: '#fff',
-              border: 'none', fontSize: '13px',
-              fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            Add
-          </button>
-        </div>
+      {showManual && activeTrack && (
+        <ManualJobInput
+          userId={userId}
+          trackId={activeTrack.track_id}
+          onJobAdded={() => {
+            setShowManual(false)
+            fetchFeed(activeTrack.track_id)
+          }}
+          onClose={() => setShowManual(false)}
+        />
       )}
 
       {/* Feed header */}
