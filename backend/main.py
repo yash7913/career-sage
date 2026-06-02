@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from routers import tracker
 from dotenv import load_dotenv
 import os
 
@@ -34,8 +35,10 @@ app.include_router(jobs.router,     prefix="/api/jobs",     tags=["jobs"])
 app.include_router(profile.router,  prefix="/api/profile",  tags=["profile"])
 app.include_router(generate.router, prefix="/api/generate", tags=["generate"])
 app.include_router(tracker.router,  prefix="/api/tracker",  tags=["tracker"])
+app.include_router(tracker.router,  prefix="/api/tracker",  tags=["tracker"])
 app.include_router(tracks.router,   prefix="/api/tracks",   tags=["tracks"])
 app.include_router(scraper.router,  prefix="/api/scraper",  tags=["scraper"])
+
 
 @app.get("/health")
 def health():

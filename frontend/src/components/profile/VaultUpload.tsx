@@ -78,7 +78,7 @@ export default function VaultUpload({
 
           if (uploadError) throw uploadError
 
-          const res = await fetch(
+const res = await fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/api/profile/document`,
             {
               method: 'POST',
@@ -95,9 +95,20 @@ export default function VaultUpload({
 
           if (!res.ok) throw new Error('Failed to save document metadata')
 
+          const docResult = await res.json()
+          const isDuplicate = docResult.status === 'exists'
+
           setFiles(prev =>
             prev.map(f =>
-              f.name === file.name ? { ...f, status: 'done' } : f
+              f.name === file.name
+                ? {
+                    ...f,
+                    status: 'done',
+                    error: isDuplicate
+                      ? 'Already in your vault — no changes detected'
+                      : undefined,
+                  }
+                : f
             )
           )
         } catch (err: unknown) {
@@ -251,8 +262,10 @@ export default function VaultUpload({
                     fontSize: '13px',
                     fontWeight: 500,
                     color:
-                      file.status === 'done'
+                      file.status === 'done' && !file.error
                         ? TEAL
+                        : file.status === 'done' && file.error
+                        ? '#F59E0B'
                         : file.status === 'error'
                         ? 'rgba(239,68,68,0.9)'
                         : '#fff',
@@ -277,13 +290,13 @@ export default function VaultUpload({
                   }}
                 >
                   {formatSize(file.size)}
-                  {file.error && (
-                    <span
-                      style={{
-                        color: 'rgba(239,68,68,0.8)',
-                        marginLeft: '8px',
-                      }}
-                    >
+{file.error && (
+                    <span style={{
+                      color: file.status === 'done'
+                        ? 'rgba(245,158,11,0.8)'
+                        : 'rgba(239,68,68,0.8)',
+                      marginLeft: '8px',
+                    }}>
                       {file.error}
                     </span>
                   )}
