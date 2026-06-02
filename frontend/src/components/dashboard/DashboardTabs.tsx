@@ -50,7 +50,10 @@ export default function DashboardTabs({ userId, tracks }: { userId: string; trac
       {/* Discovery feed tab */}
       {activeTab === 'feed' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px', alignItems: 'flex-start' }}>
-          <DiscoveryFeed userId={userId} tracks={tracks} />
+          <DiscoveryFeed userId={userId} tracks={tracks} onDownload={() => {
+            setTrackerKey(prev => prev + 1)
+            setActiveTab('tracker')
+          }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '14px', padding: '1.25rem' }}>
               <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 10px' }}>YOUR VAULT</p>

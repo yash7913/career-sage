@@ -35,7 +35,7 @@ const COLOR_MAP: Record<string, string> = {
   blue: '#3B82F6', amber: '#F59E0B', coral: '#F97316',
 }
 
-export default function DiscoveryFeed({ userId, tracks }: { userId: string; tracks: Track[] }) {
+export default function DiscoveryFeed({ userId, tracks, onDownload }: { userId: string; tracks: Track[]; onDownload?: () => void }) {
   const [activeTrack, setActiveTrack] = useState<Track | null>(tracks[0] || null)
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(false)
@@ -234,7 +234,7 @@ export default function DiscoveryFeed({ userId, tracks }: { userId: string; trac
         </div>
       ) : (
 jobs.map(job => (
-          <JobCard key={job.ranking_id} job={job} userId={userId} trackId={activeTrack?.track_id || ''} onStar={handleStar} />
+          <JobCard key={job.ranking_id} job={job} userId={userId} trackId={activeTrack?.track_id || ''} onStar={handleStar} onDownload={onDownload} />
         ))
       )}
     </div>

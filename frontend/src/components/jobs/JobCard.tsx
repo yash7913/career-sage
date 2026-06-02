@@ -39,11 +39,12 @@ function MatchBadge({ score }: { score: number }) {
   )
 }
 
-export default function JobCard({ job, userId, trackId, onStar }: {
+export default function JobCard({ job, userId, trackId, onStar, onDownload }: {
   job: Job
   userId: string
   trackId: string
   onStar: (id: string, starred: boolean) => void
+  onDownload?: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [starred, setStarred] = useState(job.is_starred)
@@ -161,6 +162,7 @@ export default function JobCard({ job, userId, trackId, onStar }: {
           userId={userId}
           trackId={trackId}
           onClose={() => setShowWorkspace(false)}
+          onDownload={onDownload}
         />
       )}
     </>

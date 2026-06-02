@@ -27,8 +27,8 @@ interface GenerationWorkspaceProps {
   userId: string
   trackId: string
   onClose: () => void
+  onDownload?: () => void
 }
-
 const TONE_OPTIONS = [
   { value: 'confident', label: 'Confident' },
   { value: 'formal', label: 'Formal' },
@@ -83,7 +83,7 @@ function parseOutputSections(content: string): { resume: string; keywords: strin
   }
 }
 
-export default function GenerationWorkspace({ job, userId, trackId, onClose }: GenerationWorkspaceProps) {
+export default function GenerationWorkspace({ job, userId, trackId, onClose, onDownload }: GenerationWorkspaceProps) {
   const [activeVersionId, setActiveVersionId] = useState<string>('')
   const [loadingVersion, setLoadingVersion] = useState(false)
   const [versionRefresh, setVersionRefresh] = useState(0)
@@ -196,6 +196,8 @@ const handleDownload = async () => {
 
     const filename = `${job.company_name}_${job.job_title}`
       .replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_.-]/g, '')
+
+    onDownload?.()
 
     const printWindow = window.open('', '_blank')
     if (!printWindow) return
