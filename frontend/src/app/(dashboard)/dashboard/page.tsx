@@ -2,7 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import VaultUpload from '@/components/profile/VaultUpload'
 import TrackSetup from '@/components/profile/TrackSetup'
+import KanbanBoard from '@/components/tracker/KanbanBoard'
 import DiscoveryFeed from '@/components/jobs/DiscoveryFeed'
+import DashboardTabs from '@/components/dashboard/DashboardTabs'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -163,28 +165,7 @@ export default async function DashboardPage() {
         )}
 
         {hasTracks && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '20px', alignItems: 'flex-start' }}>
-            {/* Discovery feed */}
-            <div>
-              <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 1rem' }}>DISCOVERY FEED</p>
-              <DiscoveryFeed userId={user.id} tracks={tracks} />
-            </div>
-
-            {/* Sidebar */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {/* Add documents */}
-              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '14px', padding: '1.25rem' }}>
-                <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 10px' }}>YOUR VAULT</p>
-                <VaultUpload />
-              </div>
-
-              {/* Add track */}
-              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '14px', padding: '1.25rem' }}>
-                <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 10px' }}>ADD TRACK</p>
-                <TrackSetup userId={user.id} />
-              </div>
-            </div>
-          </div>
+          <DashboardTabs userId={user.id} tracks={tracks} />
         )}
       </div>
     </main>

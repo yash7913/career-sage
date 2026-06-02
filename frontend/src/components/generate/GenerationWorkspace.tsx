@@ -172,13 +172,26 @@ export default function GenerationWorkspace({ job, userId, trackId, onClose }: G
     }
   }
 
-  const handleDownload = async () => {
+const handleDownload = async () => {
     if (!sections.resume) return
 
     await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/generate/increment`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: userId }),
+    })
+
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tracker/card`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,
+        job_id: job.job_id,
+        track_id: trackId,
+        company_name: job.company_name,
+        job_title: job.job_title,
+        match_score: job.match_percentage_score,
+      }),
     })
 
     const filename = `${job.company_name}_${job.job_title}`
