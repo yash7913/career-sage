@@ -6,6 +6,7 @@ import KanbanBoard from '@/components/tracker/KanbanBoard'
 import DiscoveryFeed from '@/components/jobs/DiscoveryFeed'
 import DashboardTabs from '@/components/dashboard/DashboardTabs'
 import NotificationBell from '@/components/ui/NotificationBell'
+import StatusToggle from '@/components/dashboard/StatusToggle'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -68,15 +69,18 @@ export default async function DashboardPage() {
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2.5rem 5%' }}>
 
         {/* Welcome */}
-        <div style={{ marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: 600, margin: '0 0 4px', letterSpacing: '-1px' }}>
-            Welcome back{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}
-          </h1>
-          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+        <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <h1 style={{ fontSize: '28px', fontWeight: 600, margin: '0 0 4px', letterSpacing: '-1px' }}>
+              Welcome back{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}
+            </h1>
+            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
             {!hasProfile ? 'Upload your documents to get started.'
               : !hasTracks ? 'Profile ready. Set up your first career track.'
               : 'Your ranked job feed is below.'}
           </p>
+          </div>
+          <StatusToggle userId={user.id} initialStatus={profile?.search_status || 'ACTIVE'} />
         </div>
 
         {/* Progress steps */}

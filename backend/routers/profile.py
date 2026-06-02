@@ -123,3 +123,21 @@ async def get_profile(user_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class StatusUpdateRequest(BaseModel):
+    user_id: str
+    search_status: str
+
+@router.patch("/status")
+async def update_search_status(req: StatusUpdateRequest):
+    valid = ["ACTIVE", "OPEN", "PAUSED"]
+    if req.search_status not in valid:
+        raise HTTPException(status_code=400, detail=f"Status must be one of {valid}")
+    try:
+        result = supabase.table("user_profiles")\
+            .update({"search_status": req.search_status})\
+            .eq("user_id", req.user_id)\
+            .execute()
+        return {"status": "ok", "search_status": req.search_status}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
