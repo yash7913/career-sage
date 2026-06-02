@@ -17,6 +17,7 @@ interface Track {
 
 export default function DashboardTabs({ userId, tracks }: { userId: string; tracks: Track[] }) {
   const [activeTab, setActiveTab] = useState<'feed' | 'tracker'>('feed')
+  const [trackerKey, setTrackerKey] = useState(0)
 
   return (
     <div>
@@ -28,7 +29,10 @@ export default function DashboardTabs({ userId, tracks }: { userId: string; trac
         ].map(tab => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key as 'feed' | 'tracker')}
+            onClick={() => {
+              if (tab.key === 'tracker') setTrackerKey(prev => prev + 1)
+              setActiveTab(tab.key as 'feed' | 'tracker')
+            }}
             style={{
               padding: '8px 18px', borderRadius: '8px',
               fontSize: '13px', fontWeight: 600,
@@ -61,8 +65,8 @@ export default function DashboardTabs({ userId, tracks }: { userId: string; trac
       )}
 
       {/* Pipeline tracker tab */}
-      {activeTab === 'tracker' && (
-        <KanbanBoard userId={userId} />
+	{activeTab === 'tracker' && (
+        <KanbanBoard key={trackerKey} userId={userId} />
       )}
     </div>
   )
