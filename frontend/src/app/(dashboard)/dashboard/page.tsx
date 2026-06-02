@@ -5,6 +5,7 @@ import TrackSetup from '@/components/profile/TrackSetup'
 import KanbanBoard from '@/components/tracker/KanbanBoard'
 import DiscoveryFeed from '@/components/jobs/DiscoveryFeed'
 import DashboardTabs from '@/components/dashboard/DashboardTabs'
+import NotificationBell from '@/components/ui/NotificationBell'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -58,6 +59,7 @@ export default async function DashboardPage() {
           }}>
             {tierLabels[tier]}
           </span>
+          <NotificationBell userId={user.id} />
           <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)' }}>{user.email}</span>
           <a href="/" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', textDecoration: 'none' }}>← Home</a>
         </div>
