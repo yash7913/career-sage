@@ -27,7 +27,7 @@ def check_generation_limit(user_id: str) -> dict:
     from datetime import datetime, timezone, timedelta
 
     profile = supabase.table("user_profiles")\
-        .select("extracted_summary, extracted_skills, education_data, raw_profile_text, full_name, phone, location, linkedin_url")\
+        .select("*")\
         .eq("user_id", user_id)\
         .execute()
 
@@ -110,7 +110,7 @@ def save_version(user_id: str, track_id: str, job_id: str,
 
 def build_context(user_id: str, track_id: str, job_id: str) -> dict:
     profile = supabase.table("user_profiles")\
-        .select("extracted_summary, extracted_skills, education_data, raw_profile_text")\
+        .select("*")\
         .eq("user_id", user_id)\
         .execute()
 
@@ -142,7 +142,23 @@ def build_context(user_id: str, track_id: str, job_id: str) -> dict:
     skills = p.get("extracted_skills") or []
     skill_list = ", ".join(skills) if isinstance(skills, list) else str(skills)
 
+    full_name = p.get("full_name") or "Your Name"
+    phone = p.get("phone") or "[Phone]"
+    location_city = p.get("location") or "[City, State]"
+    linkedin_url = p.get("linkedin_url") or "[LinkedIn]"
+
+    try:
+        auth_user = supabase.auth.admin.get_user_by_id(user_id)
+        email = auth_user.user.email or "[Email]"
+    except Exception:
+        email = "[Email]"
+
     return {
+        "full_name": full_name,
+        "phone": phone,
+        "location_city": location_city,
+        "linkedin_url": linkedin_url,
+	"email": email,
         "master_summary": p.get("extracted_summary") or "",
         "all_extracted_skills": skill_list,
         "education_data": json.dumps(p.get("education_data") or []),
@@ -159,10 +175,6 @@ def build_context(user_id: str, track_id: str, job_id: str) -> dict:
         "job_title": j.get("job_title") or "",
         "job_description": (j.get("job_description") or "")[:4000],
         "skill_gaps": ", ".join(gaps),
-	"full_name": full_name,
-        "phone": phone,
-        "location_city": location,
-        "linkedin_url": linkedin_url,
     }
 
 

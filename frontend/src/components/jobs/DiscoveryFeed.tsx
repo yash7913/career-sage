@@ -2,6 +2,7 @@
 import ManualJobInput from './ManualJobInput'
 import { useState, useEffect } from 'react'
 import JobCard from './JobCard'
+import JobFilters, { useJobFilters } from './JobFilters'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -39,6 +40,7 @@ const COLOR_MAP: Record<string, string> = {
 export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkills = [] }: { userId: string; tracks: Track[]; onDownload?: () => void; profileSkills?: string[] }) {
   const [activeTrack, setActiveTrack] = useState<Track | null>(tracks[0] || null)
   const [jobs, setJobs] = useState<Job[]>([])
+  const { filters, setFilters, filtered, allSkills } = useJobFilters(jobs)
   const [loading, setLoading] = useState(false)
   const [matching, setMatching] = useState(false)
   const [showManual, setShowManual] = useState(false)
@@ -152,22 +154,21 @@ export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkill
         />
       )}
 
-      {/* Feed header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
-          {loading ? 'Loading...' : `${jobs.length} roles ranked for ${activeTrack?.track_name}`}
-        </p>
-        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)', margin: 0 }}>
-          sorted by match score ↓
-        </p>
-      </div>
+      {/* Filters */}
+      <JobFilters
+        filters={filters}
+        setFilters={setFilters}
+        totalJobs={jobs.length}
+        filteredCount={filtered.length}
+        allSkills={allSkills}
+      />
 
       {/* Job cards */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(255,255,255,0.3)' }}>
           Loading your ranked feed...
         </div>
-      ) : jobs.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div style={{
           textAlign: 'center', padding: '3rem',
           background: CARD, border: `1px solid ${BORDER}`,
@@ -189,7 +190,7 @@ export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkill
           </button>
         </div>
       ) : (
-jobs.map(job => (
+filtered.map(job => (
           <JobCard key={job.ranking_id} job={job} userId={userId} trackId={activeTrack?.track_id || ''} profileSkills={profileSkills} onStar={handleStar} onDownload={onDownload} />
         ))
       )}
