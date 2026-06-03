@@ -121,12 +121,22 @@ async def extract_and_save_profile(user_id: str) -> dict:
     completeness = calculate_completeness(extracted, len(docs.data))
     print(f"Skills found: {len(flat_skills)} | Completeness: {completeness}%")
 
+    from services.cohort_classifier import classify_cohort
+    cohort = classify_cohort(
+        extracted_skills=flat_skills,
+        raw_profile_text=extracted.get("raw_profile_text", ""),
+        work_history=extracted.get("work_history", []),
+        years_of_experience=extracted.get("years_of_experience", 0),
+    )
+    print(f"Cohort classified as: {cohort}")
+
     supabase.table("user_profiles").update({
         "extracted_skills": flat_skills,
         "education_data": extracted.get("education_data", []),
         "extracted_summary": extracted.get("extracted_summary", ""),
         "raw_profile_text": extracted.get("raw_profile_text", ""),
         "profile_completeness_score": completeness,
+        "cohort": cohort,
     }).eq("user_id", user_id).execute()
 
     print("Profile saved to Supabase successfully")
