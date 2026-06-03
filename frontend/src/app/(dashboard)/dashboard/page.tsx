@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import DashboardTabs from '@/components/dashboard/DashboardTabs'
 import NotificationBell from '@/components/ui/NotificationBell'
 import StatusToggle from '@/components/dashboard/StatusToggle'
+import ThemeToggle from '@/components/ui/ThemeToggle'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -114,7 +115,8 @@ const applicationsTracked = Array.isArray(pipeline) ? pipeline.length : 0
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <StatusToggle userId={user.id} initialStatus={profile?.search_status || 'ACTIVE'} />
-          <NotificationBell userId={user.id} />
+          <ThemeToggle />  
+	  <NotificationBell userId={user.id} />
           <div style={{
             display: 'flex', alignItems: 'center', gap: '8px',
             padding: '5px 10px', borderRadius: '8px',

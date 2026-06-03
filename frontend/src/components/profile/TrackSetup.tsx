@@ -103,9 +103,20 @@ export default function TrackSetup({ userId, onComplete }: TrackSetupProps) {
       <p style={{ fontSize: '15px', fontWeight: 600, color: TEAL, margin: '0 0 4px' }}>
         ✓ Career track created
       </p>
-      <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: 0 }}>
-        Your {trackName} track is ready. You can add more tracks from settings.
+      <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: '0 0 16px' }}>
+        Your {trackName} track is ready.
       </p>
+      <button
+        onClick={() => window.location.reload()}
+        style={{
+          padding: '10px 28px', borderRadius: '8px',
+          background: TEAL, color: '#fff',
+          border: 'none', fontSize: '14px',
+          fontWeight: 600, cursor: 'pointer',
+        }}
+      >
+        Continue to Discovery →
+      </button>
     </div>
   )
 

@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 import os
 import json
+import asyncio
 from supabase import create_client
 from dotenv import load_dotenv
 load_dotenv()
@@ -178,40 +179,89 @@ def build_context(user_id: str, track_id: str, job_id: str) -> dict:
     }
 
 
-async def stream_generation(prompt: str, user_id: str,
-                             track_id: str, job_id: str,
-                             user_tweak: str, asset_type: str):
-    import anthropic
-    client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-
-    full_content = ""
+async def stream_sectional_resume(ctx: dict, user_id: str, track_id: str, job_id: str, user_tweak: str):
+    import json
+    from services.sectional_generator import generate_resume_sectional
 
     try:
-        with client.messages.stream(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=4000,
-            messages=[{"role": "user", "content": prompt}]
-        ) as stream:
-            for text in stream.text_stream:
-                full_content += text
-                yield f"data: {json.dumps({'text': text})}\n\n"
+        yield f"data: {json.dumps({'status': 'starting', 'text': ''})}\n\n"
+
+        sections_done = {"summary": False, "experience": False, "skills": False, "education": False}
+
+        async def run_with_progress():
+            result = await generate_resume_sectional(ctx)
+            return result
+
+        result = await run_with_progress()
+
+        full_name = ctx.get("full_name", "Your Name")
+        phone = ctx.get("phone", "[Phone]")
+        location_city = ctx.get("location_city", "[City, State]")
+        linkedin_url = ctx.get("linkedin_url", "[LinkedIn]")
+        email = ctx.get("email", "[Email]")
+
+        header = f"# {full_name}\n{location_city} | {phone} | {email} | {linkedin_url}\n\n---\n\n"
+        yield f"data: {json.dumps({'text': header})}\n\n"
+        await asyncio.sleep(0.1)
+
+        yield f"data: {json.dumps({'text': '## SUMMARY\n'})}\n\n"
+        summary_lines = result['resume'].split('## SUMMARY\n')[1].split('\n\n---\n\n')[0] if '## SUMMARY\n' in result['resume'] else ''
+        for char in summary_lines:
+            yield f"data: {json.dumps({'text': char})}\n\n"
+        yield f"data: {json.dumps({'text': '\n\n---\n\n'})}\n\n"
+
+        yield f"data: {json.dumps({'text': '## EXPERIENCE\n'})}\n\n"
+        exp_part = result['resume'].split('## EXPERIENCE\n')[1].split('\n\n---\n\n')[0] if '## EXPERIENCE\n' in result['resume'] else ''
+        for char in exp_part:
+            yield f"data: {json.dumps({'text': char})}\n\n"
+        yield f"data: {json.dumps({'text': '\n\n---\n\n'})}\n\n"
+
+        yield f"data: {json.dumps({'text': '## SKILLS\n'})}\n\n"
+        skills_part = result['resume'].split('## SKILLS\n')[1].split('\n\n---\n\n')[0] if '## SKILLS\n' in result['resume'] else ''
+        for char in skills_part:
+            yield f"data: {json.dumps({'text': char})}\n\n"
+        yield f"data: {json.dumps({'text': '\n\n---\n\n'})}\n\n"
+
+        yield f"data: {json.dumps({'text': '## EDUCATION\n'})}\n\n"
+        edu_part = result['resume'].split('## EDUCATION\n')[1] if '## EDUCATION\n' in result['resume'] else ''
+        for char in edu_part:
+            yield f"data: {json.dumps({'text': char})}\n\n"
+
+        full_output = f"### A. ATS-OPTIMISED RESUME\n{result['resume']}\n\n### B. ATS KEYWORD COVERAGE REPORT\n{result['ats_report']}\n\n### C. RECRUITER NOTES\n{result['recruiter_notes']}"
+
+        increment_generation_count(user_id)
+        save_version(
+            user_id, track_id, job_id,
+            resume_content=full_output,
+            user_tweak=user_tweak,
+            prompt_snapshot=f"Sectional generation for {ctx.get('job_title')} at {ctx.get('company_name')}"
+        )
+
+        yield f"data: {json.dumps({'done': True, 'full_output': full_output})}\n\n"
+
+    except Exception as e:
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 
+async def stream_sectional_cover_letter(ctx: dict, user_id: str, track_id: str, job_id: str, user_tweak: str):
+    import json
+    from services.sectional_generator import generate_cover_letter_sectional
 
-            if asset_type == "resume":
-                save_version(
-                    user_id, track_id, job_id,
-                    resume_content=full_content,
-                    user_tweak=user_tweak,
-                    prompt_snapshot=prompt[:500]
-                )
-            else:
-                save_version(
-                    user_id, track_id, job_id,
-                    cover_letter_content=full_content,
-                    user_tweak=user_tweak,
-                    prompt_snapshot=prompt[:500]
-                )
+    try:
+        yield f"data: {json.dumps({'text': ''})}\n\n"
+
+        result = await generate_cover_letter_sectional(ctx)
+
+        for char in result['cover_letter']:
+            yield f"data: {json.dumps({'text': char})}\n\n"
+
+        increment_generation_count(user_id)
+        save_version(
+            user_id, track_id, job_id,
+            cover_letter_content=result['cover_letter'],
+            user_tweak=user_tweak,
+            prompt_snapshot=f"Cover letter for {ctx.get('job_title')} at {ctx.get('company_name')}"
+        )
 
         yield f"data: {json.dumps({'done': True})}\n\n"
 
@@ -225,22 +275,16 @@ async def generate_resume(req: GenerateRequest):
     if not limit["allowed"]:
         raise HTTPException(
             status_code=402,
-            detail=f"Generation limit reached. You have used 2/2 free generations this month. Upgrade to Pro for unlimited access."
+            detail="Generation limit reached. Upgrade to Pro for unlimited access."
         )
 
     context = build_context(req.user_id, req.track_id, req.job_id)
     context["user_tweak"] = req.user_tweak or "No specific direction provided."
 
-    from services.prompt_loader import load_prompt
-    prompt = load_prompt("resume_generation.txt", **context)
-
     return StreamingResponse(
-        stream_generation(prompt, req.user_id, req.track_id, req.job_id, req.user_tweak or "", "resume"),
+        stream_sectional_resume(context, req.user_id, req.track_id, req.job_id, req.user_tweak or ""),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        }
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
     )
 
 
@@ -257,16 +301,10 @@ async def generate_cover_letter(req: GenerateRequest):
     context["user_tweak"] = req.user_tweak or "No specific direction provided."
     context["tone"] = req.tone or "confident"
 
-    from services.prompt_loader import load_prompt
-    prompt = load_prompt("cover_letter_generation.txt", **context)
-
     return StreamingResponse(
-        stream_generation(prompt, req.user_id, req.track_id, req.job_id, req.user_tweak or "", "cover_letter"),
+        stream_sectional_cover_letter(context, req.user_id, req.track_id, req.job_id, req.user_tweak or ""),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        }
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
     )
 
 

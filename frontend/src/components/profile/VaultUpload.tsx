@@ -309,14 +309,15 @@ const res = await fetch(
                   updateTag(file.name, e.target.value as DocTag)
                 }
                 style={{
-                  fontSize: '12px',
-                  padding: '4px 8px',
-                  borderRadius: '6px',
-                  background: 'rgba(255,255,255,0.06)',
-                  border: `1px solid ${BORDER}`,
-                  color: 'rgba(255,255,255,0.7)',
-                  cursor: 'pointer',
-                }}
+                fontSize: '12px',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                background: '#1c2128',
+                border: `1px solid rgba(255,255,255,0.15)`,
+                color: '#fff',
+                cursor: 'pointer',
+                colorScheme: 'dark',
+              }}
               >
                 {TAG_OPTIONS.map(t => (
                   <option key={t.value} value={t.value}>
@@ -379,35 +380,29 @@ const res = await fetch(
 
       {/* Success state */}
       {extractionDone && (
-        <div
-          style={{
-            padding: '1rem 1.25rem',
-            borderRadius: '10px',
-            background: 'rgba(16,185,129,0.08)',
-            border: '1px solid rgba(16,185,129,0.25)',
-            textAlign: 'center',
-          }}
-        >
-          <p
-            style={{
-              fontSize: '14px',
-              fontWeight: 600,
-              color: TEAL,
-              margin: '0 0 4px',
-            }}
-          >
+        <div style={{
+          padding: '1rem 1.25rem', borderRadius: '10px',
+          background: 'rgba(16,185,129,0.08)',
+          border: '1px solid rgba(16,185,129,0.25)',
+          textAlign: 'center',
+        }}>
+          <p style={{ fontSize: '14px', fontWeight: 600, color: TEAL, margin: '0 0 4px' }}>
             ✓ Profile extracted successfully
           </p>
-          <p
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: '0 0 16px' }}>
+            Your skills, education, and summary have been saved.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
             style={{
-              fontSize: '13px',
-              color: 'rgba(255,255,255,0.5)',
-              margin: 0,
+              padding: '10px 28px', borderRadius: '8px',
+              background: TEAL, color: '#fff',
+              border: 'none', fontSize: '14px',
+              fontWeight: 600, cursor: 'pointer',
             }}
           >
-            Your skills, education, and summary have been saved.
-            Refresh to see your profile.
-          </p>
+            Continue to Step 2 →
+          </button>
         </div>
       )}
     </div>

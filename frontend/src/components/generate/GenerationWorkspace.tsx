@@ -192,7 +192,9 @@ export default function GenerationWorkspace({
           try {
             const data = JSON.parse(line.slice(6))
             if (data.text) setFullContent(prev => prev + data.text)
-            if (data.done || data.error) break
+            if (data.full_output) setFullContent(data.full_output)
+            if (data.error) { setError(data.error); break }
+            if (data.done) break
           } catch { continue }
         }
       }
