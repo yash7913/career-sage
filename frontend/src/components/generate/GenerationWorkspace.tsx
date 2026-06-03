@@ -74,8 +74,23 @@ function parseOutputSections(content: string): { resume: string; keywords: strin
   const resumeMatch = content.match(/###?\s*A\.\s*ATS[- ]OPTIMIS[EZ]D RESUME([\s\S]*?)(?=###?\s*B\.|$)/i)
   const keywordsMatch = content.match(/###?\s*B\.\s*ATS KEYWORD[S]? COVERAGE REPORT([\s\S]*?)(?=###?\s*C\.|$)/i)
   const recruiterMatch = content.match(/###?\s*C\.\s*RECRUITER NOTES?([\s\S]*?)$/i)
+
+  let resumeContent = resumeMatch ? resumeMatch[1].trim() : ''
+
+  if (!resumeContent) {
+    const beforeB = content.split(/###?\s*B\.\s*ATS KEYWORD/i)[0]
+    resumeContent = beforeB.replace(/###?\s*A\.\s*ATS[- ]OPTIMIS[EZ]D RESUME/i, '').trim()
+  }
+
+  if (!resumeContent) resumeContent = content
+
+  // Strip anything that looks like recruiter/ATS notes from resume content
+  resumeContent = resumeContent
+    .replace(/---\s*\n.*?(?:Hiring Manager Signal|Red Flag|Suggested LinkedIn|Strongest Bullets|Remaining Gap|Recruiter Note)[\s\S]*$/i, '')
+    .trim()
+
   return {
-    resume: resumeMatch ? resumeMatch[1].trim() : content,
+    resume: resumeContent,
     keywords: keywordsMatch ? keywordsMatch[1].trim() : '',
     recruiter: recruiterMatch ? recruiterMatch[1].trim() : '',
   }
@@ -739,7 +754,22 @@ export default function GenerationWorkspace({
             {outputTab === 'keywords' && (
               <div>
                 {sections.keywords ? (
-                  <MarkdownRenderer content={sections.keywords} variant="report" />
+                  <div>
+                    <div style={{
+                      padding: '12px 16px', borderRadius: '10px',
+                      background: 'rgba(16,185,129,0.06)',
+                      border: '1px solid rgba(16,185,129,0.15)',
+                      marginBottom: '1.5rem',
+                    }}>
+                      <p style={{ fontSize: '13px', fontWeight: 600, color: TEAL, margin: '0 0 4px' }}>
+                        ATS Keyword Coverage Report
+                      </p>
+                      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0, lineHeight: 1.5 }}>
+                        This report shows how well your resume matches the job description keywords. ATS systems score resumes on keyword density before a human ever reads them. Use this to identify gaps before submitting.
+                      </p>
+                    </div>
+                    <MarkdownRenderer content={sections.keywords} variant="report" />
+                  </div>
                 ) : (
                   <p style={{
                     color: 'rgba(255,255,255,0.25)',
@@ -755,7 +785,22 @@ export default function GenerationWorkspace({
             {outputTab === 'recruiter' && (
               <div>
                 {sections.recruiter ? (
-                  <MarkdownRenderer content={sections.recruiter} variant="report" />
+                  <div>
+                    <div style={{
+                      padding: '12px 16px', borderRadius: '10px',
+                      background: 'rgba(245,158,11,0.06)',
+                      border: '1px solid rgba(245,158,11,0.15)',
+                      marginBottom: '1.5rem',
+                    }}>
+                      <p style={{ fontSize: '13px', fontWeight: 600, color: '#F59E0B', margin: '0 0 4px' }}>
+                        Recruiter Intelligence — For your eyes only
+                      </p>
+                      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0, lineHeight: 1.5 }}>
+                        Career Sage has analysed how a recruiter will read your resume. Red flags, strongest bullets, gaps to address in the interview, and your suggested LinkedIn headline. This does not appear in the downloaded PDF.
+                      </p>
+                    </div>
+                    <MarkdownRenderer content={sections.recruiter} variant="report" />
+                  </div>
                 ) : (
                   <p style={{
                     color: 'rgba(255,255,255,0.25)',
