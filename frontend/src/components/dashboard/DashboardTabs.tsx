@@ -23,6 +23,7 @@ interface DashboardTabsProps {
   applicationsTracked: number
   topMatchScore: number
   generationCount: number
+  profileSkills?: string[]
 }
 
 const TABS = [
@@ -30,9 +31,8 @@ const TABS = [
   { key: 'pipeline', label: 'Pipeline', icon: '📋' },
   { key: 'profile', label: 'Profile', icon: '👤' },
 ]
-
 export default function DashboardTabs({
-  userId, tracks, matchedJobs, applicationsTracked, topMatchScore, generationCount
+  userId, tracks, matchedJobs, applicationsTracked, topMatchScore, generationCount, profileSkills = []
 }: DashboardTabsProps) {
   const [activeTab, setActiveTab] = useState<'discover' | 'pipeline' | 'profile'>('discover')
   const [trackerKey, setTrackerKey] = useState(0)
@@ -104,6 +104,7 @@ export default function DashboardTabs({
           <DiscoveryFeed
             userId={userId}
             tracks={tracks}
+            profileSkills={profileSkills || []}
             onDownload={() => {
               setTrackerKey(prev => prev + 1)
               setActiveTab('pipeline')

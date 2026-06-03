@@ -139,3 +139,14 @@ async def add_manual_job(req: ManualJobRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.patch("/rankings/{ranking_id}/dismiss")
+async def dismiss_job(ranking_id: str):
+    try:
+        supabase.table("user_job_rankings")\
+            .update({"is_dismissed": True})\
+            .eq("ranking_id", ranking_id)\
+            .execute()
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

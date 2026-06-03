@@ -335,6 +335,7 @@ const applicationsTracked = Array.isArray(pipeline) ? pipeline.length : 0
             applicationsTracked={applicationsTracked}
             topMatchScore={topMatchScore}
             generationCount={generationCount}
+            profileSkills={profile?.extracted_skills || []}
           />
         )}
       </div>
