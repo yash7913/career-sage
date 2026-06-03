@@ -183,32 +183,143 @@ async def scrape_lever(company_name: str, lever_slug: str) -> list[dict]:
         print(f"Lever error for {company_name}: {e}")
     return jobs
 
-
 def extract_skills_from_text(text: str) -> list[str]:
     if not text:
         return []
+
     KNOWN_SKILLS = [
-        "Python", "SQL", "Java", "JavaScript", "TypeScript", "Go", "Rust", "C++",
-        "React", "Next.js", "Node.js", "FastAPI", "Django", "Flask", "Spring",
-        "PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch",
-        "AWS", "GCP", "Azure", "Docker", "Kubernetes", "Terraform",
+        # Languages
+        "Python", "SQL", "Java", "JavaScript", "TypeScript", "Go", "Rust", "C++", "C#", "R",
+        "Scala", "Swift", "Kotlin", "Ruby", "PHP", "MATLAB", "SAS", "SPSS", "Julia",
+        # Frontend
+        "React", "Next.js", "Vue.js", "Angular", "HTML", "CSS", "Tailwind", "Redux",
+        "GraphQL", "REST API", "WebSockets", "gRPC",
+        # Backend
+        "Node.js", "FastAPI", "Django", "Flask", "Spring Boot", "Express", "Rails",
+        "Microservices", "System Design", "API Design",
+        # Data and ML
         "Machine Learning", "Deep Learning", "NLP", "LLM", "RAG", "PyTorch", "TensorFlow",
-        "Data Science", "Analytics", "Tableau", "Power BI", "dbt", "Spark", "Kafka",
-        "Product Management", "Agile", "Scrum", "Roadmap", "A/B Testing",
-        "System Design", "Microservices", "REST API", "GraphQL",
-        "Figma", "UX", "Leadership", "Stakeholder Management",
+        "Scikit-learn", "XGBoost", "LightGBM", "Hugging Face", "OpenAI", "Langchain",
+        "Computer Vision", "Reinforcement Learning", "Feature Engineering", "MLOps",
+        "Statistical Modeling", "Time Series", "Forecasting", "Causal Inference",
+        "A/B Testing", "Experimentation", "Hypothesis Testing", "Regression Analysis",
+        # Data Engineering
+        "Spark", "Kafka", "Airflow", "dbt", "Hadoop", "Flink", "Hive", "Presto", "Athena",
+        "ETL", "Data Pipelines", "Data Warehousing", "Data Modeling", "Data Governance",
+        "Data Quality", "Data Contracts", "Databricks", "Snowflake", "Redshift", "BigQuery",
+        # Databases
+        "PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch", "Cassandra", "DynamoDB",
+        "Neo4j", "ClickHouse", "Pinecone",
+        # Cloud and Infra
+        "AWS", "GCP", "Azure", "Docker", "Kubernetes", "Terraform", "CI/CD",
+        "Jenkins", "GitHub Actions", "Linux", "Bash", "Shell Scripting",
+        "Observability", "Prometheus", "Grafana", "DataDog", "SRE",
+        # Analytics and BI
+        "Tableau", "Power BI", "Looker", "Metabase", "Mixpanel", "Amplitude",
+        "Google Analytics", "Segment", "Data Studio", "Excel", "Google Sheets",
+        "Business Intelligence", "Data Storytelling", "Dashboard Design",
+        # Product Management
+        "Product Management", "Product Strategy", "Product Roadmap", "Product Analytics",
+        "User Research", "Customer Discovery", "Market Research", "Competitive Analysis",
+        "Go-to-Market", "Product Launch", "Product-Led Growth", "OKRs", "KPIs",
+        "Stakeholder Management", "Requirements Gathering", "PRD Writing",
+        "Wireframing", "Prototyping", "User Stories", "Acceptance Criteria",
+        "Pricing Strategy", "Monetisation", "Revenue Modelling",
+        # Program and Project Management
+        "Program Management", "Project Management", "PMP", "Agile", "Scrum", "Kanban",
+        "JIRA", "Confluence", "Asana", "Notion", "Monday.com", "Risk Management",
+        "Stakeholder Communication", "Cross-functional Leadership",
+        # TPM
+        "Technical Program Management", "Engineering Program Management",
+        "Release Management", "Dependency Management", "Technical Roadmap",
+        "System Integration", "API Integration",
+        # Design
+        "Figma", "Sketch", "Adobe XD", "UX Design", "UI Design", "Design Systems",
+        "Accessibility", "Usability Testing", "Information Architecture",
+        # Growth and Marketing
+        "Growth Hacking", "SEO", "SEM", "Paid Acquisition", "CRO", "Email Marketing",
+        "Content Strategy", "Brand Strategy", "Performance Marketing",
+        "Customer Acquisition", "Retention", "Engagement", "Activation",
+        "Funnel Analysis", "Cohort Analysis", "LTV", "CAC",
+        # Sales and BD
+        "Sales", "Business Development", "CRM", "Salesforce", "HubSpot",
+        "Enterprise Sales", "SaaS Sales", "Solution Selling", "Pipeline Management",
+        # Operations
+        "Operations", "Process Design", "Process Improvement", "Six Sigma", "Lean",
+        "Supply Chain", "Logistics", "Vendor Management", "Contract Management",
+        # Finance
+        "Financial Modeling", "Valuation", "DCF", "FP&A", "Budgeting", "Forecasting",
+        "P&L Management", "Unit Economics", "Excel Modeling",
+        # Strategy and Consulting
+        "Strategy", "Management Consulting", "Business Analysis", "Market Analysis",
+        "Competitive Intelligence", "Due Diligence", "Business Case Development",
+        # Leadership and Soft Skills
+        "Leadership", "Mentoring", "Team Building", "Hiring", "Performance Management",
+        "Executive Communication", "Presentation Skills", "Negotiation",
+        "Conflict Resolution", "Decision Making",
+        # Security
+        "Cybersecurity", "Penetration Testing", "SOC", "SIEM", "OWASP",
+        "ISO 27001", "Threat Modeling", "Incident Response",
+        # Domain specific
+        "Fintech", "Payments", "Lending", "Credit Risk", "Fraud Detection",
+        "Healthcare", "EdTech", "E-commerce", "Marketplace", "SaaS", "B2B", "B2C",
+        "Mobile", "iOS", "Android", "React Native", "Flutter",
+        "Blockchain", "Smart Contracts",
     ]
+
     text_lower = text.lower()
     found = []
     for skill in KNOWN_SKILLS:
         if skill.lower() in text_lower and skill not in found:
             found.append(skill)
-    return found[:15]
 
+    import re
+    patterns = [
+        r'\b[A-Z][a-zA-Z+#.]+(?:\s[A-Z][a-zA-Z+#.]+){0,2}\b',
+    ]
+    common_exclude = {
+        "the", "and", "for", "with", "that", "this", "have", "will", "from",
+        "they", "been", "were", "your", "our", "their", "you", "are", "not",
+        "all", "can", "may", "who", "what", "how", "when", "where", "which",
+        "work", "team", "role", "able", "help", "good", "new", "use", "make",
+        "join", "build", "lead", "drive", "own", "run", "set", "get",
+    }
+    for pattern in patterns:
+        matches = re.findall(pattern, text)
+        for word in matches:
+            if (len(word) > 2 and
+                word.lower() not in common_exclude and
+                word not in found and
+                not word.isdigit()):
+                found.append(word)
+
+    return list(dict.fromkeys(found))
 
 async def run_full_scrape(keywords: list[str] = None, location: str = "India") -> dict:
     if keywords is None:
-        keywords = ["Product Manager", "Data Analyst", "Software Engineer", "ML Engineer"]
+        keywords = [
+            # Product
+            "Product Manager", "Senior Product Manager", "Lead Product Manager",
+            "Group Product Manager", "Director of Product", "VP Product",
+            "Product Owner", "Associate Product Manager",
+            # Program and TPM
+            "Program Manager", "Technical Program Manager", "TPM",
+            "Engineering Program Manager", "Senior Program Manager",
+            "Release Manager", "Delivery Manager",
+            # Data
+            "Data Analyst", "Senior Data Analyst", "Business Analyst",
+            "Data Scientist", "Senior Data Scientist", "ML Engineer",
+            "Analytics Engineer", "Data Engineer", "Senior Data Engineer",
+            "BI Developer", "Business Intelligence",
+            # Engineering
+            "Software Engineer", "Senior Software Engineer", "Staff Engineer",
+            "Backend Engineer", "Frontend Engineer", "Full Stack Engineer",
+            "Platform Engineer", "Site Reliability Engineer", "DevOps Engineer",
+            # Design
+            "Product Designer", "UX Designer", "Senior Designer",
+            # Growth and GTM
+            "Growth Manager", "Growth Product Manager", "Product Marketing Manager",
+        ]
 
     all_jobs = []
 
