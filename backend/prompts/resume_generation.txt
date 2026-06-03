@@ -107,8 +107,8 @@ Generate all three components with no preamble, no commentary before them:
 
 ### A. ATS-OPTIMISED RESUME
 
-[CANDIDATE NAME]
-[City, State] | [Phone] | [Email] | [LinkedIn]
+{full_name}
+{location_city} | {phone} | [Email] | {linkedin_url}
 
 SUMMARY
 [3-line track-specific summary]

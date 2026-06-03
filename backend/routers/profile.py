@@ -141,3 +141,24 @@ async def update_search_status(req: StatusUpdateRequest):
         return {"status": "ok", "search_status": req.search_status}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class ContactUpdateRequest(BaseModel):
+    user_id: str
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    location: Optional[str] = None
+    linkedin_url: Optional[str] = None
+
+@router.patch("/contact")
+async def update_contact(req: ContactUpdateRequest):
+    try:
+        updates = {}
+        if req.full_name is not None: updates["full_name"] = req.full_name
+        if req.phone is not None: updates["phone"] = req.phone
+        if req.location is not None: updates["location"] = req.location
+        if req.linkedin_url is not None: updates["linkedin_url"] = req.linkedin_url
+        if updates:
+            supabase.table("user_profiles").update(updates).eq("user_id", req.user_id).execute()
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -4,6 +4,7 @@ import DiscoveryFeed from '@/components/jobs/DiscoveryFeed'
 import KanbanBoard from '@/components/tracker/KanbanBoard'
 import VaultUpload from '@/components/profile/VaultUpload'
 import TrackSetup from '@/components/profile/TrackSetup'
+import ContactDetailsForm from '@/components/profile/ContactDetailsForm'
 import StatsRow from '@/components/dashboard/StatsRow'
 
 const TEAL = '#10B981'
@@ -193,7 +194,16 @@ function ProfileTab({ userId, tracks }: { userId: string; tracks: Track[] }) {
         <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '1rem 0 10px' }}>ADD A TRACK</p>
         <TrackSetup userId={userId} />
       </div>
-
+      
+      {/* Contact details */}
+      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem', gridColumn: '1 / -1' }}>
+        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 1rem' }}>CONTACT DETAILS</p>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1rem', lineHeight: 1.5 }}>
+          These appear in your generated resume. Add them once and Career Sage fills them in automatically.
+        </p>
+        <ContactDetailsForm userId={userId} />
+      </div>
+      
       {/* Document vault */}
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
         <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 1rem' }}>DOCUMENT VAULT</p>

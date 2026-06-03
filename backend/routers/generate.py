@@ -27,7 +27,7 @@ def check_generation_limit(user_id: str) -> dict:
     from datetime import datetime, timezone, timedelta
 
     profile = supabase.table("user_profiles")\
-        .select("tier_status, generation_count, generation_reset_at")\
+        .select("extracted_summary, extracted_skills, education_data, raw_profile_text, full_name, phone, location, linkedin_url")\
         .eq("user_id", user_id)\
         .execute()
 
@@ -35,6 +35,13 @@ def check_generation_limit(user_id: str) -> dict:
         raise HTTPException(status_code=404, detail="Profile not found")
 
     p = profile.data[0]
+    full_name = p.get("full_name") or "Your Name"
+    phone = p.get("phone") or "[Phone]"
+    location = p.get("location") or "[City, State]"
+    linkedin_url = p.get("linkedin_url") or "[LinkedIn]"
+    email_val = ""
+    user_data = supabase.table("user_profiles").select("user_id").eq("user_id", user_id).execute()
+
     tier = p["tier_status"]
 
     if tier in ("STUDENT_VERIFIED", "PREMIUM_PRO"):
@@ -152,6 +159,10 @@ def build_context(user_id: str, track_id: str, job_id: str) -> dict:
         "job_title": j.get("job_title") or "",
         "job_description": (j.get("job_description") or "")[:4000],
         "skill_gaps": ", ".join(gaps),
+	"full_name": full_name,
+        "phone": phone,
+        "location_city": location,
+        "linkedin_url": linkedin_url,
     }
 
 
