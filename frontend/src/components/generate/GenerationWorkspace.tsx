@@ -71,28 +71,37 @@ function CircleMatch({ score }: { score: number }) {
 }
 
 function parseOutputSections(content: string): { resume: string; keywords: string; recruiter: string } {
-  const resumeMatch = content.match(/###?\s*A\.\s*ATS[- ]OPTIMIS[EZ]D RESUME([\s\S]*?)(?=###?\s*B\.|$)/i)
-  const keywordsMatch = content.match(/###?\s*B\.\s*ATS KEYWORD[S]? COVERAGE REPORT([\s\S]*?)(?=###?\s*C\.|$)/i)
-  const recruiterMatch = content.match(/###?\s*C\.\s*RECRUITER NOTES?([\s\S]*?)$/i)
+  const sectionBIndex = content.search(/###?\s*B\.\s*ATS KEYWORD/i)
+  const sectionCIndex = content.search(/###?\s*C\.\s*RECRUITER NOTES?/i)
 
-  let resumeContent = resumeMatch ? resumeMatch[1].trim() : ''
-
-  if (!resumeContent) {
-    const beforeB = content.split(/###?\s*B\.\s*ATS KEYWORD/i)[0]
-    resumeContent = beforeB.replace(/###?\s*A\.\s*ATS[- ]OPTIMIS[EZ]D RESUME/i, '').trim()
+  let resumeContent = ''
+  if (sectionBIndex > -1) {
+    resumeContent = content.slice(0, sectionBIndex)
+  } else if (sectionCIndex > -1) {
+    resumeContent = content.slice(0, sectionCIndex)
+  } else {
+    resumeContent = content
   }
 
-  if (!resumeContent) resumeContent = content
-
-  // Strip anything that looks like recruiter/ATS notes from resume content
   resumeContent = resumeContent
-    .replace(/---\s*\n.*?(?:Hiring Manager Signal|Red Flag|Suggested LinkedIn|Strongest Bullets|Remaining Gap|Recruiter Note)[\s\S]*$/i, '')
+    .replace(/###?\s*A\.\s*ATS[- ]OPTIMIS[EZ]D RESUME/i, '')
     .trim()
+
+  const keywordsContent = sectionBIndex > -1
+    ? content.slice(
+        sectionBIndex,
+        sectionCIndex > -1 ? sectionCIndex : undefined
+      ).replace(/###?\s*B\.\s*ATS KEYWORD[S]? COVERAGE REPORT/i, '').trim()
+    : ''
+
+  const recruiterContent = sectionCIndex > -1
+    ? content.slice(sectionCIndex).replace(/###?\s*C\.\s*RECRUITER NOTES?/i, '').trim()
+    : ''
 
   return {
     resume: resumeContent,
-    keywords: keywordsMatch ? keywordsMatch[1].trim() : '',
-    recruiter: recruiterMatch ? recruiterMatch[1].trim() : '',
+    keywords: keywordsContent,
+    recruiter: recruiterContent,
   }
 }
 
