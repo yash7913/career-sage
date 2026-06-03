@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, ReactNode } from 'react'
 import AuthModal from '@/components/ui/auth-modal'
+import ThemeToggle from '@/components/ui/ThemeToggle'
 
 const TEAL = '#10B981'
 const TEAL_DIM = 'rgba(16,185,129,0.08)'
