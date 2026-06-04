@@ -1,0 +1,300 @@
+'use client'
+import { useState } from 'react'
+import ThemeToggle from '@/components/ui/ThemeToggle'
+
+const TEAL = '#10B981'
+const BORDER = 'rgba(255,255,255,0.07)'
+
+interface SidebarProps {
+  userId: string
+  userEmail: string
+  userName: string
+  cohort: string | null
+  tier: string
+  activeTab: string
+  setActiveTab: (tab: string) => void
+  hasProfile: boolean
+  hasTracks: boolean
+  tracks: { track_id: string; track_name: string; track_color: string }[]
+}
+
+const COLOR_MAP: Record<string, string> = {
+  teal: '#10B981', purple: '#7F77DD',
+  blue: '#3B82F6', amber: '#F59E0B', coral: '#F97316',
+}
+
+const TIER_COLORS: Record<string, string> = {
+  STUDENT_VERIFIED: '#10B981',
+  PREMIUM_PRO: '#7F77DD',
+  GENERAL_FREE: 'rgba(255,255,255,0.4)',
+}
+
+const TIER_LABELS: Record<string, string> = {
+  STUDENT_VERIFIED: 'Academic',
+  PREMIUM_PRO: 'Pro',
+  GENERAL_FREE: 'Free',
+}
+
+const COHORT_COLORS: Record<string, string> = {
+  'Technical PM': '#3B82F6',
+  'Data-Oriented PM': '#10B981',
+  'Growth PM': '#F59E0B',
+  'Analytics Engineer': '#7F77DD',
+  'Data Scientist': '#06B6D4',
+  'Full-Stack Engineer': '#F97316',
+  'ML Engineer': '#EC4899',
+}
+
+export default function Sidebar({
+  userId, userEmail, userName, cohort, tier,
+  activeTab, setActiveTab, hasProfile, hasTracks, tracks,
+}: SidebarProps) {
+  const [collapsed, setCollapsed] = useState(false)
+
+  const cohortColor = cohort ? (COHORT_COLORS[cohort] ?? TEAL) : TEAL
+  const tierColor = TIER_COLORS[tier] ?? 'rgba(255,255,255,0.4)'
+  const tierLabel = TIER_LABELS[tier] ?? 'Free'
+
+  // Adaptive nav ordering
+  const fullySetUp = hasProfile && hasTracks
+  const navItems = fullySetUp
+    ? [
+        { key: 'discover', icon: '⚡', label: 'Discover', locked: false },
+        { key: 'pipeline', icon: '📋', label: 'Pipeline', locked: false },
+        { key: 'profile', icon: '👤', label: 'Profile', locked: false },
+      ]
+    : [
+        { key: 'profile', icon: '👤', label: 'Profile', locked: false },
+        { key: 'discover', icon: '⚡', label: 'Discover', locked: !hasProfile },
+        { key: 'pipeline', icon: '📋', label: 'Pipeline', locked: !hasProfile },
+      ]
+
+  return (
+    <div style={{
+      width: collapsed ? '60px' : '220px',
+      minHeight: '100vh',
+      background: '#0d1117',
+      borderRight: `1px solid ${BORDER}`,
+      display: 'flex',
+      flexDirection: 'column',
+      transition: 'width 0.2s ease',
+      flexShrink: 0,
+      position: 'sticky',
+      top: 0,
+      height: '100vh',
+      overflow: 'hidden',
+    }}>
+      {/* Logo + collapse */}
+      <div style={{
+        padding: collapsed ? '1.25rem 0' : '1.25rem 1.25rem',
+        borderBottom: `1px solid ${BORDER}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: collapsed ? 'center' : 'space-between',
+        flexShrink: 0,
+      }}>
+        {!collapsed && (
+          <a href="/" style={{
+            textDecoration: 'none',
+            display: 'flex', alignItems: 'center', gap: '8px',
+          }}>
+            <div style={{
+              width: '26px', height: '26px', borderRadius: '7px',
+              background: 'linear-gradient(135deg, #10B981, #059669)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '13px', flexShrink: 0,
+            }}>⚡</div>
+            <span style={{
+              fontSize: '14px', fontWeight: 700, color: '#fff',
+              letterSpacing: '-0.3px',
+            }}>Career Sage</span>
+          </a>
+        )}
+        {collapsed && (
+          <a href="/" style={{ textDecoration: 'none' }}>
+            <div style={{
+              width: '26px', height: '26px', borderRadius: '7px',
+              background: 'linear-gradient(135deg, #10B981, #059669)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '13px',
+            }}>⚡</div>
+          </a>
+        )}
+        {!collapsed && (
+          <button onClick={() => setCollapsed(true)} style={{
+            background: 'none', border: 'none',
+            color: 'rgba(255,255,255,0.25)',
+            cursor: 'pointer', fontSize: '16px', padding: '2px',
+          }}>‹</button>
+        )}
+      </div>
+
+      {/* User identity */}
+      {!collapsed && (
+        <div style={{
+          padding: '1rem 1.25rem',
+          borderBottom: `1px solid ${BORDER}`,
+          flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <div style={{
+              width: '28px', height: '28px', borderRadius: '50%',
+              background: `linear-gradient(135deg, ${tierColor}, ${tierColor}88)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '12px', fontWeight: 700, color: '#fff', flexShrink: 0,
+            }}>
+              {userName[0]?.toUpperCase()}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {userName}
+              </p>
+              <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {userEmail}
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+            {cohort && (
+              <span style={{
+                fontSize: '10px', fontWeight: 600,
+                padding: '2px 7px', borderRadius: '999px',
+                background: `${cohortColor}15`,
+                color: cohortColor,
+                border: `1px solid ${cohortColor}30`,
+              }}>{cohort}</span>
+            )}
+            <span style={{
+              fontSize: '10px', fontWeight: 600,
+              padding: '2px 7px', borderRadius: '999px',
+              background: `${tierColor}15`,
+              color: tierColor,
+              border: `1px solid ${tierColor}30`,
+            }}>{tierLabel}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Main nav */}
+      <nav style={{ flex: 1, padding: collapsed ? '1rem 0' : '1rem 0.75rem', overflowY: 'auto' }}>
+        {/* Nav items */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '1rem' }}>
+          {navItems.map(item => (
+            <button
+              key={item.key}
+              onClick={() => !item.locked && setActiveTab(item.key)}
+              title={item.locked ? 'Complete your profile first' : item.label}
+              style={{
+                display: 'flex', alignItems: 'center',
+                gap: collapsed ? 0 : '10px',
+                padding: collapsed ? '10px 0' : '9px 12px',
+                borderRadius: '9px',
+                border: 'none',
+                cursor: item.locked ? 'not-allowed' : 'pointer',
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                background: activeTab === item.key
+                  ? 'rgba(16,185,129,0.12)'
+                  : 'transparent',
+                transition: 'all 0.15s',
+                width: '100%',
+                opacity: item.locked ? 0.35 : 1,
+                boxShadow: activeTab === item.key
+                  ? 'inset 0 0 0 1px rgba(16,185,129,0.25)'
+                  : 'none',
+              }}
+            >
+              <span style={{ fontSize: '16px', flexShrink: 0 }}>{item.icon}</span>
+              {!collapsed && (
+                <span style={{
+                  fontSize: '13px', fontWeight: activeTab === item.key ? 600 : 400,
+                  color: activeTab === item.key ? TEAL : 'rgba(255,255,255,0.5)',
+                }}>
+                  {item.label}
+                </span>
+              )}
+              {!collapsed && item.locked && (
+                <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'rgba(255,255,255,0.2)' }}>🔒</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Active tracks */}
+        {!collapsed && hasTracks && tracks.length > 0 && (
+          <div style={{ marginTop: '0.5rem' }}>
+            <p style={{
+              fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.25)',
+              letterSpacing: '0.08em', textTransform: 'uppercase',
+              margin: '0 0 6px 12px',
+            }}>TRACKS</p>
+            {tracks.map(track => {
+              const hex = COLOR_MAP[track.track_color] ?? TEAL
+              return (
+                <button
+                  key={track.track_id}
+                  onClick={() => setActiveTab('discover')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '7px 12px', borderRadius: '8px',
+                    background: 'transparent', border: 'none',
+                    cursor: 'pointer', width: '100%',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: hex, flexShrink: 0 }} />
+                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {track.track_name}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </nav>
+
+      {/* Bottom section */}
+      <div style={{
+        padding: collapsed ? '1rem 0' : '1rem 0.75rem',
+        borderTop: `1px solid ${BORDER}`,
+        flexShrink: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '4px',
+      }}>
+        {/* Theme toggle */}
+        <div style={{
+          display: 'flex',
+          justifyContent: collapsed ? 'center' : 'flex-start',
+          padding: collapsed ? '6px 0' : '6px 12px',
+        }}>
+          <ThemeToggle />
+        </div>
+
+        {/* Expand button when collapsed */}
+        {collapsed && (
+          <button onClick={() => setCollapsed(false)} style={{
+            background: 'none', border: 'none',
+            color: 'rgba(255,255,255,0.25)',
+            cursor: 'pointer', fontSize: '16px',
+            padding: '6px 0', textAlign: 'center', width: '100%',
+          }}>›</button>
+        )}
+
+        {/* Sign out */}
+        {!collapsed && (
+          <a href="/" style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            padding: '8px 12px', borderRadius: '8px',
+            textDecoration: 'none',
+            color: 'rgba(255,255,255,0.3)',
+            fontSize: '13px',
+            transition: 'color 0.15s',
+          }}>
+            <span style={{ fontSize: '14px' }}>←</span>
+            Home
+          </a>
+        )}
+      </div>
+    </div>
+  )
+}
