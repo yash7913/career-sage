@@ -355,19 +355,11 @@ body {
 }
 
 /* ── Top match card glow ── */
-.cs-top-match-1 {
-  border: 1px solid rgba(16,185,129,0.4) !important;
-  box-shadow: 0 0 24px rgba(16,185,129,0.15), 0 0 48px rgba(16,185,129,0.05);
-}
-
-.cs-top-match-2 {
-  border: 1px solid rgba(245,158,11,0.3) !important;
-  box-shadow: 0 0 20px rgba(245,158,11,0.1);
-}
-
+.cs-top-match-1,
+.cs-top-match-2,
 .cs-top-match-3 {
-  border: 1px solid rgba(127,119,221,0.3) !important;
-  box-shadow: 0 0 20px rgba(127,119,221,0.1);
+  border: 1px solid rgba(16,185,129,0.35) !important;
+  box-shadow: 0 0 20px rgba(16,185,129,0.12), 0 0 40px rgba(16,185,129,0.04);
 }
 
 /* ── Stat card gradient top border ── */
@@ -382,4 +374,84 @@ body {
   top: 0; left: 0; right: 0;
   height: 2px;
   background: linear-gradient(90deg, var(--accent, #10B981), transparent);
+
+/* ── Light mode broad text fix ── */
+[data-theme="light"] main * {
+  color: inherit;
+}
+
+[data-theme="light"] main {
+  color: #0d1117!important;
+  background: #f0f2f5 !important;
+}
+
+[data-theme="light"] main p,
+[data-theme="light"] main span,
+[data-theme="light"] main h1,
+[data-theme="light"] main h2,
+[data-theme="light"] main h3,
+[data-theme="light"] main label,
+[data-theme="light"] main button,
+[data-theme="light"] main a {
+  color: #0d1117 !important;
+}
+
+[data-theme="light"] main p[style*="rgba(255,255,255"],
+[data-theme="light"] main span[style*="rgba(255,255,255"],
+[data-theme="light"] main h1[style*="rgba(255,255,255"],
+[data-theme="light"] main h2[style*="rgba(255,255,255"],
+[data-theme="light"] main h3[style*="rgba(255,255,255"] {
+  color: rgba(0,0,0,0.55) !important;
+}
+
+[data-theme="light"] main button[style*="rgba(255,255,255"] {
+  color: rgba(0,0,0,0.55) !important;
+}
+
+[data-theme="light"] main div[style*="background: #0d1117"],
+[data-theme="light"] main div[style*="background: #161b22"],
+[data-theme="light"] main div[style*="background: #1c2128"] {
+  background: #ffffff !important;
+}
+
+[data-theme="light"] main div[style*="background: rgba(255,255,255,0.02)"],
+[data-theme="light"] main div[style*="background: rgba(255,255,255,0.03)"],
+[data-theme="light"] main div[style*="background: rgba(255,255,255,0.04)"],
+[data-theme="light"] main div[style*="background: rgba(255,255,255,0.05)"],
+[data-theme="light"] main div[style*="background: rgba(255,255,255,0.06)"] {
+  background: rgba(0,0,0,0.03) !important;
+}
+
+[data-theme="light"] main input,
+[data-theme="light"] main textarea,
+[data-theme="light"] main select {
+  background: #f6f8fa !important;
+  color: #0d1117 !important;
+  border-color: rgba(0,0,0,0.15) !important;
+}
+
+/* Keep teal accents visible in light mode */
+[data-theme="light"] main .cs-shimmer-teal,
+[data-theme="light"] main span[style*="color: #10B981"],
+[data-theme="light"] main p[style*="color: #10B981"] {
+  color: #059669 !important;
+  -webkit-text-fill-color: #059669 !important;
+}
+
+/* Sidebar light mode */
+[data-theme="light"] .cs-sidebar-wrap {
+  background: #ffffff !important;
+  border-right-color: rgba(0,0,0,0.08) !important;
+}
+
+[data-theme="light"] .cs-sidebar-wrap p,
+[data-theme="light"] .cs-sidebar-wrap span,
+[data-theme="light"] .cs-sidebar-wrap button,
+[data-theme="light"] .cs-sidebar-wrap a {
+  color: #0d1117 !important;
+}
+
+[data-theme="light"] .cs-sidebar-wrap div[style*="background: #0d1117"] {
+  background: #ffffff !important;
+}
 }
