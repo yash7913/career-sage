@@ -190,8 +190,22 @@ export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkill
           </button>
         </div>
       ) : (
-filtered.map(job => (
-          <JobCard key={job.ranking_id} job={job} userId={userId} trackId={activeTrack?.track_id || ''} profileSkills={profileSkills} onStar={handleStar} onDownload={onDownload} />
+filtered.map((job, index) => (
+          <div key={job.ranking_id} className={
+            index === 0 ? 'cs-top-match-1' :
+            index === 1 ? 'cs-top-match-2' :
+            index === 2 ? 'cs-top-match-3' : ''
+          } style={{ borderRadius: '14px' }}>
+            <JobCard
+              job={job}
+              userId={userId}
+              trackId={activeTrack?.track_id || ''}
+              profileSkills={profileSkills}
+              onStar={handleStar}
+              onDownload={onDownload}
+              rank={index + 1}
+            />
+          </div>
         ))
       )}
     </div>

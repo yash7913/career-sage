@@ -71,6 +71,32 @@ export default function DashboardTabs({
       {/* Main content */}
       <div style={{ flex: 1, overflowY: 'auto', minHeight: '100vh' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2.5rem 2rem' }}>
+		
+	{/* Welcome heading */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h1 style={{ fontSize: '28px', fontWeight: 700, margin: '0 0 6px', letterSpacing: '-1px' }}>
+              Welcome back,{' '}
+              <span className="cs-shimmer">{userName}</span>
+            </h1>
+            {!hasProfile && (
+              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                Upload your resume to get started.
+              </p>
+            )}
+            {hasProfile && !hasTracks && (
+              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                Profile ready —{' '}
+                <span className="cs-highlight">set up your first career track</span>{' '}
+                to unlock your job feed.
+              </p>
+            )}
+            {hasProfile && hasTracks && (
+              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                Your ranked job feed is ready.{' '}
+                <span className="cs-highlight">⚡ {matchedJobs} roles matched</span>
+              </p>
+            )}
+          </div>
 
           {/* Stats row — only when fully set up */}
           {hasProfile && hasTracks && (
@@ -81,6 +107,7 @@ export default function DashboardTabs({
               generationCount={generationCount}
             />
           )}
+
 
           {/* Discover tab */}
           {activeTab === 'discover' && hasTracks && (

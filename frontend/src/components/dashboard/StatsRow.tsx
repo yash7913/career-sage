@@ -1,7 +1,5 @@
 'use client'
 
-const TEAL = '#10B981'
-
 interface StatsRowProps {
   matchedJobs: number
   applicationsTracked: number
@@ -9,13 +7,15 @@ interface StatsRowProps {
   generationCount: number
 }
 
+const STATS = [
+  { label: 'Roles matched', suffix: '', color: '#10B981', icon: '⚡', key: 'matchedJobs' },
+  { label: 'Applications tracked', suffix: '', color: '#3B82F6', icon: '📋', key: 'applicationsTracked' },
+  { label: 'Top match score', suffix: '%', color: '#F59E0B', icon: '🎯', key: 'topMatchScore' },
+  { label: 'Resumes generated', suffix: '', color: '#7F77DD', icon: '📄', key: 'generationCount' },
+]
+
 export default function StatsRow({ matchedJobs, applicationsTracked, topMatchScore, generationCount }: StatsRowProps) {
-  const stats = [
-    { label: 'Roles matched', value: matchedJobs, suffix: '', color: TEAL, icon: '⚡' },
-    { label: 'Applications tracked', value: applicationsTracked, suffix: '', color: '#3B82F6', icon: '📋' },
-    { label: 'Top match score', value: topMatchScore, suffix: '%', color: '#F59E0B', icon: '🎯' },
-    { label: 'Resumes generated', value: generationCount, suffix: '', color: '#7F77DD', icon: '📄' },
-  ]
+  const values: Record<string, number> = { matchedJobs, applicationsTracked, topMatchScore, generationCount }
 
   return (
     <div style={{
@@ -24,8 +24,8 @@ export default function StatsRow({ matchedJobs, applicationsTracked, topMatchSco
       gap: '12px',
       marginBottom: '2rem',
     }}>
-      {stats.map(stat => (
-        <div key={stat.label} style={{
+      {STATS.map(stat => (
+        <div key={stat.key} style={{
           background: 'rgba(255,255,255,0.03)',
           border: '1px solid rgba(255,255,255,0.07)',
           borderRadius: '14px',
@@ -41,20 +41,18 @@ export default function StatsRow({ matchedJobs, applicationsTracked, topMatchSco
           <p style={{
             fontSize: '11px', fontWeight: 600,
             color: 'rgba(255,255,255,0.35)',
-            margin: '0 0 8px',
+            margin: '0 0 10px',
             letterSpacing: '0.06em',
             textTransform: 'uppercase',
           }}>
             {stat.icon} {stat.label}
           </p>
-          <p style={{
-            fontSize: '32px', fontWeight: 700,
-            color: stat.color,
-            margin: 0,
-            letterSpacing: '-1px',
+          <p className="cs-shimmer" style={{
+            fontSize: '36px', fontWeight: 800,
+            margin: 0, letterSpacing: '-1.5px',
             lineHeight: 1,
           }}>
-            {stat.value}{stat.suffix}
+            {values[stat.key]}{stat.suffix}
           </p>
         </div>
       ))}

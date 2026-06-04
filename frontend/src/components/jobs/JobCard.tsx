@@ -121,12 +121,7 @@ function SkillBadges({
 }
 
 export default function JobCard({
-  job,
-  userId,
-  trackId,
-  profileSkills,
-  onStar,
-  onDownload,
+  job, userId, trackId, profileSkills, onStar, onDownload, rank,
 }: {
   job: Job
   userId: string
@@ -134,6 +129,7 @@ export default function JobCard({
   profileSkills: string[]
   onStar: (id: string, starred: boolean) => void
   onDownload?: () => void
+  rank?: number
 }) {
   const [expanded, setExpanded] = useState(false)
   const [starred, setStarred] = useState(job.is_starred)
@@ -196,10 +192,25 @@ export default function JobCard({
           alignItems: 'flex-start', marginBottom: '8px',
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', flexWrap: 'wrap' }}>
               <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
                 {job.company_name} · {job.location}
               </p>
+              {rank === 1 && (
+                <span className="cs-shimmer" style={{ fontSize: '10px', fontWeight: 700, padding: '1px 8px', borderRadius: '999px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)' }}>
+                  🏆 Top Match
+                </span>
+              )}
+              {rank === 2 && (
+                <span className="cs-shimmer-gold" style={{ fontSize: '10px', fontWeight: 700, padding: '1px 8px', borderRadius: '999px', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)' }}>
+                  #2 Match
+                </span>
+              )}
+              {rank === 3 && (
+                <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 8px', borderRadius: '999px', background: 'rgba(127,119,221,0.12)', border: '1px solid rgba(127,119,221,0.25)', color: '#7F77DD' }}>
+                  #3 Match
+                </span>
+              )}
               {isHiddenGem && (
                 <span style={{
                   fontSize: '10px', fontWeight: 700,
