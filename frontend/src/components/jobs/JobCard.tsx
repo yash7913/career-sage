@@ -197,7 +197,7 @@ export default function JobCard({
                 {job.company_name} · {job.location}
               </p>
               {rank === 1 && (
-                <span className="cs-shimmer" style={{ fontSize: '10px', fontWeight: 700, padding: '1px 8px', borderRadius: '999px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 8px', borderRadius: '999px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#10B981' }}>
                   🏆 Top Match
                 </span>
               )}

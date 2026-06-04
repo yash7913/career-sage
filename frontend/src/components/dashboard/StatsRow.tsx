@@ -47,7 +47,7 @@ export default function StatsRow({ matchedJobs, applicationsTracked, topMatchSco
           }}>
             {stat.icon} {stat.label}
           </p>
-          <p className="cs-shimmer" style={{
+          <p className="cs-shimmer-teal" style={{
             fontSize: '36px', fontWeight: 800,
             margin: 0, letterSpacing: '-1.5px',
             lineHeight: 1,

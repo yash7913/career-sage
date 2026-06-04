@@ -262,17 +262,16 @@ body {
 .cs-shimmer {
   background: linear-gradient(
     90deg,
-    #fff 0%,
-    #10B981 25%,
-    #fff 50%,
-    #10B981 75%,
-    #fff 100%
+    #ffffff 0%,
+    rgba(255,255,255,0.6) 40%,
+    #ffffff 60%,
+    rgba(255,255,255,0.6) 100%
   );
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: shimmer 4s linear infinite;
+  animation: shimmer 5s linear infinite;
 }
 
 .cs-shimmer-gold {
@@ -291,6 +290,20 @@ body {
   animation: shimmer 4s linear infinite;
 }
 
+.cs-shimmer-teal {
+  background: linear-gradient(
+    90deg,
+    #10B981 0%,
+    #34D399 30%,
+    #10B981 60%,
+    #059669 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
+}
 /* ── Gradient text utility ── */
 .cs-gradient-text {
   background: linear-gradient(135deg, #fff 60%, rgba(255,255,255,0.5));
