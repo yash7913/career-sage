@@ -204,25 +204,29 @@ async def stream_sectional_resume(ctx: dict, user_id: str, track_id: str, job_id
         yield f"data: {json.dumps({'text': header})}\n\n"
         await asyncio.sleep(0.1)
 
-        yield f"data: {json.dumps({'text': '## SUMMARY\n'})}\n\n"
+        section_header = "## SUMMARY\n"
+        yield f"data: {json.dumps({'text': section_header})}\n\n"
         summary_lines = result['resume'].split('## SUMMARY\n')[1].split('\n\n---\n\n')[0] if '## SUMMARY\n' in result['resume'] else ''
         for char in summary_lines:
             yield f"data: {json.dumps({'text': char})}\n\n"
         yield f"data: {json.dumps({'text': '\n\n---\n\n'})}\n\n"
 
-        yield f"data: {json.dumps({'text': '## EXPERIENCE\n'})}\n\n"
+        section_header = "## EXPERIENCE\n"
+        yield f"data: {json.dumps({'text': section_header})}\n\n"
         exp_part = result['resume'].split('## EXPERIENCE\n')[1].split('\n\n---\n\n')[0] if '## EXPERIENCE\n' in result['resume'] else ''
         for char in exp_part:
             yield f"data: {json.dumps({'text': char})}\n\n"
         yield f"data: {json.dumps({'text': '\n\n---\n\n'})}\n\n"
 
-        yield f"data: {json.dumps({'text': '## SKILLS\n'})}\n\n"
+        section_header = "## SKILLS\n"
+        yield f"data: {json.dumps({'text': section_header})}\n\n"
         skills_part = result['resume'].split('## SKILLS\n')[1].split('\n\n---\n\n')[0] if '## SKILLS\n' in result['resume'] else ''
         for char in skills_part:
             yield f"data: {json.dumps({'text': char})}\n\n"
         yield f"data: {json.dumps({'text': '\n\n---\n\n'})}\n\n"
 
-        yield f"data: {json.dumps({'text': '## EDUCATION\n'})}\n\n"
+        section_header = "## EDUCATION\n"
+        yield f"data: {json.dumps({'text': section_header})}\n\n"
         edu_part = result['resume'].split('## EDUCATION\n')[1] if '## EDUCATION\n' in result['resume'] else ''
         for char in edu_part:
             yield f"data: {json.dumps({'text': char})}\n\n"
