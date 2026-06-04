@@ -70,7 +70,7 @@ export default function Sidebar({
       ]
 
   return (
-    <div style={{
+    <div className="cs-sidebar-wrap" style={{
       width: collapsed ? '60px' : '220px',
       minHeight: '100vh',
       background: '#0d1117',

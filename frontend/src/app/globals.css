@@ -2,6 +2,145 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design system variables ── */
+:root {
+  --bg-primary: #0d1117;
+  --bg-card: #161b22;
+  --bg-card2: #1c2128;
+  --bg-hover: rgba(255,255,255,0.04);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255,255,255,0.6);
+  --text-tertiary: rgba(255,255,255,0.35);
+  --text-muted: rgba(255,255,255,0.2);
+  --border: rgba(255,255,255,0.07);
+  --border-strong: rgba(255,255,255,0.15);
+  --teal: #10B981;
+  --teal-bg: rgba(16,185,129,0.1);
+  --teal-border: rgba(16,185,129,0.25);
+  --shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+[data-theme="light"] {
+  --bg-primary: #f0f2f5;
+  --bg-card: #ffffff;
+  --bg-card2: #f6f8fa;
+  --bg-hover: rgba(0,0,0,0.04);
+  --text-primary: #0d1117;
+  --text-secondary: rgba(0,0,0,0.65);
+  --text-tertiary: rgba(0,0,0,0.4);
+  --text-muted: rgba(0,0,0,0.25);
+  --border: rgba(0,0,0,0.08);
+  --border-strong: rgba(0,0,0,0.15);
+  --teal: #059669;
+  --teal-bg: rgba(5,150,105,0.1);
+  --teal-border: rgba(5,150,105,0.25);
+  --shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+
+/* ── Light mode overrides ── */
+[data-theme="light"] main {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] .cs-card {
+  background: var(--bg-card) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] .cs-sidebar {
+  background: #ffffff !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="light"] .cs-sidebar button,
+[data-theme="light"] .cs-sidebar a,
+[data-theme="light"] .cs-sidebar span,
+[data-theme="light"] .cs-sidebar p {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .cs-sidebar .cs-nav-active {
+  background: var(--teal-bg) !important;
+  color: var(--teal) !important;
+}
+
+[data-theme="light"] .cs-text-primary { color: var(--text-primary) !important; }
+[data-theme="light"] .cs-text-secondary { color: var(--text-secondary) !important; }
+[data-theme="light"] .cs-text-muted { color: var(--text-muted) !important; }
+[data-theme="light"] .cs-bg-card { background: var(--bg-card) !important; }
+[data-theme="light"] .cs-bg-primary { background: var(--bg-primary) !important; }
+[data-theme="light"] .cs-border { border-color: var(--border) !important; }
+
+/* Global light mode sweep — catches all hardcoded backgrounds */
+[data-theme="light"] div[style*="background: #0d1117"],
+[data-theme="light"] div[style*="background: rgb(13, 17, 23)"],
+[data-theme="light"] main[style*="background: #0d1117"] {
+  background: var(--bg-primary) !important;
+}
+
+[data-theme="light"] div[style*="background: #161b22"],
+[data-theme="light"] div[style*="background: rgb(22, 27, 34)"] {
+  background: var(--bg-card) !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="light"] div[style*="background: #1c2128"],
+[data-theme="light"] div[style*="background: rgb(28, 33, 40)"] {
+  background: var(--bg-card2) !important;
+}
+
+[data-theme="light"] div[style*="background: rgba(13,17,23"],
+[data-theme="light"] div[style*="background: rgba(22,27,34"] {
+  background: rgba(255,255,255,0.95) !important;
+}
+
+/* Text color sweep */
+[data-theme="light"] p[style*="color: #fff"],
+[data-theme="light"] h1[style*="color: #fff"],
+[data-theme="light"] h2[style*="color: #fff"],
+[data-theme="light"] h3[style*="color: #fff"],
+[data-theme="light"] span[style*="color: #fff"] {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] p[style*="color: rgba(255,255,255,0.6)"],
+[data-theme="light"] p[style*="color: rgba(255,255,255,0.5)"],
+[data-theme="light"] p[style*="color: rgba(255,255,255,0.4)"],
+[data-theme="light"] span[style*="color: rgba(255,255,255,0.4)"],
+[data-theme="light"] span[style*="color: rgba(255,255,255,0.5)"] {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] p[style*="color: rgba(255,255,255,0.3)"],
+[data-theme="light"] p[style*="color: rgba(255,255,255,0.2)"],
+[data-theme="light"] span[style*="color: rgba(255,255,255,0.3)"],
+[data-theme="light"] span[style*="color: rgba(255,255,255,0.2)"] {
+  color: var(--text-muted) !important;
+}
+
+/* Border sweep */
+[data-theme="light"] div[style*="border: 1px solid rgba(255,255,255,0.07)"],
+[data-theme="light"] div[style*="border-color: rgba(255,255,255,0.07)"] {
+  border-color: var(--border) !important;
+}
+
+/* Input fields */
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  background: #f6f8fa !important;
+  color: #0d1117 !important;
+  border-color: rgba(0,0,0,0.15) !important;
+}
+
+/* Sidebar specific */
+[data-theme="light"] .cs-sidebar-wrap {
+  background: #ffffff !important;
+  border-right-color: var(--border) !important;
+}
+
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;

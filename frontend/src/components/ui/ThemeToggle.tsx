@@ -9,17 +9,17 @@ export default function ThemeToggle() {
       onClick={toggleTheme}
       title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
       style={{
-        background: 'rgba(255,255,255,0.06)',
-        border: '1px solid rgba(255,255,255,0.1)',
+        background: theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+        border: `1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
         borderRadius: '8px',
         padding: '6px 10px',
         cursor: 'pointer',
-        fontSize: '16px',
-        color: 'rgba(255,255,255,0.6)',
+        fontSize: '15px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         transition: 'all 0.2s',
+        color: theme === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
       }}
     >
       {theme === 'dark' ? '☀️' : '🌙'}
