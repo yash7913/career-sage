@@ -311,13 +311,15 @@ export default function JobCard({
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{
-                fontSize: '12px',
-                color: 'rgba(255,255,255,0.3)',
+                fontSize: '22px',
+                color: 'rgba(255,255,255,0.5)',
                 flexShrink: 0,
-                transition: 'transform 0.2s',
                 display: 'inline-block',
+                transition: 'transform 0.2s',
+                lineHeight: 1,
+                transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
               }}>
-                {expanded ? '▼' : '›'}
+                ›
               </span>
               <p style={{ fontSize: '17px', fontWeight: 700, color: '#fff', margin: 0, letterSpacing: '-0.4px' }}>
                 {job.job_title}
