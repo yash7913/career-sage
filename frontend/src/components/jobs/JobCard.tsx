@@ -297,14 +297,7 @@ export default function JobCard({
               <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
                 {job.company_name} · {job.location}
               </p>
-              <span style={{
-                fontSize: '10px',
-                color: 'rgba(255,255,255,0.2)',
-                marginLeft: '2px',
-                transition: 'transform 0.2s',
-                display: 'inline-block',
-                transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
-              }}>▼</span>
+              
               {rank && rank <= 3 && (
                 <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 8px', borderRadius: '999px', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: TEAL }}>
                   {rank === 1 ? '🏆 Top Match' : `#${rank} Match`}
@@ -316,9 +309,20 @@ export default function JobCard({
                 </span>
               )}
             </div>
-            <p style={{ fontSize: '17px', fontWeight: 700, color: '#fff', margin: 0, letterSpacing: '-0.4px' }}>
-              {job.job_title}
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{
+                fontSize: '12px',
+                color: 'rgba(255,255,255,0.3)',
+                flexShrink: 0,
+                transition: 'transform 0.2s',
+                display: 'inline-block',
+              }}>
+                {expanded ? '▼' : '›'}
+              </span>
+              <p style={{ fontSize: '17px', fontWeight: 700, color: '#fff', margin: 0, letterSpacing: '-0.4px' }}>
+                {job.job_title}
+              </p>
+            </div>
           </div>
 
           {/* Match + Apply always top right */}
