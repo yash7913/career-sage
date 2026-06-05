@@ -31,13 +31,17 @@ export function TierProvider({ children }: { children: React.ReactNode }) {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setIsLoading(false); return }
 
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/profile/${user.id}`
-      )
-      if (res.ok) {
-        const profile = await res.json()
-        setTier(profile.tier_status)
-        setGenerationCount(profile.generation_count ?? 0)
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/profile/${user.id}`
+        )
+        if (res.ok) {
+          const profile = await res.json()
+          setTier(profile.tier_status)
+          setGenerationCount(profile.generation_count ?? 0)
+        }
+      } catch (e) {
+        console.warn('Could not fetch tier — backend may be offline')
       }
       setIsLoading(false)
     }

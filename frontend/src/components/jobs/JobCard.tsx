@@ -29,13 +29,7 @@ function MatchBadge({ score }: { score: number }) {
   const color = score >= 70 ? TEAL : score >= 50 ? '#F59E0B' : 'rgba(255,255,255,0.4)'
   const bg = score >= 70 ? 'rgba(16,185,129,0.15)' : score >= 50 ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.06)'
   return (
-    <span style={{
-      fontSize: '13px', fontWeight: 700,
-      padding: '4px 12px', borderRadius: '999px',
-      background: bg, color,
-      border: `1px solid ${color}40`,
-      flexShrink: 0,
-    }}>
+    <span style={{ fontSize: '13px', fontWeight: 700, padding: '4px 12px', borderRadius: '999px', background: bg, color, border: `1px solid ${color}40`, flexShrink: 0 }}>
       ⚡ {score}%
     </span>
   )
@@ -80,7 +74,6 @@ function SkillBadges({ skillsNeeded, skillGaps, profileSkills }: {
     gap: { background: 'rgba(239,68,68,0.08)', color: 'rgba(239,68,68,0.8)', border: '1px solid rgba(239,68,68,0.2)' },
     inferred: { background: 'rgba(59,130,246,0.06)', color: 'rgba(59,130,246,0.65)', border: '1px solid rgba(59,130,246,0.15)' },
   }
-
   const prefix = { have: '✓ ', gap: '✕ ', inferred: '~ ' }
 
   return (
@@ -106,34 +99,139 @@ function SkillBadges({ skillsNeeded, skillGaps, profileSkills }: {
   )
 }
 
-function WhyYouMatch({ job, profileSkills }: { job: Job; profileSkills: string[] }) {
-  const matched = job.skills_needed.filter(s =>
-    profileSkills.map(p => p.toLowerCase()).includes(s.toLowerCase())
-  )
-  const matchPct = job.match_percentage_score
+type DetailTab = 'jd' | 'interview' | 'pay' | 'company'
 
-  let reason = ''
-  if (matchPct >= 70) {
-    reason = `Strong fit — you have ${matched.length} of ${job.skills_needed.length} required skills and your experience level aligns well with this role.`
-  } else if (matchPct >= 50) {
-    reason = `Moderate fit — you have ${matched.length} of ${job.skills_needed.length} required skills. Closing the gaps would make you a strong candidate.`
-  } else {
-    reason = `Partial fit — ${matched.length} skills match. This role would stretch your current profile but could be a growth opportunity.`
-  }
+function DetailTabs({ job, tier = 'GENERAL_FREE' }: { job: Job; tier?: string }) {
+  const [activeTab, setActiveTab] = useState<DetailTab>('jd')
+  const isPro = tier === 'PREMIUM_PRO' || tier === 'STUDENT_VERIFIED'
+
+  const tabs: { key: DetailTab; label: string; pro: boolean }[] = [
+    { key: 'jd', label: 'JD Summary', pro: false },
+    { key: 'interview', label: 'Interview Process', pro: true },
+    { key: 'pay', label: 'Pay Range', pro: true },
+    { key: 'company', label: 'Company Details', pro: true },
+  ]
 
   return (
+    <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: '12px', marginBottom: '12px' }}>
+      {/* Sub tabs */}
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '12px', flexWrap: 'wrap' }}>
+        {tabs.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            style={{
+              padding: '5px 12px', borderRadius: '7px',
+              fontSize: '11px', fontWeight: 600,
+              cursor: 'pointer', border: 'none',
+              background: activeTab === tab.key
+                ? 'rgba(16,185,129,0.12)'
+                : 'rgba(255,255,255,0.04)',
+              color: activeTab === tab.key
+                ? TEAL
+                : 'rgba(255,255,255,0.4)',
+              boxShadow: activeTab === tab.key
+                ? 'inset 0 0 0 1px rgba(16,185,129,0.25)'
+                : 'none',
+              display: 'flex', alignItems: 'center', gap: '4px',
+            }}
+          >
+            {tab.label}
+            {tab.pro && !isPro && (
+              <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '999px', background: 'rgba(127,119,221,0.2)', color: '#7F77DD' }}>Pro</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === 'jd' && (
+        <div style={{
+          maxHeight: '220px', overflowY: 'auto',
+          paddingRight: '4px',
+        }}>
+          {job.job_description ? (
+            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.7, margin: 0 }}>
+              {job.job_description}
+            </p>
+          ) : (
+            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)', margin: 0 }}>No description available.</p>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'interview' && (
+        isPro ? (
+          <div>
+            {job.estimated_interview_rounds ? (
+              <div>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', margin: '0 0 6px' }}>
+                  📋 {job.estimated_interview_rounds} rounds
+                </p>
+                {job.interview_breakdown_notes && (
+                  <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0, lineHeight: 1.6 }}>
+                    {job.interview_breakdown_notes}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>No interview data available for this role yet.</p>
+            )}
+          </div>
+        ) : <ProLock feature="Interview process details" />
+      )}
+
+      {activeTab === 'pay' && (
+        isPro ? (
+          <div>
+            {(job.estimated_salary_min || job.estimated_salary_max) ? (
+              <p style={{ fontSize: '14px', fontWeight: 600, color: TEAL, margin: 0 }}>
+                💰 {job.estimated_salary_min ? `₹${job.estimated_salary_min}L` : ''}
+                {job.estimated_salary_min && job.estimated_salary_max ? ' – ' : ''}
+                {job.estimated_salary_max ? `₹${job.estimated_salary_max}L` : ''}
+              </p>
+            ) : (
+              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>No salary data available for this role yet.</p>
+            )}
+          </div>
+        ) : <ProLock feature="Salary and compensation data" />
+      )}
+
+      {activeTab === 'company' && (
+        isPro ? (
+          <div>
+            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+              Company intelligence coming in Day 10 — funding stage, headcount growth, Glassdoor score, and recent news.
+            </p>
+          </div>
+        ) : <ProLock feature="Company health and intelligence" />
+      )}
+    </div>
+  )
+}
+
+function ProLock({ feature }: { feature: string }) {
+  return (
     <div style={{
-      padding: '10px 14px', borderRadius: '8px',
-      background: 'rgba(16,185,129,0.05)',
-      border: '1px solid rgba(16,185,129,0.12)',
-      marginBottom: '10px',
+      padding: '1rem', borderRadius: '10px',
+      background: 'rgba(127,119,221,0.06)',
+      border: '1px solid rgba(127,119,221,0.2)',
+      textAlign: 'center',
     }}>
-      <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, margin: '0 0 4px', letterSpacing: '0.06em' }}>
-        WHY YOU MATCH
+      <p style={{ fontSize: '13px', fontWeight: 600, color: '#7F77DD', margin: '0 0 4px' }}>
+        🔒 {feature}
       </p>
-      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', margin: 0, lineHeight: 1.6 }}>
-        {reason}
+      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 10px' }}>
+        Unlock with Pro
       </p>
+      <button style={{
+        padding: '6px 16px', borderRadius: '7px',
+        background: '#7F77DD', color: '#fff',
+        border: 'none', fontSize: '12px',
+        fontWeight: 600, cursor: 'pointer',
+      }}>
+        Upgrade to Pro
+      </button>
     </div>
   )
 }
@@ -185,16 +283,13 @@ export default function JobCard({
         position: 'relative',
         overflow: 'hidden',
       }}>
-
-        {/* Hidden gem top bar */}
         {isHiddenGem && (
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, ${TEAL}, transparent)` }} />
         )}
 
-        {/* Top row */}
+        {/* Top row — title + apply button always visible */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            {/* Company + badges row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', flexWrap: 'wrap' }}>
               <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
                 {job.company_name} · {job.location}
@@ -210,132 +305,68 @@ export default function JobCard({
                 </span>
               )}
             </div>
-
-            {/* Job title */}
             <p style={{ fontSize: '17px', fontWeight: 700, color: '#fff', margin: 0, letterSpacing: '-0.4px' }}>
               {job.job_title}
             </p>
           </div>
 
-          {/* Right side — match + actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, marginLeft: '12px' }}>
-            <MatchBadge score={job.match_percentage_score} />
-            <button onClick={handleStar} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '4px', color: starred ? '#F59E0B' : 'rgba(255,255,255,0.2)', transition: 'color 0.15s' }}>
-              {starred ? '★' : '☆'}
-            </button>
-            <button onClick={handleDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '4px', color: 'rgba(255,255,255,0.15)', transition: 'color 0.15s' }}>
-              ✕
+          {/* Match + Apply always top right */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0, marginLeft: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <MatchBadge score={job.match_percentage_score} />
+              <button onClick={handleStar} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '4px', color: starred ? '#F59E0B' : 'rgba(255,255,255,0.2)' }}>
+                {starred ? '★' : '☆'}
+              </button>
+              <button onClick={handleDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '4px', color: 'rgba(255,255,255,0.15)' }}>
+                ✕
+              </button>
+            </div>
+            {/* Apply button — always visible top right */}
+            <button
+              onClick={e => { e.stopPropagation(); setShowWorkspace(true) }}
+              style={{
+                padding: '7px 16px', borderRadius: '8px',
+                background: 'linear-gradient(135deg, #10B981, #059669)',
+                color: '#fff', border: 'none',
+                fontSize: '12px', fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 2px 10px rgba(16,185,129,0.25)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Apply →
             </button>
           </div>
         </div>
 
-        {/* Salary + interview quick info */}
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '10px', flexWrap: 'wrap' }}>
-          {(job.estimated_salary_min || job.estimated_salary_max) && (
-            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
-              💰 {job.estimated_salary_min ? `₹${job.estimated_salary_min}L` : ''}
-              {job.estimated_salary_min && job.estimated_salary_max ? ' – ' : ''}
-              {job.estimated_salary_max ? `₹${job.estimated_salary_max}L` : ''}
-            </span>
-          )}
-          {job.estimated_interview_rounds && (
-            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
-              📋 {job.estimated_interview_rounds} rounds
-            </span>
-          )}
-        </div>
-
-        {/* Skill badges — always visible */}
+        {/* Skill badges */}
         <SkillBadges
           skillsNeeded={job.skills_needed}
           skillGaps={job.identified_skill_gaps}
           profileSkills={profileSkills}
         />
 
-        {/* Skill legend */}
-        {job.skills_needed.length > 0 && (
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
-            {[{ color: '#10B981', label: 'You have' }, { color: 'rgba(239,68,68,0.8)', label: 'Gap' }, { color: 'rgba(59,130,246,0.8)', label: 'Inferred' }].map(l => (
-              <span key={l.label} style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: l.color }} />
-                {l.label}
-              </span>
-            ))}
-          </div>
-        )}
+        {/* View details toggle */}
+        <button
+          onClick={() => setExpanded(!expanded)}
+          style={{
+            padding: '6px 14px', borderRadius: '7px',
+            background: 'rgba(255,255,255,0.04)',
+            border: `1px solid ${BORDER}`,
+            color: 'rgba(255,255,255,0.4)',
+            fontSize: '11px', cursor: 'pointer',
+            marginTop: '4px',
+          }}
+        >
+          {expanded ? '▲ Less' : '▼ View details'}
+        </button>
 
-        {/* Expanded details */}
+        {/* Expanded detail tabs */}
         {expanded && (
-          <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: '12px', marginBottom: '12px' }}>
-            <WhyYouMatch job={job} profileSkills={profileSkills} />
-
-            {job.identified_skill_gaps.length > 0 && (
-              <div style={{ marginBottom: '10px' }}>
-                <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', margin: '0 0 6px', letterSpacing: '0.06em' }}>GAPS TO CLOSE</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                  {job.identified_skill_gaps.map(s => (
-                    <span key={s} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '5px', background: 'rgba(239,68,68,0.08)', color: 'rgba(239,68,68,0.75)', border: '1px solid rgba(239,68,68,0.15)' }}>
-                      ✕ {s}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {job.estimated_interview_rounds && (
-              <div style={{ marginBottom: '10px' }}>
-                <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', margin: '0 0 4px', letterSpacing: '0.06em' }}>INTERVIEW</p>
-                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0 }}>
-                  {job.estimated_interview_rounds} rounds{job.interview_breakdown_notes ? ` · ${job.interview_breakdown_notes}` : ''}
-                </p>
-              </div>
-            )}
-
-            {job.job_description && (
-              <div style={{ marginBottom: '10px' }}>
-                <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', margin: '0 0 4px', letterSpacing: '0.06em' }}>JD SUMMARY</p>
-                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.65, margin: 0, maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)', maxHeight: '80px', overflow: 'hidden' }}>
-                  {job.job_description}
-                </p>
-              </div>
-            )}
+          <div style={{ marginTop: '12px' }}>
+            <DetailTabs job={job} />
           </div>
         )}
-
-        {/* Action row */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button
-            onClick={() => setExpanded(!expanded)}
-            style={{
-              padding: '8px 16px', borderRadius: '8px',
-              background: 'rgba(255,255,255,0.04)',
-              border: `1px solid ${BORDER}`,
-              color: 'rgba(255,255,255,0.5)',
-              fontSize: '12px', cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-          >
-            {expanded ? '▲ Less' : '▼ View details'}
-          </button>
-
-          <button
-            onClick={e => { e.stopPropagation(); setShowWorkspace(true) }}
-            style={{
-              flex: 1, padding: '9px 16px', borderRadius: '8px',
-              background: 'linear-gradient(135deg, #10B981, #059669)',
-              color: '#fff', border: 'none',
-              fontSize: '13px', fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: '0 2px 12px rgba(16,185,129,0.25)',
-            }}
-          >
-            I want to apply →
-          </button>
-
-          {job.source_link && (
-            <a href={job.source_link} target="_blank" rel="noopener noreferrer" style={{ padding: '9px 14px', borderRadius: '8px', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)', border: `1px solid ${BORDER}`, fontSize: '13px', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>↗</a>
-          )}
-        </div>
       </div>
 
       {showWorkspace && (
