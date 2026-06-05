@@ -273,16 +273,19 @@ export default function JobCard({
 
   return (
     <>
-      <div style={{
-        background: CARD,
-        border: `1px solid ${starred ? 'rgba(245,158,11,0.3)' : BORDER}`,
-        borderRadius: '14px',
-        padding: '1.25rem',
-        marginBottom: '10px',
-        transition: 'all 0.2s',
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
+      <div
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          background: CARD,
+          border: `1px solid ${starred ? 'rgba(245,158,11,0.3)' : BORDER}`,
+          borderRadius: '14px',
+          padding: '1.25rem',
+          marginBottom: '10px',
+          transition: 'all 0.2s',
+          position: 'relative',
+          overflow: 'hidden',
+          cursor: 'pointer',
+        }}>
         {isHiddenGem && (
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, ${TEAL}, transparent)` }} />
         )}
@@ -294,6 +297,14 @@ export default function JobCard({
               <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
                 {job.company_name} · {job.location}
               </p>
+              <span style={{
+                fontSize: '10px',
+                color: 'rgba(255,255,255,0.2)',
+                marginLeft: '2px',
+                transition: 'transform 0.2s',
+                display: 'inline-block',
+                transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+              }}>▼</span>
               {rank && rank <= 3 && (
                 <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 8px', borderRadius: '999px', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: TEAL }}>
                   {rank === 1 ? '🏆 Top Match' : `#${rank} Match`}
@@ -314,10 +325,10 @@ export default function JobCard({
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0, marginLeft: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <MatchBadge score={job.match_percentage_score} />
-              <button onClick={handleStar} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '4px', color: starred ? '#F59E0B' : 'rgba(255,255,255,0.2)' }}>
+              <button onClick={e => { e.stopPropagation(); handleStar() }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '4px', color: starred ? '#F59E0B' : 'rgba(255,255,255,0.2)' }}>
                 {starred ? '★' : '☆'}
               </button>
-              <button onClick={handleDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '4px', color: 'rgba(255,255,255,0.15)' }}>
+		<button onClick={e => { e.stopPropagation(); handleDismiss() }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '4px', color: 'rgba(255,255,255,0.15)' }}>
                 ✕
               </button>
             </div>
@@ -346,20 +357,7 @@ export default function JobCard({
           profileSkills={profileSkills}
         />
 
-        {/* View details toggle */}
-        <button
-          onClick={() => setExpanded(!expanded)}
-          style={{
-            padding: '6px 14px', borderRadius: '7px',
-            background: 'rgba(255,255,255,0.04)',
-            border: `1px solid ${BORDER}`,
-            color: 'rgba(255,255,255,0.4)',
-            fontSize: '11px', cursor: 'pointer',
-            marginTop: '4px',
-          }}
-        >
-          {expanded ? '▲ Less' : '▼ View details'}
-        </button>
+
 
         {/* Expanded detail tabs */}
         {expanded && (
