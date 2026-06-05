@@ -200,33 +200,36 @@ async def stream_sectional_resume(ctx: dict, user_id: str, track_id: str, job_id
         linkedin_url = ctx.get("linkedin_url", "[LinkedIn]")
         email = ctx.get("email", "[Email]")
 
+        newline = "\n"
+        divider = "\n\n---\n\n"
+
         header = f"# {full_name}\n{location_city} | {phone} | {email} | {linkedin_url}\n\n---\n\n"
         yield f"data: {json.dumps({'text': header})}\n\n"
         await asyncio.sleep(0.1)
 
-        section_header = "## SUMMARY\n"
-        yield f"data: {json.dumps({'text': section_header})}\n\n"
+        summary_header = "## SUMMARY\n"
+        yield f"data: {json.dumps({'text': summary_header})}\n\n"
         summary_lines = result['resume'].split('## SUMMARY\n')[1].split('\n\n---\n\n')[0] if '## SUMMARY\n' in result['resume'] else ''
         for char in summary_lines:
             yield f"data: {json.dumps({'text': char})}\n\n"
-        yield f"data: {json.dumps({'text': '\n\n---\n\n'})}\n\n"
+        yield f"data: {json.dumps({'text': divider})}\n\n"
 
-        section_header = "## EXPERIENCE\n"
-        yield f"data: {json.dumps({'text': section_header})}\n\n"
+        exp_header = "## EXPERIENCE\n"
+        yield f"data: {json.dumps({'text': exp_header})}\n\n"
         exp_part = result['resume'].split('## EXPERIENCE\n')[1].split('\n\n---\n\n')[0] if '## EXPERIENCE\n' in result['resume'] else ''
         for char in exp_part:
             yield f"data: {json.dumps({'text': char})}\n\n"
-        yield f"data: {json.dumps({'text': '\n\n---\n\n'})}\n\n"
+        yield f"data: {json.dumps({'text': divider})}\n\n"
 
-        section_header = "## SKILLS\n"
-        yield f"data: {json.dumps({'text': section_header})}\n\n"
+        skills_header = "## SKILLS\n"
+        yield f"data: {json.dumps({'text': skills_header})}\n\n"
         skills_part = result['resume'].split('## SKILLS\n')[1].split('\n\n---\n\n')[0] if '## SKILLS\n' in result['resume'] else ''
         for char in skills_part:
             yield f"data: {json.dumps({'text': char})}\n\n"
-        yield f"data: {json.dumps({'text': '\n\n---\n\n'})}\n\n"
+        yield f"data: {json.dumps({'text': divider})}\n\n"
 
-        section_header = "## EDUCATION\n"
-        yield f"data: {json.dumps({'text': section_header})}\n\n"
+        edu_header = "## EDUCATION\n"
+        yield f"data: {json.dumps({'text': edu_header})}\n\n"
         edu_part = result['resume'].split('## EDUCATION\n')[1] if '## EDUCATION\n' in result['resume'] else ''
         for char in edu_part:
             yield f"data: {json.dumps({'text': char})}\n\n"
