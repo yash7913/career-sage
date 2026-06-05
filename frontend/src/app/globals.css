@@ -455,3 +455,8 @@ body {
   background: #ffffff !important;
 }
 }
+
+@keyframes progress-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}

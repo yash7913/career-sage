@@ -8,6 +8,54 @@ import StatsRow from '@/components/dashboard/StatsRow'
 import Sidebar from '@/components/dashboard/Sidebar'
 import ContactDetailsForm from '@/components/profile/ContactDetailsForm'
 
+function ExpandableSkills({ skills }: { skills: string[] }) {
+  const [expanded, setExpanded] = useState(false)
+  const TEAL = '#10B981'
+  const visible = expanded ? skills : skills.slice(0, 10)
+  const hidden = skills.length - 10
+
+  if (!skills.length) return null
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', alignItems: 'center' }}>
+      {visible.map((s: string) => (
+        <span key={s} style={{
+          fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
+          background: 'rgba(16,185,129,0.08)', color: TEAL,
+          border: '1px solid rgba(16,185,129,0.2)',
+        }}>{s}</span>
+      ))}
+      {!expanded && hidden > 0 && (
+        <button
+          onClick={() => setExpanded(true)}
+          style={{
+            fontSize: '11px', padding: '2px 10px', borderRadius: '4px',
+            background: 'rgba(255,255,255,0.06)',
+            color: 'rgba(255,255,255,0.4)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            cursor: 'pointer', fontWeight: 600,
+          }}
+        >
+          +{hidden} more
+        </button>
+      )}
+      {expanded && (
+        <button
+          onClick={() => setExpanded(false)}
+          style={{
+            fontSize: '11px', padding: '2px 10px', borderRadius: '4px',
+            background: 'transparent',
+            color: 'rgba(255,255,255,0.25)',
+            border: 'none', cursor: 'pointer',
+          }}
+        >
+          Show less
+        </button>
+      )}
+    </div>
+  )
+}
+
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
 const CARD = '#161b22'
@@ -84,17 +132,22 @@ export default function DashboardTabs({
               </p>
             )}
             {hasProfile && !hasTracks && (
-              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 10px' }}>
                 Profile ready —{' '}
                 <span className="cs-highlight">set up your first career track</span>{' '}
                 to unlock your job feed.
               </p>
             )}
             {hasProfile && hasTracks && (
-              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 10px' }}>
                 Your ranked job feed is ready.{' '}
                 <span className="cs-highlight">⚡ {matchedJobs} roles matched</span>
               </p>
+            )}
+            {hasProfile && profileSkills.length > 0 && (
+              <div style={{ marginTop: '8px' }}>
+                <ExpandableSkills skills={profileSkills} />
+              </div>
             )}
           </div>
 
@@ -187,7 +240,9 @@ function ProfileTab({
           </p>
         )}
         <VaultUpload onExtractionComplete={() => {
-          setTimeout(() => window.location.reload(), 1500)
+          setTimeout(() => {
+            window.location.reload()
+          }, 2000)
         }} />
       </div>
 

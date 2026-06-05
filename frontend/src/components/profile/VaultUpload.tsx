@@ -389,20 +389,19 @@ const res = await fetch(
           <p style={{ fontSize: '14px', fontWeight: 600, color: TEAL, margin: '0 0 4px' }}>
             ✓ Profile extracted successfully
           </p>
-          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: '0 0 16px' }}>
-            Your skills, education, and summary have been saved.
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: '0 0 12px' }}>
+            Your skills and summary have been saved. Moving to next step...
           </p>
-          <button
-            onClick={() => window.location.reload()}
-            style={{
-              padding: '10px 28px', borderRadius: '8px',
-              background: TEAL, color: '#fff',
-              border: 'none', fontSize: '14px',
-              fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            Continue to Step 2 →
-          </button>
+          <div style={{
+            height: '3px', background: 'rgba(255,255,255,0.08)',
+            borderRadius: '2px', overflow: 'hidden',
+          }}>
+            <div style={{
+              height: '100%', background: TEAL,
+              borderRadius: '2px',
+              animation: 'progress-fill 2s linear forwards',
+            }} />
+          </div>
         </div>
       )}
     </div>
