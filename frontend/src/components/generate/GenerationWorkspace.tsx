@@ -313,36 +313,66 @@ export default function GenerationWorkspace({
           <div style={{
             padding: '1.25rem 1.5rem',
             borderBottom: `1px solid ${BORDER}`,
-            display: 'flex', justifyContent: 'space-between',
-            alignItems: 'flex-start', flexShrink: 0,
+            flexShrink: 0,
           }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{
-                fontSize: '11px', fontWeight: 700, color: TEAL,
-                letterSpacing: '0.1em', margin: '0 0 4px',
-              }}>
-                TAILORING FOR
-              </p>
-              <p style={{
-                fontSize: '16px', fontWeight: 700, color: '#fff',
-                margin: '0 0 2px', letterSpacing: '-0.4px',
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>
-                {job.job_title}
-              </p>
-              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
-                {job.company_name} · {job.location}
-              </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', margin: '0 0 4px' }}>
+                  APPLYING TO
+                </p>
+                <p style={{ fontSize: '16px', fontWeight: 700, color: '#fff', margin: '0 0 2px', letterSpacing: '-0.4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {job.job_title}
+                </p>
+                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                  {job.company_name} · {job.location}
+                </p>
+              </div>
+              <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${BORDER}`, borderRadius: '8px', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '14px', padding: '6px 10px', flexShrink: 0, marginLeft: '10px' }}>✕</button>
             </div>
-            <button onClick={onClose} style={{
-              background: 'rgba(255,255,255,0.06)',
-              border: `1px solid ${BORDER}`,
-              borderRadius: '8px',
-              color: 'rgba(255,255,255,0.5)',
-              cursor: 'pointer', fontSize: '14px',
-              padding: '6px 10px', flexShrink: 0,
-              marginLeft: '10px',
-            }}>✕</button>
+
+            {/* Application steps */}
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {[
+                { num: '1', label: 'Resume', key: 'resume' },
+                { num: '2', label: 'Cover letter', key: 'cover_letter' },
+              ].map((step, i) => (
+                <button
+                  key={step.key}
+                  onClick={() => setActiveTab(step.key as 'resume' | 'cover_letter')}
+                  style={{
+                    flex: 1, padding: '8px 10px', borderRadius: '9px',
+                    border: 'none', cursor: 'pointer',
+                    background: activeTab === step.key
+                      ? 'rgba(16,185,129,0.12)'
+                      : 'rgba(255,255,255,0.04)',
+                    boxShadow: activeTab === step.key
+                      ? 'inset 0 0 0 1px rgba(16,185,129,0.3)'
+                      : 'inset 0 0 0 1px rgba(255,255,255,0.07)',
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <span style={{
+                    width: '20px', height: '20px', borderRadius: '50%',
+                    background: activeTab === step.key ? TEAL : 'rgba(255,255,255,0.1)',
+                    color: activeTab === step.key ? '#fff' : 'rgba(255,255,255,0.4)',
+                    fontSize: '11px', fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    {step.num}
+                  </span>
+                  <div style={{ textAlign: 'left' }}>
+                    <p style={{ fontSize: '12px', fontWeight: 600, margin: 0, color: activeTab === step.key ? TEAL : 'rgba(255,255,255,0.5)' }}>
+                      {step.label}
+                    </p>
+                    <p style={{ fontSize: '10px', margin: 0, color: 'rgba(255,255,255,0.25)' }}>
+                      {i === 1 ? 'Optional' : 'Required'}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Scrollable left content */}
@@ -368,32 +398,6 @@ export default function GenerationWorkspace({
                     📋 {job.estimated_interview_rounds} rounds
                   </p>
                 )}
-              </div>
-            </div>
-
-            {/* Asset type */}
-            <div>
-              <p style={{
-                fontSize: '11px', color: 'rgba(255,255,255,0.35)',
-                margin: '0 0 8px', fontWeight: 600, letterSpacing: '0.08em',
-              }}>GENERATE</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                {[
-                  { key: 'resume', label: '📄 Resume' },
-                  { key: 'cover_letter', label: '✉ Cover letter' },
-                ].map(t => (
-                  <button key={t.key}
-                    onClick={() => setActiveTab(t.key as 'resume' | 'cover_letter')}
-                    style={{
-                      padding: '10px', borderRadius: '9px', border: 'none',
-                      cursor: 'pointer', fontSize: '13px', fontWeight: 600,
-                      background: activeTab === t.key ? TEAL : 'rgba(255,255,255,0.05)',
-                      color: activeTab === t.key ? '#fff' : 'rgba(255,255,255,0.45)',
-                      transition: 'all 0.15s',
-                    }}>
-                    {t.label}
-                  </button>
-                ))}
               </div>
             </div>
 
@@ -557,7 +561,9 @@ export default function GenerationWorkspace({
             >
               {streaming
                 ? '⟳ Career Sage is writing...'
-                : `⚡ Generate ${activeTab === 'resume' ? 'resume' : 'cover letter'}`}
+                : activeTab === 'resume'
+                ? '⚡ Generate resume — Step 1'
+                : '⚡ Generate cover letter — Step 2'}
             </button>
             <p style={{
               fontSize: '11px', color: 'rgba(255,255,255,0.2)',
@@ -595,7 +601,7 @@ export default function GenerationWorkspace({
           }}>
             <div style={{ display: 'flex', gap: '2px' }}>
               {[
-                { key: 'output', label: activeTab === 'resume' ? 'Resume' : 'Cover letter' },
+                { key: 'output', label: activeTab === 'resume' ? 'Step 1 — Resume' : 'Step 2 — Cover letter' },
                 { key: 'keywords', label: 'ATS Report', badge: sections.keywords ? '✓' : null },
                 { key: 'recruiter', label: 'Recruiter Notes', badge: sections.recruiter ? '✓' : null },
               ].map(t => (
