@@ -7,6 +7,7 @@ import TrackSetup from '@/components/profile/TrackSetup'
 import StatsRow from '@/components/dashboard/StatsRow'
 import Sidebar from '@/components/dashboard/Sidebar'
 import ContactDetailsForm from '@/components/profile/ContactDetailsForm'
+import PreferencesPanel from '@/components/profile/PreferencesPanel'
 
 function ExpandableSkills({ skills }: { skills: string[] }) {
   const [expanded, setExpanded] = useState(false)
@@ -285,6 +286,15 @@ function ProfileTab({
           These appear in your generated resume automatically.
         </p>
         <ContactDetailsForm userId={userId} />
+      </div>
+
+	{/* Job preferences */}
+      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 6px' }}>JOB PREFERENCES</p>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1rem', lineHeight: 1.5 }}>
+          Set your salary target and preferred company stage. Career Sage weights your match scores accordingly.
+        </p>
+        <PreferencesPanel userId={userId} />
       </div>
 
       {/* Generative assets placeholder */}
