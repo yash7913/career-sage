@@ -119,7 +119,7 @@ function DetailTabs({ job, tier = 'GENERAL_FREE' }: { job: Job; tier?: string })
         {tabs.map(tab => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={e => { e.stopPropagation(); setActiveTab(tab.key) }}
             style={{
               padding: '5px 12px', borderRadius: '7px',
               fontSize: '11px', fontWeight: 600,
@@ -224,12 +224,14 @@ function ProLock({ feature }: { feature: string }) {
       <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 10px' }}>
         Unlock with Pro
       </p>
-      <button style={{
-        padding: '6px 16px', borderRadius: '7px',
-        background: '#7F77DD', color: '#fff',
-        border: 'none', fontSize: '12px',
-        fontWeight: 600, cursor: 'pointer',
-      }}>
+      <button
+        onClick={e => e.stopPropagation()}
+        style={{
+          padding: '6px 16px', borderRadius: '7px',
+          background: '#7F77DD', color: '#fff',
+          border: 'none', fontSize: '12px',
+          fontWeight: 600, cursor: 'pointer',
+        }}>
         Upgrade to Pro
       </button>
     </div>
