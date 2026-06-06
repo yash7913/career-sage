@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 import os
+from services.company_stage import classify_company_stage, get_impact_pattern, stage_fit_score
 from supabase import create_client
 from dotenv import load_dotenv
 load_dotenv()
@@ -59,6 +60,7 @@ async def get_feed(
                 "estimated_salary_max": job.get("estimated_salary_max"),
                 "estimated_interview_rounds": job.get("estimated_interview_rounds"),
                 "interview_breakdown_notes": job.get("interview_breakdown_notes"),
+                "company_stage": classify_company_stage(job.get("company_name", ""), job.get("job_description", "")),
             })
 
         return {"jobs": jobs, "total": len(jobs)}
@@ -185,13 +187,35 @@ async def get_adjacent_roles(user_id: str, track_id: str, limit: int = 5):
         cohort = profile.data[0].get("cohort") or ""
 
         ADJACENT_ROLE_MAP = {
-            "Technical PM": ["Engineering Manager", "Staff Engineer", "Platform PM", "TPM", "Technical Program Manager"],
-            "Data-Oriented PM": ["Analytics Manager", "Data Science Manager", "Business Intelligence", "Growth Analyst"],
-            "Growth PM": ["Growth Manager", "Marketing Manager", "Product Marketing", "Growth Analyst"],
-            "Data Scientist": ["ML Engineer", "Analytics Engineer", "Research Scientist", "Data Analyst"],
-            "Analytics Engineer": ["Data Engineer", "Business Analyst", "Data Scientist", "BI Developer"],
-            "Full-Stack Engineer": ["Backend Engineer", "Frontend Engineer", "Platform Engineer", "Software Engineer"],
-            "ML Engineer": ["Data Scientist", "Research Engineer", "AI Engineer", "Platform Engineer"],
+            "Technical PM": [
+                "product manager", "program manager", "technical program", "tpm",
+                "engineering manager", "platform", "product lead", "product owner",
+                "data scientist", "analytics", "data analyst", "business analyst",
+            ],
+            "Data-Oriented PM": [
+                "product manager", "analytics", "data scientist", "business analyst",
+                "growth", "product analyst", "data analyst", "insights",
+            ],
+            "Growth PM": [
+                "product manager", "growth", "marketing", "product marketing",
+                "analytics", "growth analyst", "revenue", "monetisation",
+            ],
+            "Data Scientist": [
+                "machine learning", "ml engineer", "analytics engineer", "data analyst",
+                "research scientist", "ai engineer", "data engineer", "business analyst",
+            ],
+            "Analytics Engineer": [
+                "data engineer", "data scientist", "business analyst", "bi developer",
+                "data analyst", "analytics", "platform engineer",
+            ],
+            "Full-Stack Engineer": [
+                "backend engineer", "frontend engineer", "software engineer",
+                "platform engineer", "devops", "mobile engineer",
+            ],
+            "ML Engineer": [
+                "data scientist", "research engineer", "ai engineer",
+                "platform engineer", "backend engineer", "data engineer",
+            ],
         }
 
         adjacent_keywords = ADJACENT_ROLE_MAP.get(cohort, [])
@@ -210,7 +234,7 @@ async def get_adjacent_roles(user_id: str, track_id: str, limit: int = 5):
             overlap = len(profile_skills.intersection(job_skills))
             skill_score = overlap / max(len(job_skills), 1) if job_skills else 0
 
-            if skill_score >= 0.2:
+            if skill_score >= 0.1 or overlap >= 1:
                 adjacent.append({
                     "job_id": job["id"],
                     "job_title": job["job_title"],

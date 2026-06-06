@@ -162,3 +162,27 @@ async def update_contact(req: ContactUpdateRequest):
         return {"status": "ok"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class PreferencesUpdateRequest(BaseModel):
+    user_id: str
+    salary_target_lpa: Optional[int] = None
+    preferred_company_stage: Optional[str] = None
+
+@router.patch("/preferences")
+async def update_preferences(req: PreferencesUpdateRequest):
+    try:
+        from services.company_stage import get_impact_pattern
+        profile = supabase.table("user_profiles").select("raw_profile_text").eq("user_id", req.user_id).execute()
+        raw_text = profile.data[0].get("raw_profile_text", "") if profile.data else ""
+        impact_pattern = get_impact_pattern(raw_text)
+
+        updates = {"impact_pattern": impact_pattern}
+        if req.salary_target_lpa is not None:
+            updates["salary_target_lpa"] = req.salary_target_lpa
+        if req.preferred_company_stage is not None:
+            updates["preferred_company_stage"] = req.preferred_company_stage
+
+        supabase.table("user_profiles").update(updates).eq("user_id", req.user_id).execute()
+        return {"status": "ok", "impact_pattern": impact_pattern}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
