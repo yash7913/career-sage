@@ -23,6 +23,7 @@ interface Job {
   estimated_interview_rounds: number | null
   interview_breakdown_notes: string | null
   posted_at?: string | null
+  company_stage?: string
 }
 
 function MatchBadge({ score }: { score: number }) {
@@ -99,7 +100,75 @@ function SkillBadges({ skillsNeeded, skillGaps, profileSkills }: {
   )
 }
 
+function WhyYouMatch({ job, profileSkills, salaryTargetLpa }: {
+  job: Job
+  profileSkills: string[]
+  salaryTargetLpa?: number
+}) {
+  const matched = job.skills_needed.filter(s =>
+    profileSkills.map(p => p.toLowerCase()).includes(s.toLowerCase())
+  )
+  const matchPct = job.match_percentage_score
+
+  let reason = ''
+  if (matchPct >= 70) {
+    reason = `Strong fit — you have ${matched.length} of ${job.skills_needed.length} required skills and your experience level aligns well with this role.`
+  } else if (matchPct >= 50) {
+    reason = `Moderate fit — you have ${matched.length} of ${job.skills_needed.length} required skills. Closing the gaps would make you a strong candidate.`
+  } else {
+    reason = `Partial fit — ${matched.length} skills match. This role would stretch your current profile but could be a growth opportunity.`
+  }
+
+  const salaryMax = job.estimated_salary_max
+  const salaryBelowTarget = salaryTargetLpa && salaryMax && salaryMax < salaryTargetLpa * 0.7
+
+  const stageLabels: Record<string, string> = {
+    seed: '🌱 Seed stage', growth: '📈 Growth stage',
+    late: '🦄 Late stage', enterprise: '🏢 Enterprise',
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+      <div style={{
+        padding: '10px 14px', borderRadius: '8px',
+        background: 'rgba(16,185,129,0.05)',
+        border: '1px solid rgba(16,185,129,0.12)',
+      }}>
+        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, margin: '0 0 4px', letterSpacing: '0.06em' }}>
+          WHY YOU MATCH
+        </p>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', margin: 0, lineHeight: 1.6 }}>
+          {reason}
+        </p>
+      </div>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        {job.company_stage && stageLabels[job.company_stage] && (
+          <span style={{
+            fontSize: '11px', padding: '3px 10px', borderRadius: '999px',
+            background: 'rgba(255,255,255,0.05)',
+            color: 'rgba(255,255,255,0.45)',
+            border: `1px solid ${BORDER}`,
+          }}>
+            {stageLabels[job.company_stage]}
+          </span>
+        )}
+        {salaryBelowTarget && (
+          <span style={{
+            fontSize: '11px', padding: '3px 10px', borderRadius: '999px',
+            background: 'rgba(239,68,68,0.08)',
+            color: 'rgba(239,68,68,0.75)',
+            border: '1px solid rgba(239,68,68,0.2)',
+          }}>
+            ⚠ Below salary target
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 type DetailTab = 'jd' | 'interview' | 'pay' | 'company'
+
 
 function DetailTabs({ job, tier = 'GENERAL_FREE' }: { job: Job; tier?: string }) {
   const [activeTab, setActiveTab] = useState<DetailTab>('jd')
@@ -239,7 +308,7 @@ function ProLock({ feature }: { feature: string }) {
 }
 
 export default function JobCard({
-  job, userId, trackId, profileSkills, onStar, onDownload, rank,
+  job, userId, trackId, profileSkills, onStar, onDownload, rank, salaryTargetLpa,
 }: {
   job: Job
   userId: string
@@ -248,6 +317,7 @@ export default function JobCard({
   onStar: (id: string, starred: boolean) => void
   onDownload?: () => void
   rank?: number
+  salaryTargetLpa?: number
 }) {
   const [expanded, setExpanded] = useState(false)
   const [starred, setStarred] = useState(job.is_starred)
@@ -365,11 +435,12 @@ export default function JobCard({
           profileSkills={profileSkills}
         />
 
-
+	
 
         {/* Expanded detail tabs */}
         {expanded && (
           <div style={{ marginTop: '12px' }}>
+            <WhyYouMatch job={job} profileSkills={profileSkills} salaryTargetLpa={salaryTargetLpa} />
             <DetailTabs job={job} />
           </div>
         )}

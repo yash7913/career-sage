@@ -2,7 +2,6 @@ from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 import os
-from services.company_stage import classify_company_stage, get_impact_pattern, stage_fit_score
 from supabase import create_client
 from dotenv import load_dotenv
 load_dotenv()
@@ -60,7 +59,6 @@ async def get_feed(
                 "estimated_salary_max": job.get("estimated_salary_max"),
                 "estimated_interview_rounds": job.get("estimated_interview_rounds"),
                 "interview_breakdown_notes": job.get("interview_breakdown_notes"),
-                "company_stage": classify_company_stage(job.get("company_name", ""), job.get("job_description", "")),
             })
 
         return {"jobs": jobs, "total": len(jobs)}
