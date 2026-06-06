@@ -3,6 +3,7 @@ import ManualJobInput from './ManualJobInput'
 import { useState, useEffect } from 'react'
 import JobCard from './JobCard'
 import JobFilters, { useJobFilters } from './JobFilters'
+import AdjacentRoles from './AdjacentRoles'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -208,6 +209,9 @@ filtered.map((job, index) => (
           </div>
         ))
       )}
+	{activeTrack && (
+          <AdjacentRoles userId={userId} trackId={activeTrack.track_id} />
+        )}
     </div>
   )
 }

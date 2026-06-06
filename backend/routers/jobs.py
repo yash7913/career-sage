@@ -150,3 +150,79 @@ async def dismiss_job(ranking_id: str):
         return {"status": "ok"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/adjacent")
+async def get_adjacent_roles(user_id: str, track_id: str, limit: int = 5):
+    try:
+        ranked = supabase.table("user_job_rankings")\
+            .select("job_id, match_percentage_score")\
+            .eq("user_id", user_id)\
+            .eq("track_id", track_id)\
+            .order("match_percentage_score", desc=True)\
+            .execute()
+
+        if not ranked.data:
+            return {"adjacent": []}
+
+        ranked_job_ids = {r["job_id"] for r in ranked.data}
+        top_scores = [r["match_percentage_score"] for r in ranked.data[:10]]
+        avg_top_score = sum(top_scores) / len(top_scores) if top_scores else 0
+
+        all_jobs = supabase.table("aggregated_jobs")\
+            .select("id, job_title, company_name, location, skills_needed, source_link, job_description")\
+            .eq("is_active", True)\
+            .execute()
+
+        profile = supabase.table("user_profiles")\
+            .select("extracted_skills, cohort")\
+            .eq("user_id", user_id)\
+            .execute()
+
+        if not profile.data:
+            return {"adjacent": []}
+
+        profile_skills = set(s.lower() for s in (profile.data[0].get("extracted_skills") or []))
+        cohort = profile.data[0].get("cohort") or ""
+
+        ADJACENT_ROLE_MAP = {
+            "Technical PM": ["Engineering Manager", "Staff Engineer", "Platform PM", "TPM", "Technical Program Manager"],
+            "Data-Oriented PM": ["Analytics Manager", "Data Science Manager", "Business Intelligence", "Growth Analyst"],
+            "Growth PM": ["Growth Manager", "Marketing Manager", "Product Marketing", "Growth Analyst"],
+            "Data Scientist": ["ML Engineer", "Analytics Engineer", "Research Scientist", "Data Analyst"],
+            "Analytics Engineer": ["Data Engineer", "Business Analyst", "Data Scientist", "BI Developer"],
+            "Full-Stack Engineer": ["Backend Engineer", "Frontend Engineer", "Platform Engineer", "Software Engineer"],
+            "ML Engineer": ["Data Scientist", "Research Engineer", "AI Engineer", "Platform Engineer"],
+        }
+
+        adjacent_keywords = ADJACENT_ROLE_MAP.get(cohort, [])
+
+        adjacent = []
+        for job in (all_jobs.data or []):
+            if job["id"] in ranked_job_ids:
+                continue
+
+            title_lower = job["job_title"].lower()
+            is_adjacent = any(kw.lower() in title_lower for kw in adjacent_keywords)
+            if not is_adjacent:
+                continue
+
+            job_skills = set(s.lower() for s in (job.get("skills_needed") or []))
+            overlap = len(profile_skills.intersection(job_skills))
+            skill_score = overlap / max(len(job_skills), 1) if job_skills else 0
+
+            if skill_score >= 0.2:
+                adjacent.append({
+                    "job_id": job["id"],
+                    "job_title": job["job_title"],
+                    "company_name": job["company_name"],
+                    "location": job["location"],
+                    "skills_needed": job.get("skills_needed") or [],
+                    "source_link": job.get("source_link") or "",
+                    "skill_overlap_score": round(skill_score * 100),
+                })
+
+        adjacent.sort(key=lambda x: x["skill_overlap_score"], reverse=True)
+        return {"adjacent": adjacent[:limit], "cohort": cohort}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
