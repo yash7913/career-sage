@@ -144,9 +144,9 @@ export default function PentagramScore({ userId, size = 300, variant = 'full' }:
         <polygon
           points={buildPolygon(decileScores, RADIUS, CENTER)}
           fill="none"
-          stroke="rgba(255,255,255,0.15)"
-          strokeWidth="1"
-          strokeDasharray="4 3" />
+          stroke="rgba(245,158,11,0.7)"
+          strokeWidth="1.5"
+          strokeDasharray="5 3" />
 
         {/* Cohort average polygon */}
         <polygon
@@ -269,8 +269,8 @@ export default function PentagramScore({ userId, size = 300, variant = 'full' }:
       <div style={{ display: 'flex', gap: '16px', marginTop: '12px', flexWrap: 'wrap' }}>
         {[
           { color: TEAL, label: 'Your profile', fill: true },
-          { color: 'rgba(255,255,255,0.3)', label: 'Cohort average', fill: false },
-          { color: 'rgba(255,255,255,0.15)', label: 'Top 10%', fill: false, dashed: true },
+          { color: 'rgba(255,255,255,0.6)', label: 'Cohort average', fill: false },
+          { color: 'rgba(245,158,11,0.7)', label: 'Top 10%', fill: false, dashed: true },
         ].map(l => (
           <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <svg width="20" height="10">
