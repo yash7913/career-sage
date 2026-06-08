@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { parseATSFromContent, atsColor } from '@/lib/ats-score'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -21,22 +22,6 @@ interface VersionHistoryProps {
   jobSkills?: string[]
 }
 
-function parseATSScore(content: string): { score: number; strength: string } {
-  if (!content) return { score: 0, strength: '' }
-  const scoreMatch = content.match(/Estimated ATS Score:\s*\**(\d+)%/i)
-  const strengthMatch = content.match(/ATS Match Strength:\s*\**([A-Za-z\s]+?)[\*\n]/i)
-  if (scoreMatch) {
-    return { score: parseInt(scoreMatch[1]), strength: strengthMatch ? strengthMatch[1].trim() : '' }
-  }
-  const strengthOnly = content.match(/Estimated ATS Match Strength:\s*\**([A-Za-z\s]+?)[\*\n]/i)
-  if (strengthOnly) {
-    const label = strengthOnly[1].trim().toLowerCase()
-    const score = label.includes('very high') ? 90 : label.includes('high') ? 78 : label.includes('medium') ? 62 : 45
-    return { score, strength: strengthOnly[1].trim() }
-  }
-  return { score: 0, strength: '' }
-}
-
 export default function VersionHistory({
   userId, trackId, jobId, onSelect, activeVersionId, jobSkills = []
 }: VersionHistoryProps) {
@@ -53,10 +38,7 @@ export default function VersionHistory({
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/generate/versions?user_id=${userId}&track_id=${trackId}&job_id=${jobId}`
       )
-      if (res.ok) {
-        const data = await res.json()
-        setVersions(data)
-      }
+      if (res.ok) setVersions(await res.json())
     } finally {
       setLoading(false)
     }
@@ -75,6 +57,8 @@ export default function VersionHistory({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       {versions.map((v, idx) => {
+        const ats = parseATSFromContent(v.resume_content || '')
+        const color = ats ? atsColor(ats.strength) : 'rgba(255,255,255,0.3)'
         const isActive = activeVersionId === v.version_id
         const isLatest = idx === 0
 
@@ -86,16 +70,13 @@ export default function VersionHistory({
               padding: '8px 12px', borderRadius: '8px',
               border: `1px solid ${isActive ? 'rgba(16,185,129,0.4)' : BORDER}`,
               background: isActive ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.02)',
-              cursor: 'pointer', textAlign: 'left',
-              transition: 'all 0.15s',
+              cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
             }}
           >
-            {/* Top row — version + skill match + date */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: v.user_tweak ? '4px' : 0 }}>
               <span style={{
-                fontSize: '12px', fontWeight: 700,
+                fontSize: '12px', fontWeight: 700, minWidth: '24px',
                 color: isActive ? TEAL : 'rgba(255,255,255,0.7)',
-                minWidth: '24px',
               }}>
                 v{v.version_number}
               </span>
@@ -103,29 +84,21 @@ export default function VersionHistory({
               {isLatest && (
                 <span style={{
                   fontSize: '9px', fontWeight: 700, padding: '1px 5px',
-                  borderRadius: '999px',
-                  background: 'rgba(16,185,129,0.15)',
-                  color: TEAL,
+                  borderRadius: '999px', background: 'rgba(16,185,129,0.15)', color: TEAL,
                 }}>
                   LATEST
                 </span>
               )}
 
-              {(() => {
-                const { score, strength } = parseATSScore(v.resume_content || '')
-                if (!score && !strength) return null
-                const color = score >= 70 ? TEAL : score >= 50 ? '#F59E0B' : '#EF4444'
-                return (
-                  <span style={{
-                    fontSize: '10px', fontWeight: 700, padding: '1px 7px',
-                    borderRadius: '999px', background: `${color}15`,
-                    color, border: `1px solid ${color}30`,
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {strength || `ATS ${score}%`}{score > 0 && strength ? ` (${score}%)` : ''}
-                  </span>
-                )
-              })()}
+              {ats && (
+                <span style={{
+                  fontSize: '10px', fontWeight: 700, padding: '1px 7px',
+                  borderRadius: '999px', background: `${color}15`,
+                  color, border: `1px solid ${color}30`, whiteSpace: 'nowrap',
+                }}>
+                  {ats.label}
+                </span>
+              )}
 
               <span style={{
                 fontSize: '10px', color: 'rgba(255,255,255,0.25)',
@@ -141,8 +114,7 @@ export default function VersionHistory({
             {v.user_tweak && (
               <p style={{
                 fontSize: '11px', color: 'rgba(255,255,255,0.35)',
-                margin: 0, overflow: 'hidden',
-                textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
                 {v.user_tweak}
               </p>
