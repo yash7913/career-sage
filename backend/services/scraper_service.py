@@ -14,7 +14,7 @@ supabase = create_client(
     os.getenv("SUPABASE_SERVICE_KEY")
 )
 apify = ApifyClient(os.getenv("APIFY_API_TOKEN"))
-
+APIFY_TOKEN = os.getenv("APIFY_API_TOKEN") or os.getenv("APIFY_TOKEN") or ""
 
 def make_job_id(company: str, title: str, source_link: str) -> str:
     raw = f"{company}_{title}_{source_link}"
@@ -47,10 +47,10 @@ def dedup_and_save(jobs: list[dict]) -> dict:
                 continue
 
             supabase.table("aggregated_jobs").insert({
-                "company_name": job.get("company_name", "Unknown"),
-                "job_title": job.get("job_title", "Unknown"),
+                "company_name": (job.get("company_name") or "")[:100],
+                "job_title": (job.get("job_title") or "")[:150],
                 "job_id": job_id,
-                "location": job.get("location", "Not specified"),
+                "location": (job.get("location") or "")[:150],
                 "skills_needed": job.get("skills_needed", []),
                 "source_link": job.get("source_link", ""),
                 "job_description": job.get("job_description", ""),
@@ -69,34 +69,195 @@ def dedup_and_save(jobs: list[dict]) -> dict:
     return {"saved": saved, "skipped": skipped}
 
 
-def scrape_linkedin(keywords: list[str], location: str = "India") -> list[dict]:
-    print(f"Scraping LinkedIn for: {keywords} in {location}")
+async def scrape_linkedin(keywords: list[str], location: str = "India") -> list[dict]:
+    if not APIFY_TOKEN:
+        print("No Apify token configured")
+        return []
+
     jobs = []
     try:
-        run_input = {
-            "searchKeywords": " ".join(keywords),
-            "location": location,
-            "maxItems": 25,
-            "proxy": {"useApifyProxy": True},
-        }
-        run = apify.actor("curious_coder/linkedin-jobs-scraper").call(run_input=run_input)
-        for item in apify.dataset(run["defaultDatasetId"]).iterate_items():
-            jobs.append({
-                "company_name": item.get("companyName", ""),
-                "job_title": item.get("title", ""),
-                "location": item.get("location", ""),
-                "source_link": item.get("jobUrl", ""),
-                "job_description": item.get("description", ""),
-                "skills_needed": extract_skills_from_text(item.get("description", "")),
-                "job_id": make_job_id(
-                    item.get("companyName", ""),
-                    item.get("title", ""),
-                    item.get("jobUrl", "")
-                ),
-            })
-        print(f"LinkedIn: scraped {len(jobs)} jobs")
+        for keyword in keywords[:5]:
+            print(f"Scraping LinkedIn for: {keyword}")
+            run_url = f"https://api.apify.com/v2/acts/cheap_scraper~linkedin-job-scraper/runs"
+            payload = {
+                "keyword": [keyword],
+                "location": location,
+                "publishedAt": "r604800",
+                "jobType": ["full-time"],
+            }
+            async with httpx.AsyncClient(timeout=120) as client:
+                run_res = await client.post(
+                    run_url,
+                    json=payload,
+                    headers={"Authorization": f"Bearer {APIFY_TOKEN}"},
+                )
+                if not run_res.is_success:
+                    print(f"LinkedIn scraper start failed: {run_res.status_code} {run_res.text}")
+                    continue
+
+                run_data = run_res.json()
+                run_id = run_data.get("data", {}).get("id")
+                if not run_id:
+                    print("No run ID returned")
+                    continue
+
+                print(f"LinkedIn run started: {run_id}")
+
+                for attempt in range(24):
+                    await asyncio.sleep(10)
+                    status_res = await client.get(
+                        f"https://api.apify.com/v2/actor-runs/{run_id}",
+                        headers={"Authorization": f"Bearer {APIFY_TOKEN}"},
+                    )
+                    status = status_res.json().get("data", {}).get("status")
+                    print(f"LinkedIn run status: {status} (attempt {attempt + 1})")
+                    if status == "SUCCEEDED":
+                        break
+                    if status in ("FAILED", "ABORTED", "TIMED-OUT"):
+                        print(f"LinkedIn run failed with status: {status}")
+                        break
+
+                dataset_res = await client.get(
+                    f"https://api.apify.com/v2/actor-runs/{run_id}/dataset/items",
+                    headers={"Authorization": f"Bearer {APIFY_TOKEN}"},
+                )
+                items = dataset_res.json() if dataset_res.is_success else []
+                print(f"LinkedIn returned {len(items)} items for {keyword}")
+
+                if items:
+                    print(f"LinkedIn item sample keys: {list(items[0].keys())}")
+                    print(f"LinkedIn item sample: {items[0]}")
+
+                for item in items:
+                    title = (item.get("jobTitle") or "")[:150]
+                    company = (item.get("companyName") or "")[:100]
+                    location_val = (item.get("location") or location)[:150]
+                    description = item.get("jobDescription") or ""
+                    url = item.get("jobUrl") or item.get("applyUrl") or ""
+
+                    if not title or not company:
+                        continue
+
+                    skills = extract_skills_from_text(f"{title} {description}")
+                    salary_min, salary_max = extract_salary(description)
+                    interview_rounds = extract_interview_rounds(description)
+
+                    job_id = hashlib.md5(f"{title}{company}{url}".encode()).hexdigest()
+
+                    jobs.append({
+                        "id": job_id,
+                        "company_name": company,
+                        "job_title": title,
+                        "location": location_val,
+                        "job_description": clean_html(description),
+                        "skills_needed": skills,
+                        "source_link": url,
+                        "source": "linkedin",
+                        "is_active": True,
+                        "estimated_salary_min": salary_min,
+                        "estimated_salary_max": salary_max,
+                        "estimated_interview_rounds": interview_rounds,
+                    })
+
     except Exception as e:
         print(f"LinkedIn scraper error: {e}")
+
+    return jobs
+
+async def scrape_indeed(keywords: list[str], location: str = "India") -> list[dict]:
+    if not APIFY_TOKEN:
+        return []
+
+    jobs = []
+    try:
+        print(f"Scraping Indeed for: {keywords} in {location}")
+        run_url = "https://api.apify.com/v2/acts/nlZZi3lZre4fM9IET/runs"
+        payload = {
+                "country": "India",
+                "keywords": keywords[:5],
+                "location": location,
+                "datePosted": "7",
+                "deepSearch": False,
+                "includeNoSalaryJob": True,
+                "saveOnlyUniqueItems": True,
+                "maxItems": 100,
+            }
+        async with httpx.AsyncClient(timeout=180) as client:
+            run_res = await client.post(
+                run_url,
+                json=payload,
+                headers={"Authorization": f"Bearer {APIFY_TOKEN}"},
+            )
+            if not run_res.is_success:
+                print(f"Indeed scraper start failed: {run_res.status_code} {run_res.text}")
+                return []
+
+            run_id = run_res.json().get("data", {}).get("id")
+            if not run_id:
+                print("Indeed: No run ID returned")
+                return []
+
+            print(f"Indeed run started: {run_id}")
+
+            for attempt in range(30):
+                await asyncio.sleep(10)
+                status_res = await client.get(
+                    f"https://api.apify.com/v2/actor-runs/{run_id}",
+                    headers={"Authorization": f"Bearer {APIFY_TOKEN}"},
+                )
+                status = status_res.json().get("data", {}).get("status")
+                print(f"Indeed run status: {status} (attempt {attempt + 1})")
+                if status == "SUCCEEDED":
+                    break
+                if status in ("FAILED", "ABORTED", "TIMED-OUT"):
+                    print(f"Indeed run ended with status: {status}")
+                    break
+
+            dataset_res = await client.get(
+                f"https://api.apify.com/v2/actor-runs/{run_id}/dataset/items",
+                headers={"Authorization": f"Bearer {APIFY_TOKEN}"},
+            )
+            items = dataset_res.json() if dataset_res.is_success else []
+            print(f"Indeed returned {len(items)} items")
+
+            for item in items:
+                title = (item.get("title") or "")[:150]
+                company_obj = item.get("company") or {}
+                company = (company_obj.get("companyName") or company_obj.get("companyShortName") or "")[:100]
+                loc_obj = item.get("location") or {}
+                location_val = f"{loc_obj.get('city', '')}, {loc_obj.get('state', '')}".strip(", ") or location
+                description = item.get("description_text") or item.get("description_html") or ""
+                url = item.get("jobUrl") or item.get("applyUrl") or ""
+                salary_min = item.get("baseSalary_min")
+                salary_max = item.get("baseSalary_max")
+
+                if not title or not company:
+                    continue
+
+                description_clean = clean_html(description)
+                skills = extract_skills_from_text(f"{title} {description_clean}")
+                interview_rounds = extract_interview_rounds(description_clean)
+
+                job_id = hashlib.md5(f"{title}{company}{url}".encode()).hexdigest()
+
+                jobs.append({
+                    "id": job_id,
+                    "company_name": company,
+                    "job_title": title,
+                    "location": location_val,
+                    "job_description": description_clean[:3000],
+                    "skills_needed": skills,
+                    "source_link": url,
+                    "source": "indeed",
+                    "is_active": True,
+                    "estimated_salary_min": salary_min,
+                    "estimated_salary_max": salary_max,
+                    "estimated_interview_rounds": interview_rounds,
+                })
+
+    except Exception as e:
+        print(f"Indeed scraper error: {e}")
+
     return jobs
 
 
@@ -140,7 +301,7 @@ async def scrape_greenhouse(company_name: str, board_token: str) -> list[dict]:
             if res.status_code != 200:
                 return jobs
             data = res.json()
-            for job in data.get("jobs", [])[:10]:
+            for job in data.get("jobs", []):
                 jobs.append({
                     "company_name": company_name,
                     "job_title": job.get("title", ""),
@@ -165,7 +326,7 @@ async def scrape_lever(company_name: str, lever_slug: str) -> list[dict]:
             if res.status_code != 200:
                 return jobs
             data = res.json()
-            for job in data[:10]:
+            for job in data:
                 description = ""
                 for section in job.get("lists", []):
                     description += section.get("content", "") + "\n"
@@ -182,6 +343,59 @@ async def scrape_lever(company_name: str, lever_slug: str) -> list[dict]:
     except Exception as e:
         print(f"Lever error for {company_name}: {e}")
     return jobs
+
+def clean_html(text: str) -> str:
+    if not text:
+        return ""
+    import re
+    text = re.sub(r'<[^>]+>', ' ', text)
+    text = re.sub(r'&nbsp;', ' ', text)
+    text = re.sub(r'&amp;', '&', text)
+    text = re.sub(r'&lt;', '<', text)
+    text = re.sub(r'&gt;', '>', text)
+    text = re.sub(r'&quot;', '"', text)
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
+
+
+def extract_salary(text: str) -> tuple[int | None, int | None]:
+    if not text:
+        return None, None
+    import re
+    text_lower = text.lower()
+
+    lpa_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:to|-)\s*(\d+(?:\.\d+)?)\s*(?:lpa|lacs|lakhs)', text_lower)
+    if lpa_match:
+        return int(float(lpa_match.group(1))), int(float(lpa_match.group(2)))
+
+    lpa_single = re.search(r'(\d+(?:\.\d+)?)\s*(?:lpa|lacs|lakhs)', text_lower)
+    if lpa_single:
+        val = int(float(lpa_single.group(1)))
+        return val, val
+
+    usd_match = re.search(r'\$(\d+(?:,\d+)?(?:\.\d+)?)[kK]?\s*(?:to|-)\s*\$(\d+(?:,\d+)?(?:\.\d+)?)[kK]?', text)
+    if usd_match:
+        def parse_usd(s):
+            s = s.replace(',', '')
+            val = float(s)
+            if val < 1000:
+                val *= 1000
+            return int(val / 83000 * 100) // 100
+        return parse_usd(usd_match.group(1)), parse_usd(usd_match.group(2))
+
+    return None, None
+
+
+def extract_interview_rounds(text: str) -> int | None:
+    if not text:
+        return None
+    import re
+    match = re.search(r'(\d+)\s*(?:round|stage|interview)', text.lower())
+    if match:
+        val = int(match.group(1))
+        if 1 <= val <= 10:
+            return val
+    return None
 
 def extract_skills_from_text(text: str) -> list[str]:
     if not text:
@@ -323,11 +537,21 @@ async def run_full_scrape(keywords: list[str] = None, location: str = "India") -
 
     all_jobs = []
 
-    linkedin_jobs = scrape_linkedin(keywords, location)
+    greenhouse_jobs = await scrape_greenhouse(keywords, location)
+    print(f"Greenhouse scraped: {len(greenhouse_jobs)} jobs")
+    all_jobs.extend(greenhouse_jobs)
+
+    lever_jobs = await scrape_lever(keywords, location)
+    print(f"Lever scraped: {len(lever_jobs)} jobs")
+    all_jobs.extend(lever_jobs)
+
+    linkedin_jobs = await scrape_linkedin(keywords[:5], location)
+    print(f"LinkedIn scraped: {len(linkedin_jobs)} jobs")
     all_jobs.extend(linkedin_jobs)
 
-    naukri_jobs = scrape_naukri(keywords, location)
-    all_jobs.extend(naukri_jobs)
+    indeed_jobs = await scrape_indeed(keywords[:5], location)
+    print(f"Indeed scraped: {len(indeed_jobs)} jobs")
+    all_jobs.extend(indeed_jobs)
 
     greenhouse_companies = [
         ("Stripe", "stripe"),
