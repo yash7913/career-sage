@@ -429,6 +429,7 @@ export default function GenerationWorkspace({ job, userId, trackId, onClose, onD
                 trackId={trackId}
                 jobId={job.job_id}
                 activeVersionId={activeVersionId}
+                jobSkills={job.skills_needed}
                 onSelect={async (versionId) => {
                   setActiveVersionId(versionId)
                   setLoadingVersion(true)

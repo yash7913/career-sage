@@ -322,7 +322,7 @@ async def generate_cover_letter(req: GenerateRequest):
 async def get_versions(user_id: str, track_id: str, job_id: str):
     try:
         result = supabase.table("resume_versions")\
-            .select("version_id, version_number, created_at, user_tweak")\
+            .select("version_id, version_number, created_at, user_tweak, resume_content")\
             .eq("user_id", user_id)\
             .eq("track_id", track_id)\
             .eq("job_id", job_id)\

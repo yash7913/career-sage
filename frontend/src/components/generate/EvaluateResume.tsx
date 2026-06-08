@@ -51,8 +51,14 @@ function ScoreRing({ score, label }: { score: number; label: string }) {
 
 export default function EvaluateResume({ job, userId, trackId, onClose, onApply }: EvaluateResumeProps) {
   const [activeTab, setActiveTab] = useState<'profile' | 'paste'>('profile')
-  const [profileFit, setProfileFit] = useState<any>(null)
-  const [bestVersion, setBestVersion] = useState<any[]>([])
+  const [profileFit, setProfileFit] = useState<{
+    match_percentage: number
+    matched_skills: string[]
+    skill_gaps: string[]
+    cohort: string
+    summary: string
+  } | null>(null)
+  const [versions, setVersions] = useState<any[]>([])
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [resumeText, setResumeText] = useState('')
   const [evaluating, setEvaluating] = useState(false)
@@ -63,52 +69,66 @@ export default function EvaluateResume({ job, userId, trackId, onClose, onApply 
     Promise.all([
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/${userId}`).then(r => r.json()),
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/generate/versions?user_id=${userId}&track_id=${trackId}&job_id=${job.job_id}`).then(r => r.json()).catch(() => []),
-    ]).then(([profile, versions]) => {
+    ]).then(([profile, versionData]) => {
       const skills = profile.extracted_skills || []
       const skillSet = new Set(skills.map((s: string) => s.toLowerCase()))
       const matched = job.skills_needed.filter(s => skillSet.has(s.toLowerCase()))
       const gaps = job.identified_skill_gaps || []
-      const matchPct = job.match_percentage_score
-
       setProfileFit({
-        match_percentage: matchPct,
+        match_percentage: job.match_percentage_score,
         matched_skills: matched,
         skill_gaps: gaps,
         cohort: profile.cohort || '',
-        trajectory: profile.impact_pattern || '',
         summary: profile.extracted_summary || '',
       })
-
-      if (Array.isArray(versions) && versions.length > 0) {
-        setBestVersion(versions)
-      }
+      setVersions(Array.isArray(versionData) ? versionData : [])
     }).finally(() => setLoadingProfile(false))
-  }, [userId, job.job_id])
+  }, [userId, job.job_id, trackId])
 
   const handleEvaluate = async () => {
     if (!resumeText.trim()) return
     setEvaluating(true)
     setError('')
     setEvalResult(null)
-
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/generate/evaluate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          job_id: job.job_id,
-          resume_text: resumeText,
-        }),
+        body: JSON.stringify({ user_id: userId, job_id: job.job_id, resume_text: resumeText }),
       })
       if (!res.ok) { const err = await res.json(); setError(err.detail || 'Evaluation failed'); return }
-      const data = await res.json()
-      setEvalResult(data)
+      setEvalResult(await res.json())
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong')
     } finally {
       setEvaluating(false)
     }
+  }
+
+  const parseATSScore = (content: string): { score: number; strength: string } => {
+    if (!content) return { score: 0, strength: '' }
+
+    const scoreMatch = content.match(/Estimated ATS Score:\s*\**(\d+)%/i)
+    const strengthMatch = content.match(/ATS Match Strength:\s*\**([A-Za-z\s]+?)[\*\n]/i)
+
+    if (scoreMatch) {
+      return {
+        score: parseInt(scoreMatch[1]),
+        strength: strengthMatch ? strengthMatch[1].trim() : '',
+      }
+    }
+
+    const strengthOnly = content.match(/Estimated ATS Match Strength:\s*\**([A-Za-z\s]+?)[\*\n]/i)
+    if (strengthOnly) {
+      const label = strengthOnly[1].trim().toLowerCase()
+      const score = label.includes('very high') ? 90
+        : label.includes('high') ? 78
+        : label.includes('medium') ? 62
+        : 45
+      return { score, strength: strengthOnly[1].trim() }
+    }
+
+    return { score: 0, strength: '' }
   }
 
   return (
@@ -123,17 +143,14 @@ export default function EvaluateResume({ job, userId, trackId, onClose, onApply 
         background: '#0d1117', border: `1px solid ${BORDER}`,
         borderRadius: '20px', width: '100%', maxWidth: '860px',
         height: '90vh', display: 'flex', flexDirection: 'column',
-        overflow: 'hidden',
-        boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+        overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
       }}>
 
         {/* Header */}
         <div style={{
-          padding: '1.25rem 1.5rem',
-          borderBottom: `1px solid ${BORDER}`,
-          display: 'flex', justifyContent: 'space-between',
-          alignItems: 'flex-start', flexShrink: 0,
-          background: CARD,
+          padding: '1.25rem 1.5rem', borderBottom: `1px solid ${BORDER}`,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+          flexShrink: 0, background: CARD,
         }}>
           <div>
             <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', margin: '0 0 4px' }}>
@@ -147,16 +164,11 @@ export default function EvaluateResume({ job, userId, trackId, onClose, onApply 
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button
-              onClick={onApply}
-              style={{
-                padding: '8px 18px', borderRadius: '8px',
-                background: 'linear-gradient(135deg, #10B981, #059669)',
-                color: '#fff', border: 'none',
-                fontSize: '13px', fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
+            <button onClick={onApply} style={{
+              padding: '8px 18px', borderRadius: '8px',
+              background: 'linear-gradient(135deg, #10B981, #059669)',
+              color: '#fff', border: 'none', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+            }}>
               Apply →
             </button>
             <button onClick={onClose} style={{
@@ -169,10 +181,8 @@ export default function EvaluateResume({ job, userId, trackId, onClose, onApply 
 
         {/* Tabs */}
         <div style={{
-          padding: '0 1.5rem',
-          borderBottom: `1px solid ${BORDER}`,
-          display: 'flex', gap: '4px',
-          height: '48px', alignItems: 'center',
+          padding: '0 1.5rem', borderBottom: `1px solid ${BORDER}`,
+          display: 'flex', gap: '4px', height: '48px', alignItems: 'center',
           background: CARD, flexShrink: 0,
         }}>
           {[
@@ -182,8 +192,7 @@ export default function EvaluateResume({ job, userId, trackId, onClose, onApply 
             <button key={tab.key}
               onClick={() => setActiveTab(tab.key as 'profile' | 'paste')}
               style={{
-                padding: '6px 16px', borderRadius: '7px',
-                border: 'none', cursor: 'pointer',
+                padding: '6px 16px', borderRadius: '7px', border: 'none', cursor: 'pointer',
                 fontSize: '13px', fontWeight: activeTab === tab.key ? 600 : 400,
                 background: activeTab === tab.key ? 'rgba(16,185,129,0.12)' : 'transparent',
                 color: activeTab === tab.key ? TEAL : 'rgba(255,255,255,0.4)',
@@ -200,26 +209,22 @@ export default function EvaluateResume({ job, userId, trackId, onClose, onApply 
           {/* Profile fit tab */}
           {activeTab === 'profile' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-
               {loadingProfile ? (
                 <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)' }}>Analysing profile fit...</p>
               ) : profileFit && (
                 <>
-                  {/* Score row */}
+                  {/* Score + summary */}
                   <div style={{
                     display: 'flex', gap: '1.5rem', alignItems: 'center',
                     padding: '1.25rem 1.5rem', borderRadius: '14px',
-                    background: 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${BORDER}`,
+                    background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`,
                     flexWrap: 'wrap',
                   }}>
                     <ScoreRing score={profileFit.match_percentage} label="Profile match" />
                     <div style={{ flex: 1, minWidth: '200px' }}>
                       <p style={{ fontSize: '15px', fontWeight: 600, color: '#fff', margin: '0 0 6px' }}>
-                        {profileFit.match_percentage >= 70
-                          ? 'Strong profile fit for this role'
-                          : profileFit.match_percentage >= 50
-                          ? 'Moderate profile fit — gaps closable'
+                        {profileFit.match_percentage >= 70 ? 'Strong profile fit for this role'
+                          : profileFit.match_percentage >= 50 ? 'Moderate profile fit — gaps closable'
                           : 'Partial fit — this role stretches your profile'}
                       </p>
                       {profileFit.cohort && (
@@ -269,86 +274,111 @@ export default function EvaluateResume({ job, userId, trackId, onClose, onApply 
                         ))}
                       </div>
                       <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', margin: '8px 0 0' }}>
-                        Address these gaps in your resume or cover letter before applying.
+                        Address these in your resume or cover letter before applying.
                       </p>
                     </div>
                   )}
 
                   {/* Versions */}
                   <div>
-                    <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: '0 0 8px' }}>
-                      RESUME VERSIONS FOR THIS ROLE
-                    </p>
-                    {bestVersion.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
-                        {bestVersion.slice(0, 6).map((v: any) => (
-                          <div key={v.version_id} style={{
-                            padding: '10px 14px', borderRadius: '10px',
-                            background: 'rgba(255,255,255,0.03)',
-                            border: `1px solid ${BORDER}`,
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                          }}>
-                            <div>
-                              <p style={{ fontSize: '13px', fontWeight: 600, color: '#fff', margin: '0 0 2px' }}>
-                                v{v.version_number}
-                              </p>
-                              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>
-                                {new Date(v.created_at).toLocaleDateString()}
-                                {v.user_tweak ? ` · "${v.user_tweak.slice(0, 40)}"` : ''}
-                              </p>
-                            </div>
-                            <button onClick={onApply} style={{
-                              padding: '5px 12px', borderRadius: '7px',
-                              background: 'rgba(16,185,129,0.1)', color: TEAL,
-                              border: '1px solid rgba(16,185,129,0.25)',
-                              fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: 0 }}>
+                        RESUME VERSIONS FOR THIS ROLE
+                      </p>
+                      <button onClick={onApply} style={{
+                        padding: '5px 14px', borderRadius: '7px',
+                        background: 'linear-gradient(135deg, #10B981, #059669)',
+                        color: '#fff', border: 'none', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                      }}>
+                        ⚡ New version
+                      </button>
+                    </div>
+
+                    {versions.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {versions.slice(0, 6).map((v, idx) => {
+                          return (
+                            <div key={v.version_id} style={{
+                              padding: '10px 14px', borderRadius: '10px',
+                              background: idx === 0 ? 'rgba(16,185,129,0.05)' : 'rgba(255,255,255,0.03)',
+                              border: `1px solid ${idx === 0 ? 'rgba(16,185,129,0.2)' : BORDER}`,
+                              display: 'flex', alignItems: 'center', gap: '10px',
                             }}>
-                              Improve →
-                            </button>
-                          </div>
-                        ))}
+                              <div style={{ minWidth: '28px' }}>
+                                <p style={{ fontSize: '13px', fontWeight: 700, color: idx === 0 ? TEAL : '#fff', margin: 0 }}>
+                                  v{v.version_number}
+                                </p>
+                                {idx === 0 && (
+                                  <p style={{ fontSize: '9px', color: TEAL, margin: 0, fontWeight: 600 }}>LATEST</p>
+                                )}
+                              </div>
+                              {(() => {
+                                const { score, strength } = parseATSScore(v.resume_content || '')
+                                if (!score && !strength) return null
+                                const color = scoreColor(score || 0)
+                                return (
+                                  <span style={{
+                                    fontSize: '11px', fontWeight: 700, padding: '2px 8px',
+                                    borderRadius: '999px', background: `${color}15`,
+                                    color, border: `1px solid ${color}30`,
+                                    flexShrink: 0, whiteSpace: 'nowrap',
+                                  }}>
+                                    {strength || `ATS ${score}%`}
+                                    {score > 0 && strength ? ` (${score}%)` : ''}
+                                  </span>
+                                )
+                              })()}
+                              <p style={{
+                                fontSize: '11px', color: 'rgba(255,255,255,0.3)',
+                                margin: 0, flex: 1, overflow: 'hidden',
+                                textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                              }}>
+                                {new Date(v.created_at).toLocaleDateString()}
+                                {v.user_tweak ? ` · ${v.user_tweak.slice(0, 30)}` : ''}
+                              </p>
+                              <button onClick={onApply} style={{
+                                padding: '5px 12px', borderRadius: '7px',
+                                background: 'rgba(255,255,255,0.06)',
+                                color: 'rgba(255,255,255,0.5)',
+                                border: `1px solid ${BORDER}`,
+                                fontSize: '11px', fontWeight: 600, cursor: 'pointer', flexShrink: 0,
+                              }}>
+                                Improve →
+                              </button>
+                            </div>
+                          )
+                        })}
                       </div>
                     ) : (
                       <div style={{
-                        padding: '12px 16px', borderRadius: '10px',
-                        background: 'rgba(255,255,255,0.02)',
-                        border: `1px solid ${BORDER}`,
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '14px', borderRadius: '10px',
+                        background: 'rgba(255,255,255,0.02)', border: `1px solid ${BORDER}`,
+                        textAlign: 'center',
                       }}>
-                        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', margin: 0 }}>
+                        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', margin: '0 0 10px' }}>
                           No resume generated for this role yet
                         </p>
                         <button onClick={onApply} style={{
-                          padding: '7px 14px', borderRadius: '8px',
+                          padding: '9px 20px', borderRadius: '8px',
                           background: 'linear-gradient(135deg, #10B981, #059669)',
-                          color: '#fff', border: 'none',
-                          fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                          color: '#fff', border: 'none', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                         }}>
-                          Generate resume →
+                          Generate first resume →
                         </button>
                       </div>
                     )}
-                    <button onClick={onApply} style={{
-                      width: '100%', padding: '9px', borderRadius: '9px',
-                      background: 'linear-gradient(135deg, #10B981, #059669)',
-                      color: '#fff', border: 'none',
-                      fontSize: '13px', fontWeight: 700, cursor: 'pointer',
-                    }}>
-                      ⚡ Generate new version →
-                    </button>
                   </div>
                 </>
               )}
             </div>
           )}
 
-          {/* Paste/evaluate tab */}
+          {/* Paste tab */}
           {activeTab === 'paste' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: 0, lineHeight: 1.6 }}>
-                Paste any resume text below — your own, a previous version, or a draft. Career Sage will score it against this JD and tell you exactly what to improve.
+                Paste any resume text — your own, a previous version, or a draft. Career Sage will score it against this JD and tell you exactly what to improve.
               </p>
-
               <textarea
                 value={resumeText}
                 onChange={e => setResumeText(e.target.value)}
@@ -356,37 +386,27 @@ export default function EvaluateResume({ job, userId, trackId, onClose, onApply 
                 rows={10}
                 style={{
                   width: '100%', padding: '12px', borderRadius: '10px',
-                  background: 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${BORDER}`,
-                  color: '#fff', fontSize: '13px',
-                  resize: 'vertical', boxSizing: 'border-box',
-                  outline: 'none', lineHeight: 1.6,
+                  background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`,
+                  color: '#fff', fontSize: '13px', resize: 'vertical',
+                  boxSizing: 'border-box', outline: 'none', lineHeight: 1.6,
                   fontFamily: 'system-ui, sans-serif',
                 }}
               />
-
               <button
                 onClick={handleEvaluate}
                 disabled={evaluating || !resumeText.trim()}
                 style={{
                   padding: '12px', borderRadius: '10px',
-                  background: evaluating || !resumeText.trim()
-                    ? 'rgba(16,185,129,0.3)'
-                    : 'linear-gradient(135deg, #10B981, #059669)',
-                  color: '#fff', border: 'none',
-                  fontSize: '14px', fontWeight: 700,
+                  background: evaluating || !resumeText.trim() ? 'rgba(16,185,129,0.3)' : 'linear-gradient(135deg, #10B981, #059669)',
+                  color: '#fff', border: 'none', fontSize: '14px', fontWeight: 700,
                   cursor: evaluating || !resumeText.trim() ? 'not-allowed' : 'pointer',
-                }}
-              >
+                }}>
                 {evaluating ? '⟳ Evaluating...' : '🔍 Evaluate this resume'}
               </button>
-
               <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)', margin: '-6px 0 0', textAlign: 'center' }}>
                 Does not count toward your generation limit
               </p>
-
               {error && <p style={{ fontSize: '13px', color: 'rgba(239,68,68,0.85)' }}>{error}</p>}
-
               {evalResult && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div style={{ display: 'flex', gap: '12px' }}>
