@@ -175,7 +175,7 @@ export default function EvaluateResume({ job, userId, trackId, onClose, onApply 
                         {profileFit.match_percentage >= 70 ? 'Strong profile fit for this role' : profileFit.match_percentage >= 50 ? 'Moderate profile fit — gaps closable' : 'Partial fit — this role stretches your profile'}
                       </p>
                       {profileFit.cohort && <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: '0 0 4px' }}>Your cohort: <span style={{ color: TEAL }}>{profileFit.cohort}</span></p>}
-                      {profileFit.summary && <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0, lineHeight: 1.6, fontStyle: 'italic' }}>"{profileFit.summary.slice(0, 120)}..."</p>}
+                      {profileFit.summary && <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0, lineHeight: 1.6, fontStyle: 'italic' }}>&ldquo;{profileFit.summary.slice(0, 120)}...&rdquo;</p>}
                     </div>
                   </div>
 
