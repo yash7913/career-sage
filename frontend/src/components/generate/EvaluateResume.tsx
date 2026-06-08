@@ -19,6 +19,7 @@ interface Job {
 interface EvaluateResumeProps {
   job: Job
   userId: string
+  trackId: string
   onClose: () => void
   onApply: () => void
 }
@@ -48,10 +49,10 @@ function ScoreRing({ score, label }: { score: number; label: string }) {
   )
 }
 
-export default function EvaluateResume({ job, userId, onClose, onApply }: EvaluateResumeProps) {
+export default function EvaluateResume({ job, userId, trackId, onClose, onApply }: EvaluateResumeProps) {
   const [activeTab, setActiveTab] = useState<'profile' | 'paste'>('profile')
   const [profileFit, setProfileFit] = useState<any>(null)
-  const [bestVersion, setBestVersion] = useState<any>(null)
+  const [bestVersion, setBestVersion] = useState<any[]>([])
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [resumeText, setResumeText] = useState('')
   const [evaluating, setEvaluating] = useState(false)
@@ -61,7 +62,7 @@ export default function EvaluateResume({ job, userId, onClose, onApply }: Evalua
   useEffect(() => {
     Promise.all([
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/${userId}`).then(r => r.json()),
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/generate/versions?user_id=${userId}&job_id=${job.job_id}`).then(r => r.json()).catch(() => []),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/generate/versions?user_id=${userId}&track_id=${trackId}&job_id=${job.job_id}`).then(r => r.json()).catch(() => []),
     ]).then(([profile, versions]) => {
       const skills = profile.extracted_skills || []
       const skillSet = new Set(skills.map((s: string) => s.toLowerCase()))
@@ -79,7 +80,7 @@ export default function EvaluateResume({ job, userId, onClose, onApply }: Evalua
       })
 
       if (Array.isArray(versions) && versions.length > 0) {
-        setBestVersion(versions[0])
+        setBestVersion(versions)
       }
     }).finally(() => setLoadingProfile(false))
   }, [userId, job.job_id])
@@ -273,38 +274,39 @@ export default function EvaluateResume({ job, userId, onClose, onApply }: Evalua
                     </div>
                   )}
 
-                  {/* Best version */}
+                  {/* Versions */}
                   <div>
                     <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: '0 0 8px' }}>
                       RESUME VERSIONS FOR THIS ROLE
                     </p>
-                    {bestVersion ? (
-                      <div style={{
-                        padding: '12px 16px', borderRadius: '10px',
-                        background: 'rgba(255,255,255,0.03)',
-                        border: `1px solid ${BORDER}`,
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      }}>
-                        <div>
-                          <p style={{ fontSize: '13px', fontWeight: 600, color: '#fff', margin: '0 0 2px' }}>
-                            v{bestVersion.version_number} — most recent
-                          </p>
-                          <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>
-                            Generated {new Date(bestVersion.created_at).toLocaleDateString()}
-                            {bestVersion.user_tweak ? ` · "${bestVersion.user_tweak.slice(0, 40)}..."` : ''}
-                          </p>
-                        </div>
-                        <button
-                          onClick={onApply}
-                          style={{
-                            padding: '7px 14px', borderRadius: '8px',
-                            background: TEAL, color: '#fff',
-                            border: 'none', fontSize: '12px',
-                            fontWeight: 600, cursor: 'pointer',
-                          }}
-                        >
-                          Improve version →
-                        </button>
+                    {bestVersion.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+                        {bestVersion.slice(0, 6).map((v: any) => (
+                          <div key={v.version_id} style={{
+                            padding: '10px 14px', borderRadius: '10px',
+                            background: 'rgba(255,255,255,0.03)',
+                            border: `1px solid ${BORDER}`,
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          }}>
+                            <div>
+                              <p style={{ fontSize: '13px', fontWeight: 600, color: '#fff', margin: '0 0 2px' }}>
+                                v{v.version_number}
+                              </p>
+                              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>
+                                {new Date(v.created_at).toLocaleDateString()}
+                                {v.user_tweak ? ` · "${v.user_tweak.slice(0, 40)}"` : ''}
+                              </p>
+                            </div>
+                            <button onClick={onApply} style={{
+                              padding: '5px 12px', borderRadius: '7px',
+                              background: 'rgba(16,185,129,0.1)', color: TEAL,
+                              border: '1px solid rgba(16,185,129,0.25)',
+                              fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                            }}>
+                              Improve →
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     ) : (
                       <div style={{
@@ -316,19 +318,24 @@ export default function EvaluateResume({ job, userId, onClose, onApply }: Evalua
                         <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', margin: 0 }}>
                           No resume generated for this role yet
                         </p>
-                        <button
-                          onClick={onApply}
-                          style={{
-                            padding: '7px 14px', borderRadius: '8px',
-                            background: 'linear-gradient(135deg, #10B981, #059669)',
-                            color: '#fff', border: 'none',
-                            fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                          }}
-                        >
+                        <button onClick={onApply} style={{
+                          padding: '7px 14px', borderRadius: '8px',
+                          background: 'linear-gradient(135deg, #10B981, #059669)',
+                          color: '#fff', border: 'none',
+                          fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                        }}>
                           Generate resume →
                         </button>
                       </div>
                     )}
+                    <button onClick={onApply} style={{
+                      width: '100%', padding: '9px', borderRadius: '9px',
+                      background: 'linear-gradient(135deg, #10B981, #059669)',
+                      color: '#fff', border: 'none',
+                      fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+                    }}>
+                      ⚡ Generate new version →
+                    </button>
                   </div>
                 </>
               )}

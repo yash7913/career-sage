@@ -474,6 +474,7 @@ export default function JobCard({
         <EvaluateResume
           job={job}
           userId={userId}
+          trackId={trackId}
           onClose={() => setShowEvaluate(false)}
           onApply={() => { setShowEvaluate(false); setShowWorkspace(true) }}
         />

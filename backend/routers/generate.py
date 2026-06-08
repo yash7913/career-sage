@@ -440,8 +440,8 @@ One paragraph summary of fit.
 
         content = message.content[0].text
 
-        ats_match = re.search(r'Estimated ATS Score:\s*(\d+)%', content)
-        fit_match = re.search(r'Overall fit score:\s*(\d+)%', content)
+        ats_match = re.search(r'Estimated ATS Score:\s*\**(\d+)%', content, re.IGNORECASE)
+        fit_match = re.search(r'Overall fit score:\s*\**(\d+)%', content, re.IGNORECASE)
 
         ats_score = int(ats_match.group(1)) if ats_match else 0
         fit_score = int(fit_match.group(1)) if fit_match else 0
