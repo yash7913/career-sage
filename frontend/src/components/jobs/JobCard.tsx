@@ -430,15 +430,15 @@ export default function JobCard({
           <button
             onClick={e => { e.stopPropagation(); setShowEvaluate(true) }}
             style={{
-              padding: '9px 14px', borderRadius: '8px',
-              background: 'rgba(127,119,221,0.1)',
-              color: '#7F77DD',
-              border: '1px solid rgba(127,119,221,0.25)',
-              fontSize: '12px', fontWeight: 600,
+              padding: '9px 16px', borderRadius: '8px',
+              background: 'rgba(255,255,255,0.06)',
+              color: 'rgba(255,255,255,0.7)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              fontSize: '13px', fontWeight: 600,
               cursor: 'pointer', whiteSpace: 'nowrap',
             }}
           >
-            🔍 Evaluate
+            Evaluate
           </button>
           </div>
         </div>
@@ -475,6 +475,7 @@ export default function JobCard({
           job={job}
           userId={userId}
           onClose={() => setShowEvaluate(false)}
+          onApply={() => { setShowEvaluate(false); setShowWorkspace(true) }}
         />
       )}
     </>
