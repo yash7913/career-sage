@@ -225,3 +225,54 @@ async def get_pentagram(user_id: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/intelligence/{user_id}")
+async def get_profile_intelligence(user_id: str):
+    try:
+        from services.trajectory import classify_trajectory, enrich_skills_with_confidence
+        profile = supabase.table("user_profiles").select("*").eq("user_id", user_id).execute()
+        if not profile.data:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        p = profile.data[0]
+        raw_text = p.get("raw_profile_text") or ""
+        skills = p.get("extracted_skills") or []
+        education = p.get("education_data") or []
+        cohort = p.get("cohort") or ""
+        years_exp = p.get("years_of_experience") or 0
+
+        if isinstance(skills, list):
+            skill_list = []
+            for s in skills:
+                if isinstance(s, str):
+                    skill_list.append(s)
+                elif isinstance(s, dict):
+                    skill_list.extend(v for v in s.values() if isinstance(v, str))
+            skills = skill_list
+
+        trajectory = classify_trajectory(raw_text, [], years_exp, cohort)
+        enriched_skills = enrich_skills_with_confidence(skills, raw_text)
+
+        gaps = []
+        cohort_skill_map = {
+            "Technical PM": ["SQL", "Python", "A/B Testing", "System Design", "Analytics"],
+            "Data-Oriented PM": ["SQL", "Python", "Statistics", "A/B Testing", "Tableau"],
+            "Data Scientist": ["Python", "Machine Learning", "Statistics", "SQL", "Deep Learning"],
+            "Analytics Engineer": ["dbt", "SQL", "Python", "Spark", "Data Modeling"],
+            "Full-Stack Engineer": ["React", "Node.js", "PostgreSQL", "Docker", "TypeScript"],
+            "ML Engineer": ["PyTorch", "Python", "MLOps", "Kubernetes", "TensorFlow"],
+        }
+
+        expected_skills = cohort_skill_map.get(cohort, [])
+        user_skill_names = {s.lower() for s in skills}
+        gaps = [s for s in expected_skills if s.lower() not in user_skill_names][:5]
+
+        return {
+            "trajectory": trajectory,
+            "enriched_skills": enriched_skills,
+            "skill_gaps": gaps,
+            "years_of_experience": years_exp,
+            "cohort": cohort,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

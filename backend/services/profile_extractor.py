@@ -130,6 +130,18 @@ async def extract_and_save_profile(user_id: str) -> dict:
     )
     print(f"Cohort classified as: {cohort}")
 
+    import datetime
+    current_year = datetime.datetime.now().year
+    years_of_experience = 0
+    if extracted.get("education_data"):
+        earliest_grad = min(
+            (e.get("graduation_year") or current_year
+             for e in extracted.get("education_data", [])
+             if isinstance(e, dict) and e.get("graduation_year")),
+            default=current_year
+        )
+        years_of_experience = max(0, current_year - earliest_grad)
+
     supabase.table("user_profiles").update({
         "extracted_skills": flat_skills,
         "education_data": extracted.get("education_data", []),
@@ -137,6 +149,7 @@ async def extract_and_save_profile(user_id: str) -> dict:
         "raw_profile_text": extracted.get("raw_profile_text", ""),
         "profile_completeness_score": completeness,
         "cohort": cohort,
+	"years_of_experience": years_of_experience,
     }).eq("user_id", user_id).execute()
 
     print("Profile saved to Supabase successfully")

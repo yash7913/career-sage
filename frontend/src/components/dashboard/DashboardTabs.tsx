@@ -9,6 +9,7 @@ import Sidebar from '@/components/dashboard/Sidebar'
 import ContactDetailsForm from '@/components/profile/ContactDetailsForm'
 import PreferencesPanel from '@/components/profile/PreferencesPanel'
 import PentagramScore from '@/components/profile/PentagramScore'
+import ProfileIntelligence from '@/components/profile/ProfileIntelligence'
 
 function ExpandableSkills({ skills }: { skills: string[] }) {
   const [expanded, setExpanded] = useState(false)
@@ -239,40 +240,94 @@ function ProfileTab({
           </p>
           <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
             <PentagramScore userId={userId} size={280} variant="full" />
-            <div style={{ flex: 1, minWidth: '200px' }}>
-              <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: '0 0 8px' }}>
-                HOW TO READ THIS
-              </p>
-              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, margin: '0 0 1rem' }}>
-                Your pentagram shows 5 dimensions of professional strength. Hover any axis to see your score vs your cohort average and the top 10%.
-              </p>
-              <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: '0 0 8px' }}>
-                WHAT TO IMPROVE
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {[
-                  { axis: 'Domain Expertise', tip: 'Add more domain-specific context to your profile documents' },
-                  { axis: 'Impact Magnitude', tip: 'Quantify your achievements — add metrics, scale, and outcomes' },
-                  { axis: 'Leadership Signals', tip: 'Surface team sizes, stakeholder seniority, and ownership language' },
-                ].map(item => (
-                  <div key={item.axis} style={{
-                    padding: '8px 12px', borderRadius: '8px',
-                    background: 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${BORDER}`,
-                  }}>
-                    <p style={{ fontSize: '12px', fontWeight: 600, color: '#F59E0B', margin: '0 0 2px' }}>
-                      ↑ {item.axis}
-                    </p>
-                    <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
-                      {item.tip}
-                    </p>
-                  </div>
-                ))}
-              </div>
+            <div style={{ flex: 1, minWidth: '220px' }}>
+              <ProfileIntelligence userId={userId} />
             </div>
           </div>
         </div>
       )}
+
+      {/* Upload section */}
+      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 4px' }}>
+          {hasProfile ? 'YOUR VAULT' : 'STEP 01 — UPLOAD DOCUMENTS'}
+        </p>
+        {!hasProfile && (
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1rem', lineHeight: 1.6 }}>
+            Add your resume and career documents. Career Sage extracts your skills, education, and professional summary automatically.
+          </p>
+        )}
+        <VaultUpload onExtractionComplete={() => {
+          setTimeout(() => window.location.reload(), 2000)
+        }} />
+      </div>
+
+      {/* Career tracks */}
+      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 1rem' }}>
+          {tracks.length > 0 ? 'YOUR CAREER TRACKS' : 'STEP 02 — SET UP CAREER TRACK'}
+        </p>
+        {tracks.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '1rem' }}>
+            {tracks.map(track => {
+              const hex = COLOR_MAP[track.track_color] ?? TEAL
+              return (
+                <div key={track.track_id} style={{
+                  padding: '10px 14px', borderRadius: '10px',
+                  background: 'rgba(255,255,255,0.03)',
+                  border: `1px solid rgba(255,255,255,0.07)`,
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: hex }} />
+                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#fff' }}>{track.track_name}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: '11px', padding: '2px 8px', borderRadius: '999px', background: `${hex}18`, color: hex }}>Active</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+        <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+          {tracks.length > 0 ? 'ADD ANOTHER TRACK' : ''}
+        </p>
+        <TrackSetup userId={userId} onComplete={onTrackCreated} />
+      </div>
+
+      {/* Contact details */}
+      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 6px' }}>CONTACT DETAILS</p>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1rem', lineHeight: 1.5 }}>
+          These appear in your generated resume automatically.
+        </p>
+        <ContactDetailsForm userId={userId} />
+      </div>
+
+      {/* Job preferences */}
+      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 6px' }}>JOB PREFERENCES</p>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1rem', lineHeight: 1.5 }}>
+          Set your salary target and preferred company stage. Career Sage weights your match scores accordingly.
+        </p>
+        <PreferencesPanel userId={userId} />
+      </div>
+
+      {/* Generative assets placeholder */}
+      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 6px' }}>GENERATIVE PROFILE ASSETS</p>
+        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1rem' }}>
+          LinkedIn summary, elevator pitch, and bio variations — coming in Day 11.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+          {['LinkedIn Summary', 'Elevator Pitch', 'Short Bio', 'Personal Brand'].map(asset => (
+            <div key={asset} style={{ padding: '10px 14px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: `1px solid ${BORDER}`, opacity: 0.5 }}>
+              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0, fontWeight: 500 }}>{asset}</p>
+              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)', margin: '4px 0 0' }}>Coming soon</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
       {/* Upload section */}
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
