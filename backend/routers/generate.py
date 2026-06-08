@@ -8,6 +8,8 @@ import asyncio
 from supabase import create_client
 from dotenv import load_dotenv
 load_dotenv()
+import re
+import anthropic
 
 router = APIRouter()
 supabase = create_client(
@@ -15,6 +17,7 @@ supabase = create_client(
     os.getenv("SUPABASE_SERVICE_KEY")
 )
 
+anthropic_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 class GenerateRequest(BaseModel):
     user_id: str
@@ -377,5 +380,79 @@ async def increment_count(req: IncrementRequest):
     try:
         increment_generation_count(req.user_id)
         return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class EvaluateRequest(BaseModel):
+    user_id: str
+    job_id: str
+    resume_text: str
+
+@router.post("/evaluate")
+async def evaluate_resume(req: EvaluateRequest):
+    try:
+        job = supabase.table("aggregated_jobs")\
+            .select("*").eq("id", req.job_id).execute()
+        if not job.data:
+            raise HTTPException(status_code=404, detail="Job not found")
+
+        j = job.data[0]
+        jd = (j.get("job_description") or "")[:3000]
+        job_title = j.get("job_title") or ""
+        company = j.get("company_name") or ""
+
+        nl = "\n"
+        prompt = f"""You are an expert ATS analyst and recruiter. Evaluate this resume against the job description.
+
+JOB: {job_title} at {company}
+JOB DESCRIPTION:
+{jd}
+
+CANDIDATE RESUME:
+{req.resume_text[:3000]}
+
+Provide a structured evaluation with these exact sections:
+
+### ATS KEYWORD COVERAGE
+Create a markdown table:
+| Keyword | In Resume? | Where |
+|---|---|---|
+
+Then write: ATS Match Strength: [Very High / High / Medium / Low]
+And: Estimated ATS Score: [0-100]%
+
+### RECRUITER ASSESSMENT
+**Strongest sections:** List the 2-3 strongest parts of this resume for this specific role.
+**Critical gaps:** What's missing that this role specifically needs.
+**Red flags:** Anything that might cause a recruiter to pause.
+**Suggested improvements:** Top 3 specific changes to improve this resume for this role.
+
+### OVERALL FIT
+Overall fit score: [0-100]%
+One paragraph summary of fit.
+"""
+
+        message = anthropic_client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        content = message.content[0].text
+
+        ats_match = re.search(r'Estimated ATS Score:\s*(\d+)%', content)
+        fit_match = re.search(r'Overall fit score:\s*(\d+)%', content)
+
+        ats_score = int(ats_match.group(1)) if ats_match else 0
+        fit_score = int(fit_match.group(1)) if fit_match else 0
+
+        return {
+            "evaluation": content,
+            "ats_score": ats_score,
+            "fit_score": fit_score,
+            "job_title": job_title,
+            "company": company,
+        }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

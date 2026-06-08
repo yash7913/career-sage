@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import GenerationWorkspace from '@/components/generate/GenerationWorkspace'
+import EvaluateResume from '@/components/generate/EvaluateResume'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -323,6 +324,7 @@ export default function JobCard({
   const [starred, setStarred] = useState(job.is_starred)
   const [showWorkspace, setShowWorkspace] = useState(false)
   const [dismissed, setDismissed] = useState(false)
+  const [showEvaluate, setShowEvaluate] = useState(false)
 
   const handleStar = async () => {
     const newVal = !starred
@@ -412,19 +414,32 @@ export default function JobCard({
             </div>
             {/* Apply button — always visible top right */}
             <button
-              onClick={e => { e.stopPropagation(); setShowWorkspace(true) }}
-              style={{
-                padding: '7px 16px', borderRadius: '8px',
-                background: 'linear-gradient(135deg, #10B981, #059669)',
-                color: '#fff', border: 'none',
-                fontSize: '12px', fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 2px 10px rgba(16,185,129,0.25)',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Apply →
-            </button>
+            onClick={e => { e.stopPropagation(); setShowWorkspace(true) }}
+            style={{
+              flex: 1, padding: '9px 16px', borderRadius: '8px',
+              background: 'linear-gradient(135deg, #10B981, #059669)',
+              color: '#fff', border: 'none',
+              fontSize: '13px', fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 2px 12px rgba(16,185,129,0.25)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Apply →
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); setShowEvaluate(true) }}
+            style={{
+              padding: '9px 14px', borderRadius: '8px',
+              background: 'rgba(127,119,221,0.1)',
+              color: '#7F77DD',
+              border: '1px solid rgba(127,119,221,0.25)',
+              fontSize: '12px', fontWeight: 600,
+              cursor: 'pointer', whiteSpace: 'nowrap',
+            }}
+          >
+            🔍 Evaluate
+          </button>
           </div>
         </div>
 
@@ -453,6 +468,13 @@ export default function JobCard({
           trackId={trackId}
           onClose={() => setShowWorkspace(false)}
           onDownload={onDownload}
+        />
+      )}
+      {showEvaluate && (
+        <EvaluateResume
+          job={job}
+          userId={userId}
+          onClose={() => setShowEvaluate(false)}
         />
       )}
     </>
