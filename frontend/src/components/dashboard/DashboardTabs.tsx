@@ -8,6 +8,7 @@ import StatsRow from '@/components/dashboard/StatsRow'
 import Sidebar from '@/components/dashboard/Sidebar'
 import ContactDetailsForm from '@/components/profile/ContactDetailsForm'
 import PreferencesPanel from '@/components/profile/PreferencesPanel'
+import PentagramScore from '@/components/profile/PentagramScore'
 
 function ExpandableSkills({ skills }: { skills: string[] }) {
   const [expanded, setExpanded] = useState(false)
@@ -229,6 +230,49 @@ function ProfileTab({
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+      {/* Profile intelligence */}
+      {hasProfile && (
+        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+          <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 1.5rem' }}>
+            PROFILE INTELLIGENCE
+          </p>
+          <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <PentagramScore userId={userId} size={280} variant="full" />
+            <div style={{ flex: 1, minWidth: '200px' }}>
+              <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: '0 0 8px' }}>
+                HOW TO READ THIS
+              </p>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, margin: '0 0 1rem' }}>
+                Your pentagram shows 5 dimensions of professional strength. Hover any axis to see your score vs your cohort average and the top 10%.
+              </p>
+              <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: '0 0 8px' }}>
+                WHAT TO IMPROVE
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {[
+                  { axis: 'Domain Expertise', tip: 'Add more domain-specific context to your profile documents' },
+                  { axis: 'Impact Magnitude', tip: 'Quantify your achievements — add metrics, scale, and outcomes' },
+                  { axis: 'Leadership Signals', tip: 'Surface team sizes, stakeholder seniority, and ownership language' },
+                ].map(item => (
+                  <div key={item.axis} style={{
+                    padding: '8px 12px', borderRadius: '8px',
+                    background: 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${BORDER}`,
+                  }}>
+                    <p style={{ fontSize: '12px', fontWeight: 600, color: '#F59E0B', margin: '0 0 2px' }}>
+                      ↑ {item.axis}
+                    </p>
+                    <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                      {item.tip}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Upload section */}
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>

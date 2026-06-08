@@ -228,8 +228,15 @@ async def scrape_indeed(keywords: list[str], location: str = "India") -> list[di
                 location_val = f"{loc_obj.get('city', '')}, {loc_obj.get('state', '')}".strip(", ") or location
                 description = item.get("description_text") or item.get("description_html") or ""
                 url = item.get("jobUrl") or item.get("applyUrl") or ""
-                salary_min = item.get("baseSalary_min")
-                salary_max = item.get("baseSalary_max")
+                raw_min = item.get("baseSalary_min")
+                raw_max = item.get("baseSalary_max")
+                currency = item.get("salary_currency") or "USD"
+                if raw_min and currency != "INR":
+                    raw_min = int(raw_min / 83000 * 100) // 100
+                if raw_max and currency != "INR":
+                    raw_max = int(raw_max / 83000 * 100) // 100
+                salary_min = int(raw_min) if raw_min else None
+                salary_max = int(raw_max) if raw_max else None
 
                 if not title or not company:
                     continue

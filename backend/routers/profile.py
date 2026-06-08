@@ -186,3 +186,42 @@ async def update_preferences(req: PreferencesUpdateRequest):
         return {"status": "ok", "impact_pattern": impact_pattern}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/pentagram/{user_id}")
+async def get_pentagram(user_id: str):
+    try:
+        from services.pentagram import compute_pentagram, COHORT_AVERAGES, TOP_DECILE
+        profile = supabase.table("user_profiles").select("*").eq("user_id", user_id).execute()
+        if not profile.data:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        p = profile.data[0]
+        scores = compute_pentagram(p)
+        cohort = scores.get("cohort", "Career Explorer")
+
+        cohort_avg = COHORT_AVERAGES.get(cohort, COHORT_AVERAGES["Career Explorer"])
+        top_decile = TOP_DECILE.get(cohort, TOP_DECILE["Career Explorer"])
+
+        axes = ["technical_depth", "domain_expertise", "impact_magnitude", "leadership_signals", "learning_velocity"]
+        user_percentile = 0
+        for ax in axes:
+            avg = cohort_avg.get(ax, 50)
+            user_score = scores.get(ax, 0)
+            if user_score > avg:
+                user_percentile += 20
+
+        supabase.table("user_profiles").update({
+            "pentagram_scores": scores
+        }).eq("user_id", user_id).execute()
+
+        return {
+            "user_scores": {ax: scores.get(ax, 0) for ax in axes},
+            "cohort_average": cohort_avg,
+            "top_decile": top_decile,
+            "composite_score": scores.get("composite_score", 0),
+            "cohort": cohort,
+            "user_percentile": user_percentile,
+            "weights": scores.get("weights", {}),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
