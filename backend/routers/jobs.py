@@ -272,6 +272,27 @@ class InterviewQuestionsRequest(BaseModel):
     user_id: str
     job_id: str
 
+@router.get("/interview-questions-cached")
+async def get_cached_interview_questions(job_id: str):
+    try:
+        job = supabase.table("aggregated_jobs")\
+            .select("interview_questions")\
+            .eq("id", job_id)\
+            .execute()
+        if not job.data:
+            raise HTTPException(status_code=404, detail="Job not found")
+        cached = job.data[0].get("interview_questions")
+        if not cached:
+            raise HTTPException(status_code=404, detail="No cached questions")
+        import json
+        if isinstance(cached, str):
+            cached = json.loads(cached)
+        return cached
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/interview-questions")
 async def generate_interview_questions(req: InterviewQuestionsRequest):
     try:

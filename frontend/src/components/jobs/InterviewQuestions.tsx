@@ -48,9 +48,21 @@ export default function InterviewQuestions({
   const [expandedQ, setExpandedQ] = useState<number | null>(null)
   const isPro = tier === 'PREMIUM_PRO' || tier === 'STUDENT_VERIFIED'
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (forceRegenerate = false) => {
     setLoading(true)
     try {
+      if (!forceRegenerate) {
+        const cached = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/jobs/interview-questions-cached?job_id=${jobId}`)
+        if (cached.ok) {
+          const cachedData = await cached.json()
+          if (cachedData?.rounds?.length > 0) {
+            setData(cachedData)
+            setActiveRound(0)
+            setLoading(false)
+            return
+          }
+        }
+      }
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/jobs/interview-questions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,7 +102,7 @@ export default function InterviewQuestions({
           return (
             <button
               key={r.round}
-              onClick={() => !isLocked && setActiveRound(i)}
+              onClick={e => { e.stopPropagation(); if (!isLocked) setActiveRound(i) }}
               style={{
                 padding: '5px 14px', borderRadius: '999px',
                 border: `1px solid ${activeRound === i ? color : BORDER}`,
@@ -134,7 +146,7 @@ export default function InterviewQuestions({
                 }}
               >
                 <button
-                  onClick={() => setExpandedQ(expandedQ === qi ? null : qi)}
+                  onClick={e => { e.stopPropagation(); setExpandedQ(expandedQ === qi ? null : qi) }}
                   style={{
                     width: '100%', padding: '12px 14px',
                     background: 'transparent', border: 'none',
@@ -186,7 +198,7 @@ export default function InterviewQuestions({
 
       {/* Regenerate */}
       <button
-        onClick={e => { e.stopPropagation(); handleGenerate() }}
+        onClick={e => { e.stopPropagation(); handleGenerate(true) }}
         disabled={loading}
         style={{
           padding: '7px', borderRadius: '8px',
