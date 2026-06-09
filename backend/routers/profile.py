@@ -543,6 +543,15 @@ Generate exactly 5 STAR stories, one for each theme. Return ONLY valid JSON:
       "action": "...",
       "result": "...",
       "keywords": ["failure", "learning", "growth"]
+    }},
+    {{
+      "theme": "Behavioural",
+      "title": "...",
+      "situation": "...",
+      "task": "...",
+      "action": "...",
+      "result": "...",
+      "keywords": ["behaviour", "values", "culture"]
     }}
   ]
 }}

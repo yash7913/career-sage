@@ -20,6 +20,7 @@ const THEME_COLORS: Record<string, string> = {
   'Data-Driven Decision': '#3B82F6',
   'Conflict Resolution': '#F59E0B',
   'Failure and Learning': '#F97316',
+  'Behavioural': '#EC4899',
 }
 
 const SECTIONS = ['situation', 'task', 'action', 'result'] as const
