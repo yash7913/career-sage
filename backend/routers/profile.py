@@ -286,3 +286,172 @@ async def get_profile_intelligence(user_id: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class GenerateAssetRequest(BaseModel):
+    user_id: str
+    asset_type: str
+    tone: Optional[str] = "professional"
+
+@router.post("/generate-asset")
+async def generate_profile_asset(req: GenerateAssetRequest):
+    try:
+        import anthropic
+        profile = supabase.table("user_profiles").select("*").eq("user_id", req.user_id).execute()
+        if not profile.data:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        p = profile.data[0]
+        name = p.get("full_name") or "the candidate"
+        summary = p.get("extracted_summary") or ""
+        raw_text = p.get("raw_profile_text") or ""
+        cohort = p.get("cohort") or ""
+        skills = p.get("extracted_skills") or []
+        years_exp = p.get("years_of_experience") or 0
+        impact_pattern = p.get("impact_pattern") or ""
+
+        if isinstance(skills, list):
+            skills = [s for s in skills if isinstance(s, str)]
+
+        skill_str = ", ".join(skills[:12])
+
+        PROMPTS = {
+            "linkedin_summary": f"""Write a compelling LinkedIn About section for {name}.
+
+Profile context:
+- Cohort: {cohort}
+- Years of experience: {years_exp}
+- Impact pattern: {impact_pattern}
+- Summary: {summary}
+- Key skills: {skill_str}
+- Work history context: {raw_text[:1000]}
+
+Requirements:
+- 3 paragraphs, ~200 words total
+- First person, conversational but professional
+- First paragraph: who you are and what you do
+- Second paragraph: biggest achievements with specific metrics
+- Third paragraph: what you are looking for next
+- No buzzwords like "passionate", "rockstar", "ninja"
+- End with a clear call to action
+- Optimised for recruiter search on LinkedIn
+
+Return only the LinkedIn summary text, no headers or labels.""",
+
+            "elevator_pitch_60": f"""Write a 60-second elevator pitch for {name}.
+
+Profile context:
+- Cohort: {cohort}
+- Years of experience: {years_exp}
+- Impact pattern: {impact_pattern}
+- Summary: {summary}
+- Key skills: {skill_str}
+
+Requirements:
+- Exactly 150 words
+- Natural spoken rhythm — use contractions, short sentences
+- Structure: Who you are → What you have built → Specific impact → What you are targeting → Why it matters
+- No buzzwords or jargon
+- Ends with an engaging question or transition
+
+Return only the pitch text, no headers or labels.""",
+
+            "elevator_pitch_30": f"""Write a 30-second elevator pitch for {name}.
+
+Profile context:
+- Cohort: {cohort}
+- Years of experience: {years_exp}
+- Summary: {summary}
+- Key skills: {skill_str}
+
+Requirements:
+- Exactly 75 words
+- Punchy, memorable, specific
+- Structure: Role + company type → Biggest impact → What you want next
+- No buzzwords
+
+Return only the pitch text, no headers or labels.""",
+
+            "bio_short": f"""Write a 50-word professional bio for {name} in third person.
+
+Profile context:
+- Cohort: {cohort}
+- Years of experience: {years_exp}
+- Summary: {summary}
+- Key skills: {skill_str}
+
+Use for: Twitter bio, Slack profile, conference badge.
+Requirements: Third person, specific not generic, one memorable detail, no buzzwords.
+
+Return only the bio text, no headers or labels.""",
+
+            "bio_medium": f"""Write a 150-word professional bio for {name} in third person.
+
+Profile context:
+- Cohort: {cohort}
+- Years of experience: {years_exp}
+- Impact pattern: {impact_pattern}
+- Summary: {summary}
+- Key skills: {skill_str}
+- Work history: {raw_text[:600]}
+
+Use for: speaker bio, portfolio site.
+Requirements: Third person, 2 paragraphs, specific achievements with metrics, current focus, no buzzwords.
+
+Return only the bio text, no headers or labels.""",
+
+            "bio_long": f"""Write a 400-word professional bio for {name} in third person.
+
+Profile context:
+- Cohort: {cohort}
+- Years of experience: {years_exp}
+- Impact pattern: {impact_pattern}
+- Summary: {summary}
+- Key skills: {skill_str}
+- Work history: {raw_text[:1500]}
+
+Use for: personal website About page.
+Requirements: Third person, 3-4 paragraphs, career narrative arc, specific achievements, current mission, personal element, no buzzwords.
+
+Return only the bio text, no headers or labels.""",
+
+            "brand_statements": f"""Generate 3 personal brand statements for {name}.
+
+Profile context:
+- Cohort: {cohort}
+- Years of experience: {years_exp}
+- Impact pattern: {impact_pattern}
+- Summary: {summary}
+- Key skills: {skill_str}
+
+Requirements:
+- Each statement is ONE sentence, under 20 words
+- Specific, memorable, non-generic
+- Format: [Role identity] who [distinctive approach/superpower] to [specific outcome]
+- Example: "Data-oriented PM who turns security telemetry into product decisions at enterprise scale"
+- Three different angles: technical, impact, vision
+
+Return exactly 3 statements, one per line, no numbering or labels.""",
+        }
+
+        prompt = PROMPTS.get(req.asset_type)
+        if not prompt:
+            raise HTTPException(status_code=400, detail=f"Unknown asset type: {req.asset_type}")
+
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        content = message.content[0].text.strip()
+
+        asset_key = f"generated_{req.asset_type}"
+        supabase.table("user_profiles").update({
+            asset_key: content
+        }).eq("user_id", req.user_id).execute()
+
+        return {"content": content, "asset_type": req.asset_type}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

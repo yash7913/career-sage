@@ -10,6 +10,7 @@ import ContactDetailsForm from '@/components/profile/ContactDetailsForm'
 import PreferencesPanel from '@/components/profile/PreferencesPanel'
 import PentagramScore from '@/components/profile/PentagramScore'
 import ProfileIntelligence from '@/components/profile/ProfileIntelligence'
+import GenerativeAssets from '@/components/profile/GenerativeAssets'
 
 function ExpandableSkills({ skills }: { skills: string[] }) {
   const [expanded, setExpanded] = useState(false)
@@ -230,6 +231,7 @@ export default function DashboardTabs({
               tracks={tracks}
               hasProfile={hasProfile}
               onTrackCreated={() => setActiveTab('discover')}
+	      tier={tier}
             />
           )}
         </div>
@@ -239,12 +241,13 @@ export default function DashboardTabs({
 }
 
 function ProfileTab({
-  userId, tracks, hasProfile, onTrackCreated,
+  userId, tracks, hasProfile, onTrackCreated, tier,
 }: {
   userId: string
   tracks: Track[]
   hasProfile: boolean
   onTrackCreated: () => void
+  tier?: string
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -327,20 +330,15 @@ function ProfileTab({
         <PreferencesPanel userId={userId} />
       </div>
 
-      {/* Generative assets placeholder */}
+      {/* Generative profile assets */}
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
-        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 6px' }}>GENERATIVE PROFILE ASSETS</p>
-        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1rem' }}>
-          LinkedIn summary, elevator pitch, and bio variations — coming in Day 11.
+        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 4px' }}>
+          GENERATIVE PROFILE ASSETS
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
-          {['LinkedIn Summary', 'Elevator Pitch', 'Short Bio', 'Personal Brand'].map(asset => (
-            <div key={asset} style={{ padding: '10px 14px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: `1px solid ${BORDER}`, opacity: 0.5 }}>
-              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0, fontWeight: 500 }}>{asset}</p>
-              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)', margin: '4px 0 0' }}>Coming soon</p>
-            </div>
-          ))}
-        </div>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1.25rem', lineHeight: 1.5 }}>
+          One-click generation of LinkedIn summaries, elevator pitches, bios, and personal brand statements — all tailored to your profile.
+        </p>
+        <GenerativeAssets userId={userId} tier={tier} />
       </div>
     </div>
   )
