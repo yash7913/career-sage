@@ -84,6 +84,9 @@ interface DashboardTabsProps {
   hasProfile: boolean
   hasTracks: boolean
   initialTab?: string
+  salaryTargetLpa?: number
+  impactPattern?: string
+
 }
 
 const COLOR_MAP: Record<string, string> = {
@@ -95,7 +98,7 @@ export default function DashboardTabs({
   userId, userEmail, userName, cohort, tier,
   tracks, matchedJobs, applicationsTracked,
   topMatchScore, generationCount, profileSkills = [],
-  hasProfile, hasTracks, initialTab,
+  hasProfile, hasTracks, initialTab, impactPattern = '',salaryTargetLpa,
 }: DashboardTabsProps) {
   const defaultTab = initialTab || (hasTracks ? 'discover' : 'profile')
   const [activeTab, setActiveTab] = useState<string>(defaultTab)
@@ -142,9 +145,23 @@ export default function DashboardTabs({
               </p>
             )}
             {hasProfile && hasTracks && (
-              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 10px' }}>
+              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 Your ranked job feed is ready.{' '}
                 <span className="cs-highlight">⚡ {matchedJobs} roles matched</span>
+                {impactPattern && (
+                  <span style={{
+                    fontSize: '12px', fontWeight: 600,
+                    padding: '2px 10px', borderRadius: '999px',
+                    background: 'rgba(245,158,11,0.12)',
+                    color: '#F59E0B',
+                    border: '1px solid rgba(245,158,11,0.25)',
+                  }}>
+                    {impactPattern === 'Builder' ? '🏗️' :
+                     impactPattern === 'Scaler' ? '📈' :
+                     impactPattern === 'Optimizer' ? '⚙️' :
+                     impactPattern === 'Fixer' ? '🔧' : '🎯'} {impactPattern}
+                  </span>
+                )}
               </p>
             )}
             {hasProfile && profileSkills.length > 0 && (

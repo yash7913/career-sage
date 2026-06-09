@@ -29,6 +29,8 @@ export default async function DashboardPage() {
 
   const applicationsTracked = Array.isArray(pipeline) ? pipeline.length : 0
   const generationCount = profile?.generation_count ?? 0
+  const impactPattern = profile?.impact_pattern ?? ''
+  const salaryTargetLpa = profile?.salary_target_lpa ?? undefined
 
   let matchedJobs = 0
   let topMatchScore = 0
@@ -65,6 +67,8 @@ export default async function DashboardPage() {
         profileSkills={profile?.extracted_skills || []}
         hasProfile={hasProfile}
         hasTracks={hasTracks}
+	impactPattern={impactPattern}
+        salaryTargetLpa={salaryTargetLpa}
       />
     </main>
   )
