@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -38,6 +38,12 @@ export default function InterviewQuestions({
 }: InterviewQuestionsProps) {
   const [data, setData] = useState<{ rounds: Round[] } | null>(cachedQuestions || null)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!data && !loading) {
+      handleGenerate()
+    }
+  }, [])
   const [activeRound, setActiveRound] = useState(0)
   const [expandedQ, setExpandedQ] = useState<number | null>(null)
   const isPro = tier === 'PREMIUM_PRO' || tier === 'STUDENT_VERIFIED'
@@ -63,23 +69,8 @@ export default function InterviewQuestions({
   if (!data) {
     return (
       <div style={{ padding: '1.5rem', textAlign: 'center' }}>
-        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1rem', lineHeight: 1.6 }}>
-          Career Sage will predict likely interview questions for each round based on this JD and your profile.
-        </p>
-        <button
-          onClick={handleGenerate}
-          disabled={loading}
-          style={{
-            padding: '10px 24px', borderRadius: '9px',
-            background: loading ? 'rgba(16,185,129,0.3)' : 'linear-gradient(135deg, #10B981, #059669)',
-            color: '#fff', border: 'none', fontSize: '13px', fontWeight: 700,
-            cursor: loading ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {loading ? '⟳ Predicting questions...' : '🎯 Predict interview questions'}
-        </button>
-        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)', margin: '8px 0 0' }}>
-          Uses your profile + JD to predict questions by round
+        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>
+          {loading ? '⟳ Predicting interview questions...' : 'Loading...'}
         </p>
       </div>
     )
@@ -195,7 +186,7 @@ export default function InterviewQuestions({
 
       {/* Regenerate */}
       <button
-        onClick={handleGenerate}
+        onClick={e => { e.stopPropagation(); handleGenerate() }}
         disabled={loading}
         style={{
           padding: '7px', borderRadius: '8px',
