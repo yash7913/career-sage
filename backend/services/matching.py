@@ -64,7 +64,7 @@ def identify_skill_gaps(profile_skills: list, job_skills: list) -> list[str]:
 
 async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
     profile = supabase.table("user_profiles")\
-        .select("extracted_skills, raw_profile_text, extracted_summary")\
+        .select("extracted_skills, raw_profile_text, extracted_summary, cohort, years_of_experience, impact_pattern")\
         .eq("user_id", user_id)\
         .execute()
 
@@ -86,7 +86,7 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
     track_data = track.data[0]
 
     print(f"Generating track embedding for: {track_data['track_name']}")
-    track_embedding = generate_track_embedding(raw_profile, track_data)
+    track_embedding = generate_track_embedding(raw_profile, track_data, profile_data)
 
     if not track_embedding:
         raise ValueError("Failed to generate track embedding")
@@ -96,9 +96,9 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
     }).eq("track_id", track_id).execute()
 
     jobs = supabase.table("aggregated_jobs")\
-        .select("*")\
-        .eq("is_active", True)\
-        .execute()
+                .select("id, job_title, company_name, location, skills_needed, job_description, source_link, estimated_salary_min, estimated_salary_max, estimated_interview_rounds, description_embedding, target_cohorts")\
+                .eq("is_active", True)\
+                .execute()
 
     if not jobs.data:
         return {"matched": 0}
@@ -128,11 +128,17 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
 
             sen_score = seniority_score(years_exp, job["job_title"])
 
-            weighted_score = (
+            from services.job_cohort_classifier import get_cohort_alignment
+            user_cohort = profile_data.get("cohort") or ""
+            job_cohorts = job.get("target_cohorts") or []
+            cohort_alignment = get_cohort_alignment(user_cohort, job_cohorts)
+
+            raw_score = (
                 vector_sim * 0.40 +
                 skill_sim * 0.40 +
                 sen_score * 0.20
             )
+            weighted_score = raw_score * cohort_alignment
             match_pct = min(int(weighted_score * 100), 99)
 
             skill_gaps = identify_skill_gaps(

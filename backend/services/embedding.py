@@ -22,25 +22,63 @@ def generate_embedding(text: str) -> list[float]:
     )
     return response.data[0].embedding
 
+def generate_track_embedding(master_profile: str, track: dict, profile: dict = None) -> list[float]:
+    parts = []
 
-def generate_track_embedding(master_profile: str, track: dict) -> list[float]:
-    emphasized = ", ".join(track.get("emphasized_skills") or [])
+    if profile:
+        cohort = profile.get("cohort") or ""
+        if cohort:
+            parts.append(f"Professional cohort: {cohort}")
+
+        years_exp = profile.get("years_of_experience") or 0
+        if years_exp:
+            parts.append(f"Years of experience: {years_exp}")
+
+        impact = profile.get("impact_pattern") or ""
+        if impact:
+            parts.append(f"Impact pattern: {impact}")
+
+        summary = profile.get("extracted_summary") or ""
+        if summary:
+            parts.append(f"Professional summary: {summary}")
+
+        raw_text = profile.get("raw_profile_text") or ""
+        if raw_text:
+            parts.append(f"Work history: {raw_text[:1500]}")
+
+        skills = profile.get("extracted_skills") or []
+        if isinstance(skills, list):
+            skill_names = [s for s in skills if isinstance(s, str)]
+            if skill_names:
+                parts.append(f"Skills: {', '.join(skill_names)}")
+    else:
+        parts.append(f"Experience and skills: {master_profile}")
+
+    track_name = track.get("track_name") or ""
+    if track_name:
+        parts.append(f"Target track: {track_name}")
+
     target_roles = ", ".join(track.get("target_roles") or [])
-    aspiration = ", ".join(track.get("aspiration_skills") or [])
+    if target_roles:
+        parts.append(f"Target roles: {target_roles}")
+
     seniority = track.get("target_seniority") or ""
-    track_summary = track.get("track_summary") or ""
-    personal_notes = track.get("personal_notes") or ""
+    if seniority:
+        parts.append(f"Seniority level: {seniority}")
 
-    blended_text = f"""
-Experience and skills: {master_profile}
-Target roles: {target_roles}
-Seniority level: {seniority}
-Skills to emphasize: {emphasized}
-Growing toward: {aspiration}
-Track direction: {track_summary}
-Additional context: {personal_notes}
-""".strip()
+    emphasized = ", ".join(track.get("emphasized_skills") or [])
+    if emphasized:
+        parts.append(f"Skills to emphasize: {emphasized}")
 
+    aspiration = ", ".join(track.get("aspiration_skills") or [])
+    if aspiration:
+        parts.append(f"Growing toward: {aspiration}")
+
+    track_summary = track.get("track_summary") or track.get("personal_notes") or ""
+    if track_summary:
+        parts.append(f"Track direction: {track_summary}")
+
+    blended_text = "\n".join(parts)
     return generate_embedding(blended_text)
 
 
