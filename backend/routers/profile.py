@@ -267,10 +267,20 @@ async def get_profile_intelligence(user_id: str):
         user_skill_names = {s.lower() for s in skills}
         gaps = [s for s in expected_skills if s.lower() not in user_skill_names][:5]
 
+        from services.profile_intelligence import identify_hidden_strengths, generate_experience_translation
+        hidden_strengths = identify_hidden_strengths(raw_text, skills)
+        translations = generate_experience_translation(
+            raw_text, cohort,
+            "Product Management",
+            trajectory.get("trajectory") or ""
+        )
+
         return {
             "trajectory": trajectory,
             "enriched_skills": enriched_skills,
             "skill_gaps": gaps,
+            "hidden_strengths": hidden_strengths,
+            "experience_translations": translations,
             "years_of_experience": years_exp,
             "cohort": cohort,
         }
