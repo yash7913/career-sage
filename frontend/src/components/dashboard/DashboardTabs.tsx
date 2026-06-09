@@ -189,6 +189,7 @@ export default function DashboardTabs({
               userId={userId}
               tracks={tracks}
               profileSkills={profileSkills}
+              tier={tier}
               onDownload={() => {
                 setTrackerKey(prev => prev + 1)
                 setActiveTab('pipeline')

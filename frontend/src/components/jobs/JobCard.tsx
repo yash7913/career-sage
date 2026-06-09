@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import GenerationWorkspace from '@/components/generate/GenerationWorkspace'
 import EvaluateResume from '@/components/generate/EvaluateResume'
+import InterviewQuestions from '@/components/jobs/InterviewQuestions'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -171,7 +172,7 @@ function WhyYouMatch({ job, profileSkills, salaryTargetLpa }: {
 type DetailTab = 'jd' | 'interview' | 'pay' | 'company'
 
 
-function DetailTabs({ job, tier = 'GENERAL_FREE' }: { job: Job; tier?: string }) {
+function DetailTabs({ job, tier = 'GENERAL_FREE', userId = '' }: { job: Job; tier?: string; userId?: string }) {
   const [activeTab, setActiveTab] = useState<DetailTab>('jd')
   const isPro = tier === 'PREMIUM_PRO' || tier === 'STUDENT_VERIFIED'
 
@@ -231,26 +232,22 @@ function DetailTabs({ job, tier = 'GENERAL_FREE' }: { job: Job; tier?: string })
       )}
 
       {activeTab === 'interview' && (
-        isPro ? (
-          <div>
-            {job.estimated_interview_rounds ? (
-              <div>
-                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', margin: '0 0 6px' }}>
-                  📋 {job.estimated_interview_rounds} rounds
-                </p>
-                {job.interview_breakdown_notes && (
-                  <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0, lineHeight: 1.6 }}>
-                    {job.interview_breakdown_notes}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>No interview data available for this role yet.</p>
-            )}
-          </div>
-        ) : <ProLock feature="Interview process details" />
+        <div>
+          {job.estimated_interview_rounds && (
+            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: '0 0 12px' }}>
+              ≡ƒôï {job.estimated_interview_rounds} rounds estimated
+              {job.interview_breakdown_notes && ` · ${job.interview_breakdown_notes}`}
+            </p>
+          )}
+          <InterviewQuestions
+            jobId={job.job_id}
+            userId={userId}
+            jobTitle={job.job_title}
+            company={job.company_name}
+            tier={tier}
+          />
+        </div>
       )}
-
       {activeTab === 'pay' && (
         isPro ? (
           <div>
@@ -309,7 +306,7 @@ function ProLock({ feature }: { feature: string }) {
 }
 
 export default function JobCard({
-  job, userId, trackId, profileSkills, onStar, onDownload, rank, salaryTargetLpa,
+  job, userId, trackId, profileSkills, onStar, onDownload, rank, salaryTargetLpa, tier,
 }: {
   job: Job
   userId: string
@@ -319,6 +316,7 @@ export default function JobCard({
   onDownload?: () => void
   rank?: number
   salaryTargetLpa?: number
+  tier?: string
 }) {
   const [expanded, setExpanded] = useState(false)
   const [starred, setStarred] = useState(job.is_starred)
@@ -456,7 +454,7 @@ export default function JobCard({
         {expanded && (
           <div style={{ marginTop: '12px' }}>
             <WhyYouMatch job={job} profileSkills={profileSkills} salaryTargetLpa={salaryTargetLpa} />
-            <DetailTabs job={job} />
+            <DetailTabs job={job} tier={tier} userId={userId} />
           </div>
         )}
       </div>

@@ -267,3 +267,98 @@ async def regenerate_track_embedding(user_id: str, track_id: str):
         return {"status": "ok", "embedding_length": len(embedding)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class InterviewQuestionsRequest(BaseModel):
+    user_id: str
+    job_id: str
+
+@router.post("/interview-questions")
+async def generate_interview_questions(req: InterviewQuestionsRequest):
+    try:
+        import anthropic
+        job = supabase.table("aggregated_jobs").select("*").eq("id", req.job_id).execute()
+        if not job.data:
+            raise HTTPException(status_code=404, detail="Job not found")
+        j = job.data[0]
+
+        profile = supabase.table("user_profiles").select("*").eq("user_id", req.user_id).execute()
+        p = profile.data[0] if profile.data else {}
+
+        job_title = j.get("job_title") or ""
+        company = j.get("company_name") or ""
+        jd = (j.get("job_description") or "")[:2000]
+        skills_needed = j.get("skills_needed") or []
+        cohort = p.get("cohort") or ""
+        years_exp = p.get("years_of_experience") or 0
+
+        prompt = f"""You are an expert interview coach. Predict the most likely interview questions for this role.
+
+Role: {job_title} at {company}
+Candidate cohort: {cohort} with {years_exp} years experience
+Job description excerpt: {jd[:1500]}
+Required skills: {', '.join(skills_needed[:10])}
+
+Generate interview questions for each round. Return ONLY valid JSON in this exact format:
+{{
+  "rounds": [
+    {{
+      "round": "Screening",
+      "description": "30-min recruiter call",
+      "questions": [
+        {{"question": "...", "why": "...", "tip": "..."}},
+        {{"question": "...", "why": "...", "tip": "..."}},
+        {{"question": "...", "why": "...", "tip": "..."}}
+      ]
+    }},
+    {{
+      "round": "Technical",
+      "description": "60-min technical assessment",
+      "questions": [3 questions with same format]
+    }},
+    {{
+      "round": "Product/Case",
+      "description": "45-min product sense or case study",
+      "questions": [3 questions with same format]
+    }},
+    {{
+      "round": "Leadership",
+      "description": "45-min behavioural and leadership",
+      "questions": [3 questions with same format]
+    }},
+    {{
+      "round": "Final",
+      "description": "Culture fit and motivation",
+      "questions": [3 questions with same format]
+    }}
+  ]
+}}
+
+For each question:
+- "question": the actual interview question
+- "why": why interviewers ask this for this specific role
+- "tip": one specific tip for answering it well
+
+Return only the JSON object, no markdown, no explanation."""
+
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=3000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        import json
+        import re
+        content = message.content[0].text.strip()
+        content = re.sub(r'^```json\s*', '', content)
+        content = re.sub(r'\s*```$', '', content)
+        data = json.loads(content)
+
+        supabase.table("aggregated_jobs").update({
+            "interview_questions": json.dumps(data)
+        }).eq("id", req.job_id).execute()
+
+        return data
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

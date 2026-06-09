@@ -38,7 +38,7 @@ const COLOR_MAP: Record<string, string> = {
   blue: '#3B82F6', amber: '#F59E0B', coral: '#F97316',
 }
 
-export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkills = [] }: { userId: string; tracks: Track[]; onDownload?: () => void; profileSkills?: string[] }) {
+export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkills = [], tier }: { userId: string; tracks: Track[]; onDownload?: () => void; profileSkills?: string[]; tier?: string }) {
   const [activeTrack, setActiveTrack] = useState<Track | null>(tracks[0] || null)
   const [jobs, setJobs] = useState<Job[]>([])
   const { filters, setFilters, filtered, allSkills } = useJobFilters(jobs)
@@ -205,6 +205,7 @@ filtered.map((job, index) => (
               onStar={handleStar}
               onDownload={onDownload}
               rank={index + 1}
+              tier={tier}
             />
           </div>
         ))
