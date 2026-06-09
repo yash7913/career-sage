@@ -580,3 +580,94 @@ Return only the JSON object, no markdown."""
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class OfferAnalysisRequest(BaseModel):
+    user_id: str
+    job_title: str
+    company: str
+    base_salary_lpa: float
+    bonus_lpa: Optional[float] = None
+    equity_percent: Optional[float] = None
+    joining_bonus_lpa: Optional[float] = None
+    notes: Optional[str] = None
+
+@router.post("/analyse-offer")
+async def analyse_offer(req: OfferAnalysisRequest):
+    try:
+        import anthropic
+        profile = supabase.table("user_profiles").select("*").eq("user_id", req.user_id).execute()
+        p = profile.data[0] if profile.data else {}
+
+        cohort = p.get("cohort") or ""
+        years_exp = p.get("years_of_experience") or 0
+        salary_target = p.get("salary_target_lpa") or 0
+        location = p.get("location") or "India"
+
+        total_comp = req.base_salary_lpa
+        if req.bonus_lpa:
+            total_comp += req.bonus_lpa
+        if req.joining_bonus_lpa:
+            total_comp += req.joining_bonus_lpa / 3
+
+        prompt = f"""You are an expert compensation analyst and negotiation coach for the Indian tech market.
+
+Analyse this job offer and provide negotiation guidance.
+
+Candidate profile:
+- Cohort: {cohort}
+- Years of experience: {years_exp}
+- Salary target: ₹{salary_target} LPA
+- Location: {location}
+
+Offer details:
+- Role: {req.job_title} at {req.company}
+- Base salary: ₹{req.base_salary_lpa} LPA
+- Bonus: ₹{req.bonus_lpa or 0} LPA
+- Equity: {req.equity_percent or 0}%
+- Joining bonus: ₹{req.joining_bonus_lpa or 0} LPA
+- Total comp (approx): ₹{total_comp:.1f} LPA
+- Additional notes: {req.notes or 'None'}
+
+Provide analysis in this exact JSON format:
+{{
+  "verdict": "Strong Offer|Fair Offer|Below Market|Lowball",
+  "verdict_reason": "One sentence explaining the verdict",
+  "market_range": {{
+    "low": 0,
+    "mid": 0,
+    "high": 0
+  }},
+  "counter_offer": {{
+    "base_salary_lpa": 0,
+    "bonus_lpa": 0,
+    "joining_bonus_lpa": 0,
+    "reasoning": "2-3 sentences explaining the counter-offer logic"
+  }},
+  "negotiation_script": "A 150-word script the candidate can use to negotiate. Natural, professional, specific. Starts with appreciation then pivots to counter.",
+  "negotiation_tips": [
+    "Specific tip 1 for this offer",
+    "Specific tip 2 for this offer",
+    "Specific tip 3 for this offer"
+  ],
+  "red_flags": [],
+  "green_flags": []
+}}
+
+Base market range on {cohort} roles with {years_exp} years experience in Indian tech market in 2026.
+Return only JSON, no markdown."""
+
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        import json, re
+        content = message.content[0].text.strip()
+        content = re.sub(r'^```json\s*', '', content)
+        content = re.sub(r'\s*```$', '', content)
+        return json.loads(content)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

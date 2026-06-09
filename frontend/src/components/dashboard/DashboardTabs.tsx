@@ -12,6 +12,7 @@ import PentagramScore from '@/components/profile/PentagramScore'
 import ProfileIntelligence from '@/components/profile/ProfileIntelligence'
 import GenerativeAssets from '@/components/profile/GenerativeAssets'
 import StarStories from '@/components/profile/StarStories'
+import OfferAnalyser from '@/components/profile/OfferAnalyser'
 
 function ExpandableSkills({ skills }: { skills: string[] }) {
   const [expanded, setExpanded] = useState(false)
@@ -353,6 +354,19 @@ function ProfileTab({
             5 interview-ready STAR stories generated from your work history. Copy individual sections or the full story. Tweak and regenerate anytime.
           </p>
           <StarStories userId={userId} />
+        </div>
+      )}
+
+      {/* Offer analyser */}
+      {hasProfile && (
+        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+          <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 4px' }}>
+            OFFER ANALYSER
+          </p>
+          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1.25rem', lineHeight: 1.5 }}>
+            Paste in any offer — Career Sage benchmarks it against market data, suggests a counter-offer, and writes your negotiation script.
+          </p>
+          <OfferAnalyser userId={userId} />
         </div>
       )}
     </div>
