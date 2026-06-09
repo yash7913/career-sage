@@ -455,3 +455,119 @@ Return exactly 3 statements, one per line, no numbering or labels.""",
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class GenerateStarRequest(BaseModel):
+    user_id: str
+    force_regenerate: bool = False
+    user_tweak: Optional[str] = None
+
+@router.post("/generate-star-stories")
+async def generate_star_stories(req: GenerateStarRequest):
+    try:
+        import anthropic
+        import json
+        profile = supabase.table("user_profiles").select("*").eq("user_id", req.user_id).execute()
+        if not profile.data:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        p = profile.data[0]
+
+        if not req.force_regenerate:
+            cached = p.get("generated_star_stories")
+            if cached:
+                if isinstance(cached, str):
+                    cached = json.loads(cached)
+                if isinstance(cached, dict) and cached.get("stories"):
+                    return cached
+
+        name = p.get("full_name") or "the candidate"
+        raw_text = p.get("raw_profile_text") or ""
+        cohort = p.get("cohort") or ""
+        years_exp = p.get("years_of_experience") or 0
+
+        tweak_instruction = ""
+        if req.user_tweak:
+            tweak_instruction = f"\n\nSpecial instruction from candidate: {req.user_tweak}"
+
+        prompt = f"""You are an expert interview coach. Generate 5 STAR stories from this candidate's work history.
+
+Candidate: {name}
+Cohort: {cohort}
+Years of experience: {years_exp}
+Work history: {raw_text[:2000]}{tweak_instruction}
+
+Generate exactly 5 STAR stories, one for each theme. Return ONLY valid JSON:
+{{
+  "stories": [
+    {{
+      "theme": "Leadership",
+      "title": "One line title summarising the story",
+      "situation": "2-3 sentences setting the context and challenge",
+      "task": "1-2 sentences describing your specific responsibility",
+      "action": "3-4 sentences describing the specific steps you took",
+      "result": "2-3 sentences with specific measurable outcomes",
+      "keywords": ["leadership", "team", "stakeholder"]
+    }},
+    {{
+      "theme": "Problem Solving",
+      "title": "...",
+      "situation": "...",
+      "task": "...",
+      "action": "...",
+      "result": "...",
+      "keywords": ["analysis", "data", "solution"]
+    }},
+    {{
+      "theme": "Data-Driven Decision",
+      "title": "...",
+      "situation": "...",
+      "task": "...",
+      "action": "...",
+      "result": "...",
+      "keywords": ["data", "metrics", "insight"]
+    }},
+    {{
+      "theme": "Conflict Resolution",
+      "title": "...",
+      "situation": "...",
+      "task": "...",
+      "action": "...",
+      "result": "...",
+      "keywords": ["conflict", "alignment", "communication"]
+    }},
+    {{
+      "theme": "Failure and Learning",
+      "title": "...",
+      "situation": "...",
+      "task": "...",
+      "action": "...",
+      "result": "...",
+      "keywords": ["failure", "learning", "growth"]
+    }}
+  ]
+}}
+
+Base each story on real evidence from the work history. Use specific metrics, company names, and outcomes where available.
+Return only the JSON object, no markdown."""
+
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=3000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        content = message.content[0].text.strip()
+        import re
+        content = re.sub(r'^```json\s*', '', content)
+        content = re.sub(r'\s*```$', '', content)
+        data = json.loads(content)
+
+        supabase.table("user_profiles").update({
+            "generated_star_stories": json.dumps(data)
+        }).eq("user_id", req.user_id).execute()
+
+        return data
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

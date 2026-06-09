@@ -11,6 +11,7 @@ import PreferencesPanel from '@/components/profile/PreferencesPanel'
 import PentagramScore from '@/components/profile/PentagramScore'
 import ProfileIntelligence from '@/components/profile/ProfileIntelligence'
 import GenerativeAssets from '@/components/profile/GenerativeAssets'
+import StarStories from '@/components/profile/StarStories'
 
 function ExpandableSkills({ skills }: { skills: string[] }) {
   const [expanded, setExpanded] = useState(false)
@@ -341,6 +342,19 @@ function ProfileTab({
         </p>
         <GenerativeAssets userId={userId} tier={tier} />
       </div>
+
+      {/* STAR story bank */}
+      {hasProfile && (
+        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+          <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 4px' }}>
+            STAR STORY BANK
+          </p>
+          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1.25rem', lineHeight: 1.5 }}>
+            5 interview-ready STAR stories generated from your work history. Copy individual sections or the full story. Tweak and regenerate anytime.
+          </p>
+          <StarStories userId={userId} />
+        </div>
+      )}
     </div>
   )
 }
