@@ -118,3 +118,89 @@ async def delete_card(card_id: str):
         return {"status": "deleted"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class RejectionAnalysisRequest(BaseModel):
+    user_id: str
+    job_id: str
+    stage_reached: str
+    notes: Optional[str] = None
+
+@router.post("/rejection-analysis")
+async def rejection_analysis(req: RejectionAnalysisRequest):
+    try:
+        import anthropic
+        import json
+        import re
+
+        profile = supabase.table("user_profiles").select("*").eq("user_id", req.user_id).execute()
+        p = profile.data[0] if profile.data else {}
+
+        job = supabase.table("aggregated_jobs").select("*").eq("id", req.job_id).execute()
+        j = job.data[0] if job.data else {}
+
+        cohort = p.get("cohort") or ""
+        years_exp = p.get("years_of_experience") or 0
+        skills = p.get("extracted_skills") or []
+        if isinstance(skills, list):
+            skills = [s for s in skills if isinstance(s, str)]
+
+        job_title = j.get("job_title") or ""
+        company = j.get("company_name") or ""
+        jd = (j.get("job_description") or "")[:1500]
+        skills_needed = j.get("skills_needed") or []
+
+        skill_gaps = [s for s in skills_needed if s.lower() not in {sk.lower() for sk in skills}]
+
+        prompt = f"""You are an expert career coach. Analyse why this job application was likely rejected and provide actionable guidance.
+
+Candidate profile:
+- Cohort: {cohort}
+- Years of experience: {years_exp}
+- Skills: {', '.join(skills[:15])}
+
+Role applied for: {job_title} at {company}
+Stage reached before rejection: {req.stage_reached}
+Skills required but missing: {', '.join(skill_gaps[:8])}
+Candidate notes: {req.notes or 'None provided'}
+JD excerpt: {jd[:800]}
+
+Return ONLY valid JSON:
+{{
+  "likely_reasons": [
+    "Specific reason 1 based on the profile vs JD gap",
+    "Specific reason 2",
+    "Specific reason 3"
+  ],
+  "stage_analysis": "2-3 sentences explaining what rejection at the {req.stage_reached} stage typically means",
+  "skill_gaps_to_close": [
+    {{"skill": "skill name", "priority": "High|Medium|Low", "how_to_close": "specific action"}}
+  ],
+  "reapply_recommendation": "Yes in 6 months|Yes in 12 months|No — wrong fit|Yes — immediately after fixing X",
+  "reapply_reasoning": "2 sentences explaining the reapply recommendation",
+  "next_steps": [
+    "Specific actionable step 1",
+    "Specific actionable step 2",
+    "Specific actionable step 3"
+  ],
+  "similar_roles_to_target": [
+    "Role title 1 that would be a better fit right now",
+    "Role title 2"
+  ]
+}}
+
+Return only JSON, no markdown."""
+
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1500,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        content = message.content[0].text.strip()
+        content = re.sub(r'^```json\s*', '', content)
+        content = re.sub(r'\s*```$', '', content)
+        return json.loads(content)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import KanbanCard from './KanbanCard'
+import RejectionAnalysis from '@/components/tracker/RejectionAnalysis'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -36,6 +37,7 @@ export default function KanbanBoard({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(true)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
+  const [rejectionCard, setRejectionCard] = useState<{ jobId: string; jobTitle: string; company: string } | null>(null)
 
   useEffect(() => {
     fetchCards()
@@ -68,6 +70,16 @@ export default function KanbanBoard({ userId }: { userId: string }) {
         body: JSON.stringify({ stage: newStage }),
       }
     )
+    if (newStage === 'REJECTED') {
+      const card = cards.find(c => c.card_id === cardId)
+      if (card?.job_id) {
+        setRejectionCard({
+          jobId: card.job_id,
+          jobTitle: card.job_title || 'Unknown Role',
+          company: card.company_name || 'Unknown Company',
+        })
+      }
+    }
   }
 
   const handleNotesUpdate = async (cardId: string, notes: string) => {
@@ -196,21 +208,14 @@ export default function KanbanBoard({ userId }: { userId: string }) {
         })}
       </div>
 
-      {/* Rejected section — collapsed at bottom */}
-      {cards.filter(c => c.stage === 'REJECTED').length > 0 && (
-        <div style={{ marginTop: '16px', padding: '1rem', background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)', borderRadius: '12px' }}>
-          <p style={{ fontSize: '12px', fontWeight: 600, color: 'rgba(239,68,68,0.6)', margin: '0 0 10px' }}>
-            ✕ Rejected ({cards.filter(c => c.stage === 'REJECTED').length})
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
-            {cards.filter(c => c.stage === 'REJECTED').map(card => (
-              <div key={card.card_id} style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: `1px solid ${BORDER}` }}>
-                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: '0 0 2px' }}>{card.company_name}</p>
-                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', margin: 0, fontWeight: 500 }}>{card.job_title}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+      {rejectionCard && (
+        <RejectionAnalysis
+          userId={userId}
+          jobId={rejectionCard.jobId}
+          jobTitle={rejectionCard.jobTitle}
+          company={rejectionCard.company}
+          onClose={() => setRejectionCard(null)}
+        />
       )}
     </div>
   )
