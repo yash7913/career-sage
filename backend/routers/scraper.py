@@ -1,6 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
+import asyncio
 
 router = APIRouter()
 
@@ -40,3 +41,12 @@ async def scraper_status():
         "status": "ok",
         "active_jobs": total.count,
     }
+
+@router.post("/embed-jobs")
+async def embed_jobs_endpoint():
+    try:
+        from services.embedding import embed_all_jobs
+        result = await asyncio.to_thread(embed_all_jobs)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

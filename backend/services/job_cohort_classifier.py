@@ -104,16 +104,16 @@ JOB_COHORT_SIGNALS = {
 }
 
 COHORT_ADJACENCY = {
-    "Technical PM": ["Data-Oriented PM", "Platform PM", "AI/ML PM", "Technical Program Manager"],
+    "Technical PM": ["Data-Oriented PM", "Platform PM", "AI/ML PM", "Technical Program Manager", "Growth PM", "Consumer PM", "Enterprise PM"],
     "Data-Oriented PM": ["Technical PM", "Growth PM", "Analytics Engineer", "Data Scientist"],
-    "Growth PM": ["Data-Oriented PM", "Consumer PM", "Growth Marketer"],
+    "Growth PM": ["Data-Oriented PM", "Consumer PM", "Growth Marketer", "Technical PM"],
     "Data Scientist": ["ML Engineer", "Analytics Engineer", "Data Engineer", "Data-Oriented PM"],
-    "ML Engineer": ["Data Scientist", "Backend Engineer", "Platform / Infra Engineer"],
+    "ML Engineer": ["Data Scientist", "Analytics Engineer"],
     "Analytics Engineer": ["Data Scientist", "Data Engineer", "Data-Oriented PM"],
-    "Full-Stack Engineer": ["Backend Engineer", "Frontend Engineer", "Technical PM"],
-    "Backend Engineer": ["Full-Stack Engineer", "Platform / Infra Engineer", "Technical PM"],
-    "Technical Program Manager": ["Technical PM", "Operations Manager", "Backend Engineer"],
-    "Strategy Consultant": ["Operations Manager", "Enterprise PM", "Growth PM"],
+    "Full-Stack Engineer": ["Backend Engineer", "Frontend Engineer"],
+    "Backend Engineer": ["Full-Stack Engineer", "Platform / Infra Engineer"],
+    "Technical Program Manager": ["Technical PM", "Operations Manager"],
+    "Strategy Consultant": ["Operations Manager", "Enterprise PM"],
 }
 
 
@@ -155,24 +155,23 @@ def classify_job_cohorts(job_title: str, job_description: str) -> List[str]:
     top_score = sorted_cohorts[0][1]
     return [c for c, s in sorted_cohorts if s >= top_score * 0.6][:3]
 
-
 def get_cohort_alignment(user_cohort: str, job_cohorts: List[str]) -> float:
     if not user_cohort or not job_cohorts:
-        return 0.7
+        return 0.85
 
     if user_cohort in job_cohorts:
         return 1.0
 
     adjacent = COHORT_ADJACENCY.get(user_cohort, [])
     if any(jc in adjacent for jc in job_cohorts):
-        return 0.7
+        return 0.85
 
     user_domain = _get_domain(user_cohort)
     job_domains = [_get_domain(jc) for jc in job_cohorts]
     if user_domain in job_domains:
-        return 0.4
+        return 0.65
 
-    return 0.15
+    return 0.3
 
 
 def _get_domain(cohort: str) -> str:

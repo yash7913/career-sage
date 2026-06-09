@@ -95,15 +95,79 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
         "track_embedding": track_embedding
     }).eq("track_id", track_id).execute()
 
-    jobs = supabase.table("aggregated_jobs")\
-                .select("id, job_title, company_name, location, skills_needed, job_description, source_link, estimated_salary_min, estimated_salary_max, estimated_interview_rounds, description_embedding, target_cohorts")\
-                .eq("is_active", True)\
-                .execute()
+    from services.job_cohort_classifier import COHORT_ADJACENCY
+    user_cohort = profile_data.get("cohort") or ""
+    years_exp_filter = profile_data.get("years_of_experience") or 0
+
+    relevant_cohorts = [user_cohort]
+    adjacent = COHORT_ADJACENCY.get(user_cohort, [])
+    relevant_cohorts.extend(adjacent)
+
+    SENIORITY_EXCLUDE = []
+    if years_exp_filter >= 7:
+        SENIORITY_EXCLUDE = ["intern", "internship", "entry level", "junior", "associate", "fresher", "graduate trainee"]
+    elif years_exp_filter >= 3:
+        SENIORITY_EXCLUDE = ["intern", "internship", "entry level", "fresher", "graduate trainee"]
+
+    all_jobs_data = []
+    page = 0
+    batch = 1000
+    while True:
+        batch_result = supabase.table("aggregated_jobs")\
+            .select("id, job_title, company_name, location, skills_needed, job_description, source_link, estimated_salary_min, estimated_salary_max, estimated_interview_rounds, description_embedding, target_cohorts")\
+            .eq("is_active", True)\
+            .range(page * batch, (page + 1) * batch - 1)\
+            .execute()
+        if not batch_result.data:
+            break
+        all_jobs_data.extend(batch_result.data)
+        if len(batch_result.data) < batch:
+            break
+        page += 1
+    print(f"Fetched {len(all_jobs_data)} total jobs")
+
+    class JobsResult:
+        def __init__(self, data):
+            self.data = data
+    all_jobs = JobsResult(all_jobs_data)
+
+    HARD_EXCLUDE_TITLES = [
+        "account executive", "sales", "recruiter", "talent acquisition",
+        "customer success", "support engineer", "solutions engineer",
+        "field engineer", "network engineer", "hardware engineer",
+        "mechanical engineer", "civil engineer", "electrical engineer",
+        "qa engineer", "test engineer", "security engineer",
+        "compliance", "legal", "finance manager", "accounting",
+        "hr manager", "office manager", "executive assistant",
+    ]
+
+    filtered_jobs = []
+    for j in (all_jobs_data or []):
+        job_cohorts = j.get("target_cohorts") or []
+        title_lower = (j.get("job_title") or "").lower()
+
+        cohort_match = any(rc in job_cohorts for rc in relevant_cohorts)
+        if not cohort_match:
+            continue
+
+        seniority_excluded = any(excl in title_lower for excl in SENIORITY_EXCLUDE)
+        if seniority_excluded:
+            continue
+
+        hard_excluded = any(excl in title_lower for excl in HARD_EXCLUDE_TITLES)
+        if hard_excluded:
+            continue
+
+        filtered_jobs.append(j)
+
+    print(f"Pre-filtered {len(all_jobs.data)} jobs to {len(filtered_jobs)} relevant jobs for {user_cohort}")
+
+    jobs = type('obj', (object,), {'data': filtered_jobs})()
 
     if not jobs.data:
         return {"matched": 0}
 
-    years_exp = 3
+    years_exp = years_exp_filter or 3
     matched = 0
 
     for job in jobs.data:
@@ -111,7 +175,16 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
             job_embedding = job.get("description_embedding")
 
             if job_embedding:
-                vector_sim = cosine_similarity(track_embedding, job_embedding)
+                try:
+                    if isinstance(job_embedding, str):
+                        import json
+                        job_embedding = json.loads(job_embedding)
+                    vector_sim = cosine_similarity(track_embedding, job_embedding)
+                    if vector_sim > 0.1:
+                        print(f"  Good vector sim: {round(vector_sim,3)} for {job.get('job_title')}")
+                except Exception as ve:
+                    print(f"  Vector sim error: {ve}")
+                    vector_sim = 0.0
             else:
                 job_text = f"{job['job_title']} at {job['company_name']}\n{job['job_description']}"
                 job_emb = generate_embedding(job_text)
@@ -133,11 +206,27 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
             job_cohorts = job.get("target_cohorts") or []
             cohort_alignment = get_cohort_alignment(user_cohort, job_cohorts)
 
-            raw_score = (
-                vector_sim * 0.40 +
-                skill_sim * 0.40 +
-                sen_score * 0.20
-            )
+            from services.job_cohort_classifier import _get_domain
+            user_domain = _get_domain(user_cohort)
+
+            if user_domain == "product":
+                raw_score = (
+                    vector_sim * 0.65 +
+                    skill_sim * 0.20 +
+                    sen_score * 0.15
+                )
+            elif user_domain == "data":
+                raw_score = (
+                    vector_sim * 0.50 +
+                    skill_sim * 0.35 +
+                    sen_score * 0.15
+                )
+            else:
+                raw_score = (
+                    vector_sim * 0.40 +
+                    skill_sim * 0.40 +
+                    sen_score * 0.20
+                )
             weighted_score = raw_score * cohort_alignment
             match_pct = min(int(weighted_score * 100), 99)
 
@@ -168,7 +257,7 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
                 }).execute()
 
             matched += 1
-            print(f"{match_pct}% — {job['job_title']} at {job['company_name']}")
+            print(f"{match_pct}% (v:{round(vector_sim,2)} s:{round(skill_sim,2)} c:{round(cohort_alignment,2)}) — {job['job_title']} at {job['company_name']}")
 
         except Exception as e:
             print(f"Matching error for {job.get('job_title')}: {e}")

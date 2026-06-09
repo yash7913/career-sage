@@ -248,3 +248,22 @@ async def get_adjacent_roles(user_id: str, track_id: str, limit: int = 5):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/regenerate-embedding")
+async def regenerate_track_embedding(user_id: str, track_id: str):
+    try:
+        from services.embedding import generate_track_embedding
+        profile = supabase.table("user_profiles").select("*").eq("user_id", user_id).execute()
+        track = supabase.table("career_track_profiles").select("*").eq("track_id", track_id).execute()
+        if not profile.data or not track.data:
+            raise HTTPException(status_code=404, detail="Profile or track not found")
+        p = profile.data[0]
+        t = track.data[0]
+        raw_profile = p.get("raw_profile_text") or p.get("extracted_summary") or ""
+        embedding = generate_track_embedding(raw_profile, t, p)
+        supabase.table("career_track_profiles").update({
+            "track_embedding": embedding
+        }).eq("track_id", track_id).execute()
+        return {"status": "ok", "embedding_length": len(embedding)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
