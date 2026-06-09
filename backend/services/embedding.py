@@ -57,10 +57,14 @@ def generate_track_embedding(master_profile: str, track: dict, profile: dict = N
     track_name = track.get("track_name") or ""
     if track_name:
         parts.append(f"Target track: {track_name}")
+        parts.append(f"Role type: {track_name}")
+        parts.append(f"Seeking: {track_name} position")
 
     target_roles = ", ".join(track.get("target_roles") or [])
     if target_roles:
         parts.append(f"Target roles: {target_roles}")
+        parts.append(f"Job titles sought: {target_roles}")
+        parts.append(f"Applying for: {target_roles}")
 
     seniority = track.get("target_seniority") or ""
     if seniority:
@@ -77,6 +81,19 @@ def generate_track_embedding(master_profile: str, track: dict, profile: dict = N
     track_summary = track.get("track_summary") or track.get("personal_notes") or ""
     if track_summary:
         parts.append(f"Track direction: {track_summary}")
+
+    if track_name and any(pm in track_name.lower() for pm in ["product", "program", "tpm"]):
+        pm_context = [
+            "Product management product strategy roadmap prioritization",
+            "Stakeholder management cross-functional leadership",
+            "User research customer discovery product vision",
+            "Go-to-market product launch OKRs metrics KPIs",
+            "Agile scrum sprint planning backlog product owner",
+            "PRD requirements gathering user stories acceptance criteria",
+            "Product analytics A/B testing experimentation",
+            "B2B SaaS platform product growth retention",
+        ]
+        parts.extend(pm_context)
 
     blended_text = "\n".join(parts)
     return generate_embedding(blended_text)

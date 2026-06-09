@@ -47,9 +47,10 @@ FIELD RULES:
 extracted_skills:
 - Categorise into sub-arrays: technical, languages, frameworks, tools, methodologies, leadership
 - Normalise to widely recognised form: Python not python, React not ReactJS
-- Extract only skills that appear in the document — never infer
+- Extract only skills that appear in the document and can be inferred from what is written
 - Each sub-array may be empty if no skills in that category are found
 - No minimum count — 3 real skills is better than 8 padded ones
+- Also extract product management skills including: product strategy, roadmap planning, stakeholder management, user research, go-to-market, OKRs, agile, scrum, product analytics, A/B testing, requirements gathering, cross-functional leadership, executive communication, product launch, competitive analysis, customer discovery, PRD writing, sprint planning.
 
 education_data:
 - Extract all degrees and diplomas

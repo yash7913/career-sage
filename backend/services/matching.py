@@ -211,8 +211,8 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
 
             if user_domain == "product":
                 raw_score = (
-                    vector_sim * 0.65 +
-                    skill_sim * 0.20 +
+                    vector_sim * 0.75 +
+                    skill_sim * 0.10 +
                     sen_score * 0.15
                 )
             elif user_domain == "data":

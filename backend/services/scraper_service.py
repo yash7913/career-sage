@@ -495,26 +495,8 @@ def extract_skills_from_text(text: str) -> list[str]:
             found.append(skill)
 
     import re
-    patterns = [
-        r'\b[A-Z][a-zA-Z+#.]+(?:\s[A-Z][a-zA-Z+#.]+){0,2}\b',
-    ]
-    common_exclude = {
-        "the", "and", "for", "with", "that", "this", "have", "will", "from",
-        "they", "been", "were", "your", "our", "their", "you", "are", "not",
-        "all", "can", "may", "who", "what", "how", "when", "where", "which",
-        "work", "team", "role", "able", "help", "good", "new", "use", "make",
-        "join", "build", "lead", "drive", "own", "run", "set", "get",
-    }
-    for pattern in patterns:
-        matches = re.findall(pattern, text)
-        for word in matches:
-            if (len(word) > 2 and
-                word.lower() not in common_exclude and
-                word not in found and
-                not word.isdigit()):
-                found.append(word)
 
-    return list(dict.fromkeys(found))
+    return list(dict.fromkeys(found))[:30]
 
 async def run_full_scrape(keywords: list[str] = None, location: str = "India") -> dict:
     if keywords is None:
