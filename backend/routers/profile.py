@@ -167,6 +167,8 @@ class PreferencesUpdateRequest(BaseModel):
     user_id: str
     salary_target_lpa: Optional[int] = None
     preferred_company_stage: Optional[str] = None
+    preferred_work_mode: Optional[str] = None
+    location: Optional[str] = None
 
 @router.patch("/preferences")
 async def update_preferences(req: PreferencesUpdateRequest):
@@ -181,6 +183,10 @@ async def update_preferences(req: PreferencesUpdateRequest):
             updates["salary_target_lpa"] = req.salary_target_lpa
         if req.preferred_company_stage is not None:
             updates["preferred_company_stage"] = req.preferred_company_stage
+        if req.preferred_work_mode is not None:
+            updates["preferred_work_mode"] = req.preferred_work_mode
+        if req.location is not None:
+            updates["location"] = req.location
 
         supabase.table("user_profiles").update(updates).eq("user_id", req.user_id).execute()
         return {"status": "ok", "impact_pattern": impact_pattern}
