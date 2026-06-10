@@ -152,17 +152,27 @@ export default function DashboardTabs({
                 Your ranked job feed is ready.{' '}
                 <span className="cs-highlight">⚡ {matchedJobs} roles matched</span>
                 {impactPattern && (
-                  <span style={{
-                    fontSize: '12px', fontWeight: 600,
-                    padding: '2px 10px', borderRadius: '999px',
-                    background: 'rgba(245,158,11,0.12)',
-                    color: '#F59E0B',
-                    border: '1px solid rgba(245,158,11,0.25)',
-                  }}>
+                  <span
+                    title={
+                      impactPattern === 'Builder' ? 'Builder — you create new things from scratch. 0-to-1 products, greenfield projects, founding teams.' :
+                      impactPattern === 'Scaler' ? 'Scaler — you grow things. You take products from 1-to-100, expand markets, scale teams.' :
+                      impactPattern === 'Optimizer' ? 'Optimizer — you improve existing systems. Your work history shows measurable efficiency gains, process improvements, and cost reductions.' :
+                      impactPattern === 'Fixer' ? 'Fixer — you turn things around. You step into broken situations and restore order.' :
+                      'Strategist — you set direction. Roadmaps, vision, cross-functional alignment.'
+                    }
+                    style={{
+                      fontSize: '12px', fontWeight: 600,
+                      padding: '2px 10px', borderRadius: '999px',
+                      background: 'rgba(245,158,11,0.12)',
+                      color: '#F59E0B',
+                      border: '1px solid rgba(245,158,11,0.25)',
+                      cursor: 'help',
+                    }}>
                     {impactPattern === 'Builder' ? '🏗️' :
                      impactPattern === 'Scaler' ? '📈' :
                      impactPattern === 'Optimizer' ? '⚙️' :
                      impactPattern === 'Fixer' ? '🔧' : '🎯'} {impactPattern}
+                    <span style={{ fontSize: '10px', marginLeft: '4px', opacity: 0.6 }}>(?)</span>
                   </span>
                 )}
               </p>

@@ -38,17 +38,26 @@ def extract_text_from_bytes(file_bytes: bytes, file_name: str) -> str:
     except Exception:
         return ""
 
-
 def flatten_skills(skills_data) -> list:
     if isinstance(skills_data, list):
-        return skills_data
-    if isinstance(skills_data, dict):
+        flat = skills_data
+    elif isinstance(skills_data, dict):
         flat = []
         for v in skills_data.values():
             if isinstance(v, list):
                 flat.extend(v)
-        return flat
-    return []
+    else:
+        return []
+
+    seen = set()
+    deduped = []
+    for skill in flat:
+        if isinstance(skill, str) and skill.strip():
+            key = skill.lower().strip()
+            if key not in seen:
+                seen.add(key)
+                deduped.append(skill.strip())
+    return deduped
 
 
 def calculate_completeness(extracted: dict, doc_count: int) -> int:
