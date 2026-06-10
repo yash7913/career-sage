@@ -13,11 +13,26 @@ supabase = create_client(
 )
 
 @router.post("/match")
-async def match_jobs(user_id: str, track_id: str):
+async def match_jobs(user_id: str, track_id: str, background: bool = False):
     try:
         from services.matching import match_jobs_for_track
-        result = await match_jobs_for_track(user_id, track_id)
-        return {"status": "ok", "result": result}
+        import asyncio
+
+        existing = supabase.table("user_job_rankings")\
+            .select("ranking_id")\
+            .eq("user_id", user_id)\
+            .eq("track_id", track_id)\
+            .limit(1)\
+            .execute()
+
+        has_existing = bool(existing.data)
+
+        if has_existing:
+            asyncio.create_task(match_jobs_for_track(user_id, track_id))
+            return {"matched": -1, "status": "running_in_background", "message": "Matching running in background — feed showing existing results"}
+        else:
+            result = await match_jobs_for_track(user_id, track_id)
+            return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

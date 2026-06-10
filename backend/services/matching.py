@@ -242,19 +242,86 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
                 .eq("job_id", job["id"])\
                 .execute()
 
-            if existing.data:
-                supabase.table("user_job_rankings").update({
-                    "match_percentage_score": match_pct,
-                    "identified_skill_gaps": skill_gaps,
-                }).eq("ranking_id", existing.data[0]["ranking_id"]).execute()
+            years_exp = years_exp_filter or 3
+    matched = 0
+    batch = []
+
+    for job in jobs.data:
+        try:
+            job_embedding = job.get("description_embedding")
+
+            if job_embedding:
+                if isinstance(job_embedding, str):
+                    import json
+                    job_embedding = json.loads(job_embedding)
+                vector_sim = cosine_similarity(track_embedding, job_embedding)
             else:
-                supabase.table("user_job_rankings").insert({
-                    "user_id": user_id,
-                    "track_id": track_id,
-                    "job_id": job["id"],
-                    "match_percentage_score": match_pct,
-                    "identified_skill_gaps": skill_gaps,
-                }).execute()
+                vector_sim = 0.0
+
+            skill_sim = calculate_skill_overlap(
+                profile_skills + (track_data.get("emphasized_skills") or []),
+                job.get("skills_needed") or []
+            )
+
+            sen_score = seniority_score(years_exp, job["job_title"])
+
+            from services.job_cohort_classifier import get_cohort_alignment, _get_domain
+            user_cohort_local = profile_data.get("cohort") or ""
+            job_cohorts = job.get("target_cohorts") or []
+            cohort_alignment = get_cohort_alignment(user_cohort_local, job_cohorts)
+            user_domain = _get_domain(user_cohort_local)
+
+            if user_domain == "product":
+                raw_score = (
+                    vector_sim * 0.75 +
+                    skill_sim * 0.10 +
+                    sen_score * 0.15
+                )
+            elif user_domain == "data":
+                raw_score = (
+                    vector_sim * 0.50 +
+                    skill_sim * 0.35 +
+                    sen_score * 0.15
+                )
+            else:
+                raw_score = (
+                    vector_sim * 0.40 +
+                    skill_sim * 0.40 +
+                    sen_score * 0.20
+                )
+
+            weighted_score = raw_score * cohort_alignment
+            match_pct = min(int(weighted_score * 100), 99)
+            skill_gaps = identify_skill_gaps(
+                profile_skills,
+                job.get("skills_needed") or []
+            )
+
+            batch.append({
+                "user_id": user_id,
+                "track_id": track_id,
+                "job_id": job["id"],
+                "match_percentage_score": match_pct,
+                "identified_skill_gaps": skill_gaps,
+            })
+            matched += 1
+
+        except Exception as e:
+            print(f"Matching error for {job.get('job_title')}: {e}")
+            continue
+
+    if batch:
+        batch_size = 100
+        for i in range(0, len(batch), batch_size):
+            chunk = batch[i:i + batch_size]
+            supabase.table("user_job_rankings").upsert(
+                chunk,
+                on_conflict="user_id,track_id,job_id"
+            ).execute()
+            print(f"Saved batch {i//batch_size + 1}/{(len(batch)-1)//batch_size + 1}")
+
+    print(f"Matched {matched} jobs for track {track_data['track_name']}")
+    return {"matched": matched, "track": track_data["track_name"]}
 
             matched += 1
             print(f"{match_pct}% (v:{round(vector_sim,2)} s:{round(skill_sim,2)} c:{round(cohort_alignment,2)}) — {job['job_title']} at {job['company_name']}")

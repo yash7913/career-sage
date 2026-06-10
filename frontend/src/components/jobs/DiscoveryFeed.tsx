@@ -69,10 +69,11 @@ export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkill
     if (!activeTrack) return
     setMatching(true)
     try {
-      await fetch(
+      fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/match?user_id=${userId}&track_id=${activeTrack.track_id}`,
         { method: 'POST' }
-      )
+      ).then(() => fetchFeed(activeTrack.track_id))
+      await new Promise(resolve => setTimeout(resolve, 800))
       await fetchFeed(activeTrack.track_id)
     } finally {
       setMatching(false)
