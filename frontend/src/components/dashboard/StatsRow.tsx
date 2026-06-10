@@ -10,7 +10,7 @@ interface StatsRowProps {
 const STATS = [
   { label: 'Roles matched', suffix: '', color: '#10B981', icon: '⚡', key: 'matchedJobs' },
   { label: 'Applications tracked', suffix: '', color: '#3B82F6', icon: '📋', key: 'applicationsTracked' },
-  { label: 'Top match score', suffix: '%', color: '#F59E0B', icon: '🎯', key: 'topMatchScore' },
+  { label: 'Top match', suffix: '', color: '#F59E0B', icon: '🏆', key: 'topMatchScore' },
   { label: 'Resumes generated', suffix: '', color: '#7F77DD', icon: '📄', key: 'generationCount' },
 ]
 
@@ -48,11 +48,19 @@ export default function StatsRow({ matchedJobs, applicationsTracked, topMatchSco
             {stat.icon} {stat.label}
           </p>
           <p className="cs-shimmer-teal" style={{
-            fontSize: '36px', fontWeight: 800,
-            margin: 0, letterSpacing: '-1.5px',
+            fontSize: stat.key === 'topMatchScore' ? '22px' : '36px',
+            fontWeight: 800,
+            margin: 0,
+            letterSpacing: stat.key === 'topMatchScore' ? '-0.5px' : '-1.5px',
             lineHeight: 1,
           }}>
-            {values[stat.key]}{stat.suffix}
+            {stat.key === 'topMatchScore'
+              ? values[stat.key] >= 55 ? 'Strong Match'
+                : values[stat.key] >= 42 ? 'Good Match'
+                : values[stat.key] > 0 ? 'Explore'
+                : '—'
+              : `${values[stat.key]}${stat.suffix}`
+            }
           </p>
         </div>
       ))}
