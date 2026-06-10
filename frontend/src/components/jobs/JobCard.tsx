@@ -30,20 +30,21 @@ interface Job {
 
 function MatchBadge({ score }: { score: number }) {
   const label = score >= 55 ? 'Strong Match' : score >= 42 ? 'Good Match' : 'Explore'
-  const icon = score >= 55 ? '🏆' : score >= 42 ? '⚡' : '🔍'
   const color = score >= 55 ? TEAL : score >= 42 ? '#F59E0B' : 'rgba(255,255,255,0.4)'
   const bg = score >= 55 ? 'rgba(16,185,129,0.12)' : score >= 42 ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.06)'
   return (
-    <span
-      title={`Match score: ${score}%`}
-      style={{
-        fontSize: '12px', fontWeight: 700, padding: '4px 12px',
-        borderRadius: '999px', background: bg, color,
-        border: `1px solid ${color}40`, flexShrink: 0,
-        cursor: 'help',
-      }}
-    >
-      {icon} {label}
+    <span style={{
+      fontSize: '12px', fontWeight: 700, padding: '4px 12px',
+      borderRadius: '999px', background: bg, color,
+      border: `1px solid ${color}40`, flexShrink: 0,
+      display: 'flex', alignItems: 'center', gap: '5px',
+    }}>
+      <span>{label}</span>
+      <span style={{
+        fontSize: '11px', fontWeight: 600, opacity: 0.75,
+        padding: '1px 6px', borderRadius: '999px',
+        background: `${color}20`,
+      }}>{score}%</span>
     </span>
   )
 }
