@@ -96,6 +96,13 @@ async def reextract_batch(jobs):
             )
             content = msg.content[0].text.strip()
             content = content.replace("```json", "").replace("```", "").strip()
+            # Take only the first JSON array if multiple returned
+            lines = content.split('\n')
+            for line in lines:
+                line = line.strip()
+                if line.startswith('['):
+                    content = line
+                    break
             skills = json.loads(content)
             if isinstance(skills, list):
                 skills = [s for s in skills if isinstance(s, str) and 2 < len(s) < 35][:15]
@@ -116,6 +123,7 @@ async def main():
     while True:
         jobs = sb.table("aggregated_jobs")\
             .select("id, job_title, job_description")\
+            .filter("skills_needed", "eq", "{}")\
             .range(page * batch, (page + 1) * batch - 1)\
             .execute()
 
