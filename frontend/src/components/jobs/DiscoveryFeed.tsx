@@ -41,7 +41,7 @@ const COLOR_MAP: Record<string, string> = {
 export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkills = [], tier }: { userId: string; tracks: Track[]; onDownload?: () => void; profileSkills?: string[]; tier?: string }) {
   const [activeTrack, setActiveTrack] = useState<Track | null>(tracks[0] || null)
   const [jobs, setJobs] = useState<Job[]>([])
-  const { filters, setFilters, filtered, allSkills } = useJobFilters(jobs)
+  const { filters, setFilters, filtered, allSkills, allLocations } = useJobFilters(jobs)
   const [loading, setLoading] = useState(false)
   const [matching, setMatching] = useState(false)
   const [showManual, setShowManual] = useState(false)
@@ -163,6 +163,7 @@ export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkill
         totalJobs={jobs.length}
         filteredCount={filtered.length}
         allSkills={allSkills}
+        allLocations={allLocations}
       />
 
       {/* Job cards */}
@@ -191,26 +192,106 @@ export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkill
             ⚡ Run matching now
           </button>
         </div>
-      ) : (
-filtered.map((job, index) => (
-          <div key={job.ranking_id} className={
-            index === 0 ? 'cs-top-match-1' :
-            index === 1 ? 'cs-top-match-2' :
-            index === 2 ? 'cs-top-match-3' : ''
-          } style={{ borderRadius: '14px' }}>
-            <JobCard
-              job={job}
-              userId={userId}
-              trackId={activeTrack?.track_id || ''}
-              profileSkills={profileSkills}
-              onStar={handleStar}
-              onDownload={onDownload}
-              rank={index + 1}
-              tier={tier}
-            />
-          </div>
-        ))
-      )}
+    ) : (() => {
+        const isPro = tier === 'PREMIUM_PRO' || tier === 'STUDENT_VERIFIED'
+        const topJobs = filtered.slice(0, 3)
+        const restJobs = filtered.slice(3)
+        return (
+          <>
+            {/* Top 3 — Pro only */}
+            {!isPro && topJobs.length > 0 && (
+              <div style={{
+                marginBottom: '12px', borderRadius: '16px', overflow: 'hidden',
+                border: '1px solid rgba(245,158,11,0.25)',
+                background: 'rgba(245,158,11,0.03)',
+              }}>
+                <div style={{
+                  padding: '1rem 1.25rem',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  borderBottom: '1px solid rgba(245,158,11,0.15)',
+                }}>
+                  <div>
+                    <p style={{ fontSize: '13px', fontWeight: 700, color: '#F59E0B', margin: '0 0 2px' }}>
+                      🏆 Your top {topJobs.length} matches are locked
+                    </p>
+                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                      Upgrade to Pro to see your highest-ranked roles
+                    </p>
+                  </div>
+                  <button style={{
+                    padding: '8px 18px', borderRadius: '8px',
+                    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                    color: '#fff', border: 'none', fontSize: '13px',
+                    fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}>
+                    Unlock Pro →
+                  </button>
+                </div>
+                {topJobs.map((job, index) => (
+                  <div key={job.ranking_id} style={{
+                    padding: '1rem 1.25rem',
+                    borderBottom: index < topJobs.length - 1 ? '1px solid rgba(245,158,11,0.08)' : 'none',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    filter: 'blur(3px)', userSelect: 'none', pointerEvents: 'none',
+                  }}>
+                    <div>
+                      <p style={{ fontSize: '15px', fontWeight: 700, color: '#fff', margin: '0 0 3px' }}>
+                        {'█'.repeat(Math.floor(Math.random() * 8) + 8)}
+                      </p>
+                      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                        {job.company_name} · {job.location}
+                      </p>
+                    </div>
+                    <div style={{
+                      padding: '4px 12px', borderRadius: '999px',
+                      background: 'rgba(16,185,129,0.15)',
+                      color: '#10B981', fontSize: '13px', fontWeight: 700,
+                    }}>
+                      {job.match_percentage_score}%
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Top 3 for Pro users */}
+            {isPro && topJobs.map((job, index) => (
+              <div key={job.ranking_id} className={
+                index === 0 ? 'cs-top-match-1' :
+                index === 1 ? 'cs-top-match-2' : 'cs-top-match-3'
+              } style={{ borderRadius: '14px' }}>
+                <JobCard
+                  job={job}
+                  userId={userId}
+                  trackId={activeTrack?.track_id || ''}
+                  profileSkills={profileSkills}
+                  onStar={handleStar}
+                  onDownload={onDownload}
+                  rank={index + 1}
+                  tier={tier}
+                />
+              </div>
+            ))}
+
+            {/* Rest of jobs */}
+            {restJobs.map((job, index) => (
+              <div key={job.ranking_id} style={{ borderRadius: '14px' }}>
+                <JobCard
+                  job={job}
+                  userId={userId}
+                  trackId={activeTrack?.track_id || ''}
+                  profileSkills={profileSkills}
+                  onStar={handleStar}
+                  onDownload={onDownload}
+                  rank={index + 4}
+                  tier={tier}
+                />
+              </div>
+            ))}
+          </>
+        )
+      })()}
+
 	{activeTrack && (
           <AdjacentRoles userId={userId} trackId={activeTrack.track_id} />
         )}
