@@ -183,7 +183,7 @@ function WhyYouMatch({ job, profileSkills, salaryTargetLpa }: {
   )
 }
 
-type DetailTab = 'jd' | 'interview' | 'pay' | 'company'
+type DetailTab = 'jd' | 'pay' | 'company'
 
 
 function DetailTabs({ job, tier = 'GENERAL_FREE', userId = '' }: { job: Job; tier?: string; userId?: string }) {
@@ -192,7 +192,6 @@ function DetailTabs({ job, tier = 'GENERAL_FREE', userId = '' }: { job: Job; tie
 
   const tabs: { key: DetailTab; label: string; pro: boolean }[] = [
     { key: 'jd', label: 'JD Summary', pro: false },
-    { key: 'interview', label: 'Interview Process', pro: true },
     { key: 'pay', label: 'Pay Range', pro: true },
     { key: 'company', label: 'Company Details', pro: true },
   ]
@@ -245,23 +244,7 @@ function DetailTabs({ job, tier = 'GENERAL_FREE', userId = '' }: { job: Job; tie
         </div>
       )}
 
-      {activeTab === 'interview' && (
-        <div>
-          {job.estimated_interview_rounds && (
-            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: '0 0 12px' }}>
-              ≡ƒôï {job.estimated_interview_rounds} rounds estimated
-              {job.interview_breakdown_notes && ` · ${job.interview_breakdown_notes}`}
-            </p>
-          )}
-          <InterviewQuestions
-            jobId={job.job_id}
-            userId={userId}
-            jobTitle={job.job_title}
-            company={job.company_name}
-            tier={tier}
-          />
-        </div>
-      )}
+      
       {activeTab === 'pay' && (
         isPro ? (
           <div>

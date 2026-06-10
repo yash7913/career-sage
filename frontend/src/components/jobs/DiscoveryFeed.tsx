@@ -53,8 +53,10 @@ export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkill
   const fetchFeed = async (trackId: string) => {
     setLoading(true)
     try {
+      const isPro = tier === 'PREMIUM_PRO' || tier === 'STUDENT_VERIFIED'
+      const jobLimit = isPro ? 50 : 13
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/feed?user_id=${userId}&track_id=${trackId}&limit=20`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/feed?user_id=${userId}&track_id=${trackId}&limit=${jobLimit}`
       )
       if (res.ok) {
         const data = await res.json()
