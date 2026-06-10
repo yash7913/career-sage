@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import KanbanCard from './KanbanCard'
 import RejectionAnalysis from '@/components/tracker/RejectionAnalysis'
+import OfferAnalyser from '@/components/profile/OfferAnalyser'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -38,6 +39,7 @@ export default function KanbanBoard({ userId }: { userId: string }) {
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
   const [rejectionCard, setRejectionCard] = useState<{ jobId: string; jobTitle: string; company: string } | null>(null)
+  const [offerCard, setOfferCard] = useState<{ jobTitle: string; company: string } | null>(null)
 
   useEffect(() => {
     fetchCards()
@@ -80,6 +82,36 @@ export default function KanbanBoard({ userId }: { userId: string }) {
         })
       }
     }
+    {offerCard && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: 'rgba(0,0,0,0.92)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '1rem', backdropFilter: 'blur(12px)',
+        }}>
+          <div style={{
+            background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)',
+            borderRadius: '20px', width: '100%', maxWidth: '640px',
+            maxHeight: '90vh', overflow: 'auto',
+            boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+          }}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#161b22', borderRadius: '20px 20px 0 0' }}>
+              <div>
+                <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', margin: '0 0 4px' }}>OFFER RECEIVED 🎉</p>
+                <p style={{ fontSize: '17px', fontWeight: 700, color: '#fff', margin: '0 0 2px' }}>{offerCard.jobTitle}</p>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>{offerCard.company}</p>
+              </div>
+              <button onClick={() => setOfferCard(null)} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '14px', padding: '6px 10px' }}>✕</button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: '0 0 1.25rem', lineHeight: 1.6 }}>
+                Congratulations! Analyse your offer to see how it stacks up against market data and get a negotiation script.
+              </p>
+              <OfferAnalyser userId={userId} />
+            </div>
+          </div>
+        </div>
+      )}
   }
 
   const handleNotesUpdate = async (cardId: string, notes: string) => {

@@ -40,10 +40,9 @@ export default function InterviewQuestions({
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (!data && !loading) {
-      handleGenerate()
-    }
-  }, [])
+    setData(null)
+    handleGenerate()
+  }, [jobId])
   const [activeRound, setActiveRound] = useState(0)
   const [expandedQ, setExpandedQ] = useState<number | null>(null)
   const isPro = tier === 'PREMIUM_PRO' || tier === 'STUDENT_VERIFIED'

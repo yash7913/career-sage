@@ -112,13 +112,17 @@ function WhyYouMatch({ job, profileSkills, salaryTargetLpa }: {
   )
   const matchPct = job.match_percentage_score
 
+  const meaningfulSkills = job.skills_needed.filter(s => s.length < 30 && !s.includes('\n') && /^[A-Za-z]/.test(s))
+  const meaningfulMatched = meaningfulSkills.filter(s =>
+    profileSkills.map(p => p.toLowerCase()).includes(s.toLowerCase())
+  )
   let reason = ''
   if (matchPct >= 70) {
-    reason = `Strong fit — you have ${matched.length} of ${job.skills_needed.length} required skills and your experience level aligns well with this role.`
+    reason = `Strong fit — you have ${meaningfulMatched.length} of ${meaningfulSkills.length} key skills and your experience level aligns well with this role.`
   } else if (matchPct >= 50) {
-    reason = `Moderate fit — you have ${matched.length} of ${job.skills_needed.length} required skills. Closing the gaps would make you a strong candidate.`
+    reason = `Moderate fit — you have ${meaningfulMatched.length} of ${meaningfulSkills.length} key skills. Closing the gaps would make you a strong candidate.`
   } else {
-    reason = `Partial fit — ${matched.length} skills match. This role would stretch your current profile but could be a growth opportunity.`
+    reason = `Partial fit — ${meaningfulMatched.length} key skills match. This role would stretch your current profile but could be a growth opportunity.`
   }
 
   const salaryMax = job.estimated_salary_max

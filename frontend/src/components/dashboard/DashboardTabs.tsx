@@ -291,9 +291,9 @@ function ProfileTab({
 
       {/* Contact details */}
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
-        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 6px' }}>CONTACT DETAILS</p>
+        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 4px' }}>CONTACT DETAILS</p>
         <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1rem', lineHeight: 1.5 }}>
-          These appear in your generated resume automatically.
+          These appear in your generated resume automatically. Your LinkedIn URL helps Career Sage enrich your profile.
         </p>
         <ContactDetailsForm userId={userId} />
       </div>
