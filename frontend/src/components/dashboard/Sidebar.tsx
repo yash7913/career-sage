@@ -16,6 +16,9 @@ interface SidebarProps {
   hasProfile: boolean
   hasTracks: boolean
   tracks: { track_id: string; track_name: string; track_color: string }[]
+  impactPattern?: string
+  searchStatus?: string
+  onSearchStatusChange?: (status: string) => void
 }
 
 const COLOR_MAP: Record<string, string> = {
@@ -45,28 +48,49 @@ const COHORT_COLORS: Record<string, string> = {
   'ML Engineer': '#EC4899',
 }
 
+const IMPACT_DESCRIPTIONS: Record<string, string> = {
+  Builder: 'You create new things from scratch — 0-to-1 products, greenfield projects.',
+  Scaler: 'You grow things — take products from 1-to-100, expand markets and teams.',
+  Optimizer: 'You improve existing systems — measurable efficiency gains and process improvements.',
+  Fixer: 'You turn things around — step into broken situations and restore order.',
+  Strategist: 'You set direction — roadmaps, vision, cross-functional alignment.',
+}
+
+const STATUS_OPTIONS = [
+  { key: 'ACTIVE', label: 'Actively Looking', color: '#10B981', pulse: true },
+  { key: 'OPEN', label: 'Open to Offers', color: '#F59E0B', pulse: false },
+  { key: 'PAUSED', label: 'Not Looking', color: 'rgba(255,255,255,0.3)', pulse: false },
+]
+
 export default function Sidebar({
   userId, userEmail, userName, cohort, tier,
   activeTab, setActiveTab, hasProfile, hasTracks, tracks,
+  impactPattern, searchStatus = 'ACTIVE', onSearchStatusChange,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
+  const [showStatusMenu, setShowStatusMenu] = useState(false)
 
   const cohortColor = cohort ? (COHORT_COLORS[cohort] ?? TEAL) : TEAL
   const tierColor = TIER_COLORS[tier] ?? 'rgba(255,255,255,0.4)'
   const tierLabel = TIER_LABELS[tier] ?? 'Free'
+  const currentStatus = STATUS_OPTIONS.find(s => s.key === searchStatus) || STATUS_OPTIONS[0]
 
-  // Adaptive nav ordering
   const fullySetUp = hasProfile && hasTracks
+
   const navItems = fullySetUp
     ? [
         { key: 'discover', icon: '⚡', label: 'Discover', locked: false },
         { key: 'pipeline', icon: '📋', label: 'Pipeline', locked: false },
+        { key: 'prep', icon: '🎯', label: 'Prep', locked: false },
+        { key: 'tools', icon: '🛠', label: 'Tools', locked: false },
         { key: 'profile', icon: '👤', label: 'Profile', locked: false },
       ]
     : [
         { key: 'profile', icon: '👤', label: 'Profile', locked: false },
         { key: 'discover', icon: '⚡', label: 'Discover', locked: !hasProfile },
         { key: 'pipeline', icon: '📋', label: 'Pipeline', locked: !hasProfile },
+        { key: 'prep', icon: '🎯', label: 'Prep', locked: !hasProfile },
+        { key: 'tools', icon: '🛠', label: 'Tools', locked: !hasProfile },
       ]
 
   return (
@@ -94,20 +118,16 @@ export default function Sidebar({
         flexShrink: 0,
       }}>
         {!collapsed && (
-          <a href="/" style={{
-            textDecoration: 'none',
-            display: 'flex', alignItems: 'center', gap: '8px',
-          }}>
+          <a href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{
               width: '26px', height: '26px', borderRadius: '7px',
               background: 'linear-gradient(135deg, #10B981, #059669)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '13px', flexShrink: 0,
             }}>⚡</div>
-            <span style={{
-              fontSize: '14px', fontWeight: 700, color: '#fff',
-              letterSpacing: '-0.3px',
-            }}>Career Sage</span>
+            <span style={{ fontSize: '14px', fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>
+              Career Sage
+            </span>
           </a>
         )}
         {collapsed && (
@@ -122,8 +142,7 @@ export default function Sidebar({
         )}
         {!collapsed && (
           <button onClick={() => setCollapsed(true)} style={{
-            background: 'none', border: 'none',
-            color: 'rgba(255,255,255,0.25)',
+            background: 'none', border: 'none', color: 'rgba(255,255,255,0.25)',
             cursor: 'pointer', fontSize: '16px', padding: '2px',
           }}>‹</button>
         )}
@@ -131,12 +150,8 @@ export default function Sidebar({
 
       {/* User identity */}
       {!collapsed && (
-        <div style={{
-          padding: '1rem 1.25rem',
-          borderBottom: `1px solid ${BORDER}`,
-          flexShrink: 0,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: `1px solid ${BORDER}`, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <div style={{
               width: '28px', height: '28px', borderRadius: '50%',
               background: `linear-gradient(135deg, ${tierColor}, ${tierColor}88)`,
@@ -154,30 +169,92 @@ export default function Sidebar({
               </p>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+
+          {/* Badges row */}
+          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '8px' }}>
             {cohort && (
               <span style={{
-                fontSize: '10px', fontWeight: 600,
-                padding: '2px 7px', borderRadius: '999px',
-                background: `${cohortColor}15`,
-                color: cohortColor,
-                border: `1px solid ${cohortColor}30`,
+                fontSize: '10px', fontWeight: 600, padding: '2px 7px', borderRadius: '999px',
+                background: `${cohortColor}15`, color: cohortColor, border: `1px solid ${cohortColor}30`,
               }}>{cohort}</span>
             )}
             <span style={{
-              fontSize: '10px', fontWeight: 600,
-              padding: '2px 7px', borderRadius: '999px',
-              background: `${tierColor}15`,
-              color: tierColor,
-              border: `1px solid ${tierColor}30`,
+              fontSize: '10px', fontWeight: 600, padding: '2px 7px', borderRadius: '999px',
+              background: `${tierColor}15`, color: tierColor, border: `1px solid ${tierColor}30`,
             }}>{tierLabel}</span>
+            {impactPattern && (
+              <span
+                title={IMPACT_DESCRIPTIONS[impactPattern] || impactPattern}
+                style={{
+                  fontSize: '10px', fontWeight: 600, padding: '2px 7px', borderRadius: '999px',
+                  background: 'rgba(245,158,11,0.12)', color: '#F59E0B',
+                  border: '1px solid rgba(245,158,11,0.25)', cursor: 'help',
+                }}
+              >
+                {impactPattern === 'Builder' ? '🏗️' :
+                 impactPattern === 'Scaler' ? '📈' :
+                 impactPattern === 'Optimizer' ? '⚙️' :
+                 impactPattern === 'Fixer' ? '🔧' : '🎯'} {impactPattern}
+              </span>
+            )}
+          </div>
+
+          {/* Search status toggle */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowStatusMenu(!showStatusMenu)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '4px 8px', borderRadius: '6px',
+                background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`,
+                cursor: 'pointer', width: '100%',
+              }}
+            >
+              <div style={{
+                width: '7px', height: '7px', borderRadius: '50%',
+                background: currentStatus.color, flexShrink: 0,
+              }} />
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', flex: 1, textAlign: 'left' }}>
+                {currentStatus.label}
+              </span>
+              <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)' }}>▾</span>
+            </button>
+
+            {showStatusMenu && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+                background: '#161b22', border: `1px solid ${BORDER}`,
+                borderRadius: '8px', marginTop: '4px', overflow: 'hidden',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+              }}>
+                {STATUS_OPTIONS.map(opt => (
+                  <button
+                    key={opt.key}
+                    onClick={() => {
+                      onSearchStatusChange?.(opt.key)
+                      setShowStatusMenu(false)
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      padding: '8px 12px', width: '100%', border: 'none',
+                      background: searchStatus === opt.key ? 'rgba(255,255,255,0.05)' : 'transparent',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: opt.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: '12px', color: searchStatus === opt.key ? '#fff' : 'rgba(255,255,255,0.5)' }}>
+                      {opt.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* Main nav */}
       <nav style={{ flex: 1, padding: collapsed ? '1rem 0' : '1rem 0.75rem', overflowY: 'auto' }}>
-        {/* Nav items */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '1rem' }}>
           {navItems.map(item => (
             <button
@@ -188,19 +265,13 @@ export default function Sidebar({
                 display: 'flex', alignItems: 'center',
                 gap: collapsed ? 0 : '10px',
                 padding: collapsed ? '10px 0' : '9px 12px',
-                borderRadius: '9px',
-                border: 'none',
+                borderRadius: '9px', border: 'none',
                 cursor: item.locked ? 'not-allowed' : 'pointer',
                 justifyContent: collapsed ? 'center' : 'flex-start',
-                background: activeTab === item.key
-                  ? 'rgba(16,185,129,0.12)'
-                  : 'transparent',
-                transition: 'all 0.15s',
-                width: '100%',
+                background: activeTab === item.key ? 'rgba(16,185,129,0.12)' : 'transparent',
+                transition: 'all 0.15s', width: '100%',
                 opacity: item.locked ? 0.35 : 1,
-                boxShadow: activeTab === item.key
-                  ? 'inset 0 0 0 1px rgba(16,185,129,0.25)'
-                  : 'none',
+                boxShadow: activeTab === item.key ? 'inset 0 0 0 1px rgba(16,185,129,0.25)' : 'none',
               }}
             >
               <span style={{ fontSize: '16px', flexShrink: 0 }}>{item.icon}</span>
@@ -224,8 +295,7 @@ export default function Sidebar({
           <div style={{ marginTop: '0.5rem' }}>
             <p style={{
               fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.25)',
-              letterSpacing: '0.08em', textTransform: 'uppercase',
-              margin: '0 0 6px 12px',
+              letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 6px 12px',
             }}>TRACKS</p>
             {tracks.map(track => {
               const hex = COLOR_MAP[track.track_color] ?? TEAL
@@ -237,8 +307,7 @@ export default function Sidebar({
                     display: 'flex', alignItems: 'center', gap: '8px',
                     padding: '7px 12px', borderRadius: '8px',
                     background: 'transparent', border: 'none',
-                    cursor: 'pointer', width: '100%',
-                    transition: 'background 0.15s',
+                    cursor: 'pointer', width: '100%', transition: 'background 0.15s',
                   }}
                 >
                   <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: hex, flexShrink: 0 }} />
@@ -256,39 +325,22 @@ export default function Sidebar({
       <div style={{
         padding: collapsed ? '1rem 0' : '1rem 0.75rem',
         borderTop: `1px solid ${BORDER}`,
-        flexShrink: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '4px',
+        flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '4px',
       }}>
-        {/* Theme toggle */}
-        <div style={{
-          display: 'flex',
-          justifyContent: collapsed ? 'center' : 'flex-start',
-          padding: collapsed ? '6px 0' : '6px 12px',
-        }}>
+        <div style={{ display: 'flex', justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '6px 0' : '6px 12px' }}>
           <ThemeToggle />
         </div>
-
-        {/* Expand button when collapsed */}
         {collapsed && (
           <button onClick={() => setCollapsed(false)} style={{
-            background: 'none', border: 'none',
-            color: 'rgba(255,255,255,0.25)',
-            cursor: 'pointer', fontSize: '16px',
-            padding: '6px 0', textAlign: 'center', width: '100%',
+            background: 'none', border: 'none', color: 'rgba(255,255,255,0.25)',
+            cursor: 'pointer', fontSize: '16px', padding: '6px 0', textAlign: 'center', width: '100%',
           }}>›</button>
         )}
-
-        {/* Sign out */}
         {!collapsed && (
           <a href="/" style={{
             display: 'flex', alignItems: 'center', gap: '10px',
             padding: '8px 12px', borderRadius: '8px',
-            textDecoration: 'none',
-            color: 'rgba(255,255,255,0.3)',
-            fontSize: '13px',
-            transition: 'color 0.15s',
+            textDecoration: 'none', color: 'rgba(255,255,255,0.3)', fontSize: '13px',
           }}>
             <span style={{ fontSize: '14px' }}>←</span>
             Home
