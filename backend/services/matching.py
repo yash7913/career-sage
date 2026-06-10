@@ -111,25 +111,20 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
 
     all_jobs_data = []
     page = 0
-    batch = 1000
+    batch_size = 1000
     while True:
         batch_result = supabase.table("aggregated_jobs")\
             .select("id, job_title, company_name, location, skills_needed, job_description, source_link, estimated_salary_min, estimated_salary_max, estimated_interview_rounds, description_embedding, target_cohorts")\
             .eq("is_active", True)\
-            .range(page * batch, (page + 1) * batch - 1)\
+            .range(page * batch_size, (page + 1) * batch_size - 1)\
             .execute()
         if not batch_result.data:
             break
         all_jobs_data.extend(batch_result.data)
-        if len(batch_result.data) < batch:
+        if len(batch_result.data) < batch_size:
             break
         page += 1
     print(f"Fetched {len(all_jobs_data)} total jobs")
-
-    class JobsResult:
-        def __init__(self, data):
-            self.data = data
-    all_jobs = JobsResult(all_jobs_data)
 
     HARD_EXCLUDE_TITLES = [
         "account executive", "sales", "recruiter", "talent acquisition",
@@ -142,111 +137,29 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
     ]
 
     filtered_jobs = []
-    for j in (all_jobs_data or []):
+    for j in all_jobs_data:
         job_cohorts = j.get("target_cohorts") or []
         title_lower = (j.get("job_title") or "").lower()
 
-        cohort_match = any(rc in job_cohorts for rc in relevant_cohorts)
-        if not cohort_match:
+        if not any(rc in job_cohorts for rc in relevant_cohorts):
             continue
-
-        seniority_excluded = any(excl in title_lower for excl in SENIORITY_EXCLUDE)
-        if seniority_excluded:
+        if any(excl in title_lower for excl in SENIORITY_EXCLUDE):
             continue
-
-        hard_excluded = any(excl in title_lower for excl in HARD_EXCLUDE_TITLES)
-        if hard_excluded:
+        if any(excl in title_lower for excl in HARD_EXCLUDE_TITLES):
             continue
 
         filtered_jobs.append(j)
 
-    print(f"Pre-filtered {len(all_jobs.data)} jobs to {len(filtered_jobs)} relevant jobs for {user_cohort}")
+    print(f"Pre-filtered {len(all_jobs_data)} jobs to {len(filtered_jobs)} relevant jobs for {user_cohort}")
 
-    jobs = type('obj', (object,), {'data': filtered_jobs})()
-
-    if not jobs.data:
+    if not filtered_jobs:
         return {"matched": 0}
 
     years_exp = years_exp_filter or 3
     matched = 0
-
-    for job in jobs.data:
-        try:
-            job_embedding = job.get("description_embedding")
-
-            if job_embedding:
-                try:
-                    if isinstance(job_embedding, str):
-                        import json
-                        job_embedding = json.loads(job_embedding)
-                    vector_sim = cosine_similarity(track_embedding, job_embedding)
-                    if vector_sim > 0.1:
-                        print(f"  Good vector sim: {round(vector_sim,3)} for {job.get('job_title')}")
-                except Exception as ve:
-                    print(f"  Vector sim error: {ve}")
-                    vector_sim = 0.0
-            else:
-                job_text = f"{job['job_title']} at {job['company_name']}\n{job['job_description']}"
-                job_emb = generate_embedding(job_text)
-                vector_sim = cosine_similarity(track_embedding, job_emb)
-
-                supabase.table("aggregated_jobs").update({
-                    "description_embedding": job_emb
-                }).eq("id", job["id"]).execute()
-
-            skill_sim = calculate_skill_overlap(
-                profile_skills + (track_data.get("emphasized_skills") or []),
-                job.get("skills_needed") or []
-            )
-
-            sen_score = seniority_score(years_exp, job["job_title"])
-
-            from services.job_cohort_classifier import get_cohort_alignment
-            user_cohort = profile_data.get("cohort") or ""
-            job_cohorts = job.get("target_cohorts") or []
-            cohort_alignment = get_cohort_alignment(user_cohort, job_cohorts)
-
-            from services.job_cohort_classifier import _get_domain
-            user_domain = _get_domain(user_cohort)
-
-            if user_domain == "product":
-                raw_score = (
-                    vector_sim * 0.75 +
-                    skill_sim * 0.10 +
-                    sen_score * 0.15
-                )
-            elif user_domain == "data":
-                raw_score = (
-                    vector_sim * 0.50 +
-                    skill_sim * 0.35 +
-                    sen_score * 0.15
-                )
-            else:
-                raw_score = (
-                    vector_sim * 0.40 +
-                    skill_sim * 0.40 +
-                    sen_score * 0.20
-                )
-            weighted_score = raw_score * cohort_alignment
-            match_pct = min(int(weighted_score * 100), 99)
-
-            skill_gaps = identify_skill_gaps(
-                profile_skills,
-                job.get("skills_needed") or []
-            )
-
-            existing = supabase.table("user_job_rankings")\
-                .select("ranking_id")\
-                .eq("user_id", user_id)\
-                .eq("track_id", track_id)\
-                .eq("job_id", job["id"])\
-                .execute()
-
-            years_exp = years_exp_filter or 3
-    matched = 0
     batch = []
 
-    for job in jobs.data:
+    for job in filtered_jobs:
         try:
             job_embedding = job.get("description_embedding")
 
@@ -292,6 +205,7 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
 
             weighted_score = raw_score * cohort_alignment
             match_pct = min(int(weighted_score * 100), 99)
+
             skill_gaps = identify_skill_gaps(
                 profile_skills,
                 job.get("skills_needed") or []
@@ -311,24 +225,32 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
             continue
 
     if batch:
-        batch_size = 100
-        for i in range(0, len(batch), batch_size):
-            chunk = batch[i:i + batch_size]
+        upsert_batch_size = 100
+        for i in range(0, len(batch), upsert_batch_size):
+            chunk = batch[i:i + upsert_batch_size]
             supabase.table("user_job_rankings").upsert(
                 chunk,
                 on_conflict="user_id,track_id,job_id"
             ).execute()
-            print(f"Saved batch {i//batch_size + 1}/{(len(batch)-1)//batch_size + 1}")
+            print(f"Saved batch {i//upsert_batch_size + 1}/{(len(batch)-1)//upsert_batch_size + 1}")
 
     print(f"Matched {matched} jobs for track {track_data['track_name']}")
     return {"matched": matched, "track": track_data["track_name"]}
 
-            matched += 1
-            print(f"{match_pct}% (v:{round(vector_sim,2)} s:{round(skill_sim,2)} c:{round(cohort_alignment,2)}) — {job['job_title']} at {job['company_name']}")
 
-        except Exception as e:
-            print(f"Matching error for {job.get('job_title')}: {e}")
-            continue
+async def run_matching_for_user(user_id: str):
+    try:
+        tracks = supabase.table("career_track_profiles")\
+            .select("*").eq("user_id", user_id).execute()
 
-    print(f"Matched {matched} jobs for track {track_data['track_name']}")
-    return {"matched": matched, "track": track_data["track_name"]}
+        if not tracks.data:
+            print(f"No tracks for user {user_id}")
+            return
+
+        for track in tracks.data:
+            print(f"Running matching for track {track['track_name']}")
+            await match_jobs_for_track(user_id, track["track_id"])
+
+        print(f"Background matching complete for user {user_id}")
+    except Exception as e:
+        print(f"Background matching error: {e}")

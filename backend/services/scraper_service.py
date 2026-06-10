@@ -46,12 +46,22 @@ def dedup_and_save(jobs: list[dict]) -> dict:
                 skipped += 1
                 continue
 
+            raw_skills = job.get("skills_needed") or []
+            clean_skills = [
+                s for s in raw_skills
+                if isinstance(s, str)
+                and len(s) < 40
+                and len(s) > 1
+                and not any(c in s for c in ['\n', '|', '{', '}'])
+                and s[0].isalpha()
+            ][:25]
+
             supabase.table("aggregated_jobs").insert({
                 "company_name": (job.get("company_name") or "")[:100],
                 "job_title": (job.get("job_title") or "")[:150],
                 "job_id": job_id,
                 "location": (job.get("location") or "")[:150],
-                "skills_needed": job.get("skills_needed", []),
+                "skills_needed": clean_skills,
                 "source_link": job.get("source_link", ""),
                 "job_description": job.get("job_description", ""),
                 "estimated_salary_min": job.get("estimated_salary_min"),
