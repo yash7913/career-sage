@@ -45,25 +45,51 @@ export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkill
   const [loading, setLoading] = useState(false)
   const [matching, setMatching] = useState(false)
   const [showManual, setShowManual] = useState(false)
+  const [offset, setOffset] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const LIMIT = 20
 
   useEffect(() => {
     if (activeTrack) fetchFeed(activeTrack.track_id)
   }, [activeTrack])
 
-  const fetchFeed = async (trackId: string) => {
-    setLoading(true)
+  const fetchFeed = async (trackId: string, reset = true) => {
+    if (reset) {
+      setLoading(true)
+      setOffset(0)
+      setHasMore(true)
+    } else {
+      setLoadingMore(true)
+    }
     try {
       const isPro = tier === 'PREMIUM_PRO' || tier === 'STUDENT_VERIFIED'
-      const jobLimit = isPro ? 50 : 13
+      const currentOffset = reset ? 0 : offset
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/feed?user_id=${userId}&track_id=${trackId}&limit=${jobLimit}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/feed?user_id=${userId}&track_id=${trackId}&limit=${LIMIT}&offset=${currentOffset}`
       )
       if (res.ok) {
         const data = await res.json()
-        setJobs(data.jobs || [])
+        const newJobs = data.jobs || []
+        if (reset) {
+          setJobs(newJobs)
+        } else {
+          setJobs(prev => [...prev, ...newJobs])
+        }
+        setOffset(currentOffset + newJobs.length)
+        const isPro = tier === 'PREMIUM_PRO' || tier === 'STUDENT_VERIFIED'
+        const maxJobs = isPro ? 999 : 13
+        setHasMore(newJobs.length === LIMIT && (currentOffset + newJobs.length) < maxJobs)
       }
     } finally {
       setLoading(false)
+      setLoadingMore(false)
+    }
+  }
+
+  const loadMore = () => {
+    if (activeTrack && !loadingMore && hasMore) {
+      fetchFeed(activeTrack.track_id, false)
     }
   }
 
@@ -297,6 +323,23 @@ export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkill
 	{activeTrack && (
           <AdjacentRoles userId={userId} trackId={activeTrack.track_id} />
         )}
+	{hasMore && !loading && jobs.length > 0 && (
+        <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            style={{
+              padding: '10px 28px', borderRadius: '10px',
+              background: loadingMore ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.06)',
+              border: `1px solid rgba(255,255,255,0.12)`,
+              color: loadingMore ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.6)',
+              fontSize: '13px', fontWeight: 600, cursor: loadingMore ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {loadingMore ? '⟳ Loading more...' : 'Load more jobs'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
