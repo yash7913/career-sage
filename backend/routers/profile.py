@@ -677,3 +677,108 @@ Return only JSON, no markdown."""
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/inferred-skills/{user_id}")
+async def get_inferred_skills(user_id: str):
+    try:
+        import anthropic
+        import json
+        profile = supabase.table("user_profiles").select("*").eq("user_id", user_id).execute()
+        if not profile.data:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        p = profile.data[0]
+        raw_text = p.get("raw_profile_text") or ""
+        existing_skills = p.get("extracted_skills") or []
+        cohort = p.get("cohort") or ""
+
+        if not raw_text:
+            return {"inferred_skills": []}
+
+        existing_lower = {s.lower() for s in existing_skills}
+
+        prompt = f"""You are an expert career analyst. Infer implicit professional skills from this work history that aren't explicitly listed.
+
+Candidate cohort: {cohort}
+Existing listed skills: {', '.join(existing_skills[:20])}
+
+Work history:
+{raw_text[:2000]}
+
+Rules:
+For the candidate's profession, seniority, and scope:
+- Infer skills using two mechanisms:
+	1. Explicit Evidence - Directly supported by achievements, responsibilities, or outcomes.
+	2. Profession-Standard Inference   - Skills commonly required to perform the described role successfully.
+	3. Only infer when the role seniority, scope, and context make the skill highly probable.
+	4. Infer foundational skills that are typically required to perform the described responsibilities.
+	5. Only infer skills that a recruiter would reasonably expect this candidate to possess.
+- Do NOT infer niche technical skills unless directly evidenced.
+- Do NOT infer skills already in the existing skills list
+- Never infer aspirational skills.
+- Never infer specialist skills unless explicitly evidenced.
+- Focus on: technical skills, domain expertise, leadership skills, methodologies
+- Each skill must have a specific evidence snippet from the text
+- Maximum 20 inferred skills
+- Return ONLY valid JSON
+
+Return format:
+[
+  {{
+    "skill": "Skill Name",
+    "confidence": "High|Medium",
+    "inference_type": "Explicit|RoleBased",
+    "evidence": "specific quote or paraphrase from work history that proves this skill",
+    "category": "Technical|Domain|Leadership|Methodology"
+  }}
+]"""
+
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        import re
+        content = message.content[0].text.strip()
+        content = re.sub(r'^```json\s*', '', content)
+        content = re.sub(r'\s*```$', '', content)
+        inferred = json.loads(content)
+
+        inferred = [
+            s for s in inferred
+            if isinstance(s, dict)
+            and s.get("skill")
+            and s.get("skill", "").lower() not in existing_lower
+        ]
+
+        return {"inferred_skills": inferred}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class AcceptSkillsRequest(BaseModel):
+    user_id: str
+    skills: list
+
+@router.post("/accept-inferred-skills")
+async def accept_inferred_skills(req: AcceptSkillsRequest):
+    try:
+        profile = supabase.table("user_profiles").select("extracted_skills").eq("user_id", req.user_id).execute()
+        if not profile.data:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        existing = profile.data[0].get("extracted_skills") or []
+        existing_lower = {s.lower() for s in existing}
+        new_skills = [s for s in req.skills if s.lower() not in existing_lower]
+        updated = existing + new_skills
+
+        supabase.table("user_profiles").update({
+            "extracted_skills": updated
+        }).eq("user_id", req.user_id).execute()
+
+        return {"status": "ok", "added": len(new_skills), "total": len(updated)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import PentagramScore from '@/components/profile/PentagramScore'
 import ProfileIntelligence from '@/components/profile/ProfileIntelligence'
 import GenerativeAssets from '@/components/profile/GenerativeAssets'
+import InferredSkills from '@/components/profile/InferredSkills'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -51,6 +52,7 @@ export default function ToolsTab({ userId, tier }: ToolsTabProps) {
       {/* Intelligence section */}
       {section === 'intelligence' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
           <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
             <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 1.5rem' }}>
               PROFILE SCORE
@@ -77,6 +79,17 @@ export default function ToolsTab({ userId, tier }: ToolsTabProps) {
             </p>
             <ProfileIntelligence userId={userId} />
           </div>
+
+          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+            <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 4px' }}>
+              INFERRED SKILLS
+            </p>
+            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1.25rem', lineHeight: 1.5 }}>
+              Skills evidenced in your work history but not explicitly listed. Accept ones that belong on your profile.
+            </p>
+            <InferredSkills userId={userId} />
+          </div>
+
         </div>
       )}
 
@@ -92,6 +105,7 @@ export default function ToolsTab({ userId, tier }: ToolsTabProps) {
           <GenerativeAssets userId={userId} tier={tier} />
         </div>
       )}
+
     </div>
   )
 }
