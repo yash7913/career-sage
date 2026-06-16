@@ -5,7 +5,7 @@ const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
 const CARD = '#161b22'
 
-interface CareerDNAProps { userId: string }
+interface CareerDNAProps { userId: string; skills?: string[] }
 
 interface Action { action: string; points: number; effort: string; gap_axis: string }
 interface Benchmark { axis: string; user: number; avg: number; top: number; delta: number; position: string; color: string; context: string }
@@ -28,6 +28,7 @@ interface DNAData {
   career_paths: CareerPath[]
   compensation: { current_range: { low: number; high: number }; current_mid: number; next_level_range: { low: number; high: number }; currency: string; note: string }
   top_strengths: { axis: string; score: number; vs_avg: number }[]
+  skill_categories: Record<string, string[]>
   share_text: string
 }
 
@@ -195,7 +196,39 @@ function DecisionResult({ result, onClose }: { result: Record<string, unknown>; 
   )
 }
 
-export default function CareerDNA({ userId }: CareerDNAProps) {
+function ExpandableSkills({ skills }: { skills: string[] }) {
+  const [expanded, setExpanded] = useState(false)
+  const visible = expanded ? skills : skills.slice(0, 10)
+  const hidden = skills.length - 10
+  if (!skills.length) return null
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', alignItems: 'center' }}>
+      {visible.map((s: string) => (
+        <span key={s} style={{
+          fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
+          background: 'rgba(16,185,129,0.08)', color: TEAL,
+          border: '1px solid rgba(16,185,129,0.2)',
+        }}>{s}</span>
+      ))}
+      {!expanded && hidden > 0 && (
+        <button onClick={() => setExpanded(true)} style={{
+          fontSize: '11px', padding: '2px 10px', borderRadius: '4px',
+          background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)',
+          border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', fontWeight: 600,
+        }}>+{hidden} more</button>
+      )}
+      {expanded && (
+        <button onClick={() => setExpanded(false)} style={{
+          fontSize: '11px', padding: '2px 10px', borderRadius: '4px',
+          background: 'transparent', color: 'rgba(255,255,255,0.25)',
+          border: 'none', cursor: 'pointer',
+        }}>Show less</button>
+      )}
+    </div>
+  )
+}
+
+export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
   const [data, setData]             = useState<DNAData | null>(null)
   const [loading, setLoading]       = useState(true)
   const [copied, setCopied]         = useState(false)
@@ -289,6 +322,42 @@ export default function CareerDNA({ userId }: CareerDNAProps) {
             {data.trajectory.description}
           </p>
         </div>
+
+        {/* ── Skills ── */}
+        {data.skill_categories && Object.keys(data.skill_categories).length > 0 && (
+          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.25rem 1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', margin: 0 }}>
+                SKILL PROFILE
+              </p>
+              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', margin: 0 }}>
+                {skills.length} skills across {Object.keys(data.skill_categories).length} categories
+              </p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {Object.entries(data.skill_categories).map(([category, categorySkills]) => (
+                <div key={category}>
+                  <p style={{
+                    fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.25)',
+                    letterSpacing: '0.08em', margin: '0 0 6px',
+                    textTransform: 'uppercase',
+                  }}>
+                    {category}
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                    {(categorySkills as string[]).map((skill: string) => (
+                      <span key={skill} style={{
+                        fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
+                        background: 'rgba(16,185,129,0.08)', color: TEAL,
+                        border: '1px solid rgba(16,185,129,0.2)',
+                      }}>{skill}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Section 2: Promotion Readiness ── */}
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
