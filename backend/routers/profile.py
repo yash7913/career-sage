@@ -1510,6 +1510,75 @@ def _get_market_benchmarks(pentagram_scores: dict, cohort: str) -> list[dict]:
 
     return sorted(benchmarks, key=lambda x: x["delta"], reverse=True)
 
+async def _categorise_skills_ai(skills: list[str], cohort: str, user_id: str) -> dict[str, list[str]]:
+    import anthropic
+    import json
+    import re
+
+    if not skills:
+        return {}
+
+    # Check cache first
+    cached = supabase.table("user_profiles").select("skill_categories").eq("user_id", user_id).execute()
+    if cached.data and cached.data[0].get("skill_categories"):
+        existing = cached.data[0]["skill_categories"]
+        if isinstance(existing, str):
+            return json.loads(existing)
+        if isinstance(existing, dict) and existing:
+            return existing
+
+    client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+    prompt = f"""You are categorising a professional's skills for display on their career profile.
+
+Cohort: {cohort}
+Skills: {json.dumps(skills)}
+
+Group these skills into 3-5 meaningful categories that make sense for a {cohort}.
+
+Guidelines by cohort type:
+- Product Manager: use "Product & Strategy", "Data & Analytics", "Leadership & Influence", "Domain Expertise", "Tools & Methods"
+- Engineer: use "Languages", "Frameworks & Libraries", "Infrastructure & Cloud", "Architecture", "Tools"
+- Data Scientist / ML Engineer: use "Machine Learning", "Data Engineering", "Programming", "Statistics & Modelling", "Tools & Platforms"
+- Analytics Engineer: use "Data Modelling", "Orchestration", "Warehousing", "BI & Visualisation", "Programming"
+- Designer: use "UX Research", "Visual Design", "Prototyping", "Design Systems", "Tools"
+- General: use whatever categories best fit the actual skills
+
+Rules:
+- Every skill must appear in exactly one category
+- Do not create a category with only 1 skill unless there are very few skills total
+- If a skill does not fit any main category, put it in "Other"
+- Category names should be concise — maximum 4 words
+- Return ONLY valid JSON, no explanation
+
+Format:
+{{
+  "Category Name": ["skill1", "skill2", "skill3"],
+  "Category Name 2": ["skill4", "skill5"]
+}}"""
+
+    message = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=600,
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    content = message.content[0].text.strip()
+    content = re.sub(r'^```json\s*', '', content)
+    content = re.sub(r'^```\s*', '', content)
+    content = re.sub(r'\s*```$', '', content)
+    match = re.search(r'\{.*\}', content, re.DOTALL)
+    if not match:
+        return {"Skills": skills}
+
+    result = json.loads(match.group())
+
+    # Cache it
+    supabase.table("user_profiles").update({
+        "skill_categories": json.dumps(result)
+    }).eq("user_id", user_id).execute()
+
+    return result
 
 @router.get("/career-dna/{user_id}")
 async def get_career_dna(user_id: str):
@@ -1529,6 +1598,12 @@ async def get_career_dna(user_id: str):
         raw_text       = p.get("raw_profile_text") or ""
         work_history   = p.get("work_history") or []
         full_name      = p.get("full_name") or ""
+        extracted_skills = p.get("extracted_skills") or []
+        if isinstance(extracted_skills, list):
+            extracted_skills = [s for s in extracted_skills if isinstance(s, str)]
+
+        # Categorise skills — cached after first run
+        skill_categories = await _categorise_skills_ai(extracted_skills, cohort, user_id)
 
         # Pentagram — use cache if available
         cached_penta = p.get("pentagram_scores")
@@ -1617,6 +1692,7 @@ async def get_career_dna(user_id: str):
             "next_role":            next_role,
             "top_strengths":        strengths,
             "share_text":           share_text,
+            "skill_categories":    skill_categories,
         }
 
     except HTTPException:
@@ -1824,9 +1900,15 @@ Return ONLY valid JSON:
         )
 
         content = message.content[0].text.strip()
+        # Strip markdown code fences
         content = re.sub(r'^```json\s*', '', content)
+        content = re.sub(r'^```\s*', '', content)
         content = re.sub(r'\s*```$', '', content)
-        result  = json.loads(content)
+        # Extract JSON object if there's surrounding text
+        match = re.search(r'\{.*\}', content, re.DOTALL)
+        if not match:
+            raise HTTPException(status_code=500, detail="Could not parse decision analysis response")
+        result = json.loads(match.group())
         result["decision_type"] = req.decision_type
 
         # Cache in user_profiles — store up to 6 decision types
