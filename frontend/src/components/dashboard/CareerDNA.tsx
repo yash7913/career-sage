@@ -58,31 +58,190 @@ function SectionHeader({ label }: { label: string }) {
   )
 }
 
-function RadarMini({ scores, cohortAvg }: { scores: Record<string, number>; cohortAvg: Record<string, number> }) {
-  const axes = ['technical_depth', 'domain_expertise', 'impact_magnitude', 'leadership_signals', 'learning_velocity']
-  const cx = 80, cy = 80, r = 60
-  const angleStep = (2 * Math.PI) / axes.length
-  const toXY = (val: number, i: number) => {
-    const angle = i * angleStep - Math.PI / 2
-    const scaled = (val / 100) * r
-    return { x: cx + scaled * Math.cos(angle), y: cy + scaled * Math.sin(angle) }
-  }
-  const userPts = axes.map((ax, i) => toXY(scores[ax] ?? 0, i))
-  const avgPts  = axes.map((ax, i) => toXY(cohortAvg[ax] ?? 50, i))
-  const toPath  = (pts: { x: number; y: number }[]) =>
-    pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') + ' Z'
+const AXES_FULL = [
+  { key: 'technical_depth',    label: 'Technical Depth' },
+  { key: 'domain_expertise',   label: 'Domain Expertise' },
+  { key: 'impact_magnitude',   label: 'Impact Magnitude' },
+  { key: 'leadership_signals', label: 'Leadership Signals' },
+  { key: 'learning_velocity',  label: 'Learning Velocity' },
+]
+const NUM_AXES  = 5
+const START_ANG = -Math.PI / 2
+
+function toPoint(score: number, i: number, radius: number, cx: number, cy: number) {
+  const angle = START_ANG + i * (2 * Math.PI / NUM_AXES)
+  const r = (score / 100) * radius
+  return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) }
+}
+
+function buildPoly(scores: number[], radius: number, cx: number, cy: number) {
+  return scores.map((s, i) => {
+    const p = toPoint(s, i, radius, cx, cy)
+    return `${p.x},${p.y}`
+  }).join(' ')
+}
+
+function buildGrid(pct: number, radius: number, cx: number, cy: number) {
+  return Array.from({ length: NUM_AXES }, (_, i) => {
+    const angle = START_ANG + i * (2 * Math.PI / NUM_AXES)
+    const r = pct * radius
+    return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`
+  }).join(' ')
+}
+
+function RadarMini({
+  scores,
+  cohortAvg,
+  topDecile,
+}: {
+  scores: Record<string, number>
+  cohortAvg: Record<string, number>
+  topDecile: Record<string, number>
+}) {
+  const [hovered, setHovered] = useState<string | null>(null)
+  const SIZE = 260
+  const CX = SIZE / 2
+  const CY = SIZE / 2
+  const R  = SIZE * 0.35
+  const LR = SIZE * 0.47
+
+  const userScores   = AXES_FULL.map(ax => scores[ax.key]    ?? 0)
+  const cohortScores = AXES_FULL.map(ax => cohortAvg[ax.key] ?? 50)
+  const decileScores = AXES_FULL.map(ax => topDecile[ax.key] ?? 85)
+
   return (
-    <svg width="160" height="160" viewBox="0 0 160 160">
-      {[25, 50, 75, 100].map(pct => (
-        <polygon key={pct}
-          points={axes.map((_, i) => { const p = toXY(pct, i); return `${p.x},${p.y}` }).join(' ')}
-          fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-      ))}
-      {axes.map((_, i) => { const o = toXY(100, i); return <line key={i} x1={cx} y1={cy} x2={o.x} y2={o.y} stroke="rgba(255,255,255,0.06)" strokeWidth="1" /> })}
-      <path d={toPath(avgPts)} fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
-      <path d={toPath(userPts)} fill="rgba(16,185,129,0.15)" stroke={TEAL} strokeWidth="1.5" />
-      {userPts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r="3" fill={TEAL} />)}
-    </svg>
+    <div style={{ position: 'relative' }}>
+      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ overflow: 'visible' }}>
+        {/* Grid rings */}
+        {[0.2, 0.4, 0.6, 0.8, 1.0].map(pct => (
+          <polygon key={pct}
+            points={buildGrid(pct, R, CX, CY)}
+            fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="0.5" />
+        ))}
+
+        {/* Grid axes */}
+        {AXES_FULL.map((_, i) => {
+          const p = toPoint(100, i, R, CX, CY)
+          return <line key={i} x1={CX} y1={CY} x2={p.x} y2={p.y}
+            stroke="rgba(255,255,255,0.07)" strokeWidth="0.5" />
+        })}
+
+        {/* Top decile */}
+        <polygon points={buildPoly(decileScores, R, CX, CY)}
+          fill="none" stroke="rgba(245,158,11,0.6)" strokeWidth="1" strokeDasharray="4 3" />
+
+        {/* Cohort average */}
+        <polygon points={buildPoly(cohortScores, R, CX, CY)}
+          fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
+
+        {/* User polygon */}
+        <polygon points={buildPoly(userScores, R, CX, CY)}
+          fill="rgba(16,185,129,0.15)" stroke={TEAL} strokeWidth="1.5" />
+
+        {/* Data points + hover targets */}
+        {AXES_FULL.map((ax, i) => {
+          const p       = toPoint(userScores[i], i, R, CX, CY)
+          const isHov   = hovered === ax.key
+          const angle   = START_ANG + i * (2 * Math.PI / NUM_AXES)
+          const lx      = CX + LR * Math.cos(angle)
+          const ly      = CY + LR * Math.sin(angle)
+          const words   = ax.label.split(' ')
+          return (
+            <g key={ax.key}
+              onMouseEnter={() => setHovered(ax.key)}
+              onMouseLeave={() => setHovered(null)}
+              style={{ cursor: 'pointer' }}
+            >
+              {/* Axis label */}
+              <text x={lx} y={ly} textAnchor="middle" dominantBaseline="middle"
+                style={{
+                  fontSize: '9px', fontFamily: 'system-ui',
+                  fill: isHov ? TEAL : 'rgba(255,255,255,0.4)',
+                  fontWeight: isHov ? 700 : 400,
+                  transition: 'fill 0.15s',
+                }}
+              >
+                {words.map((w, wi) => (
+                  <tspan key={wi} x={lx} dy={wi === 0 ? (words.length > 1 ? '-0.55em' : '0') : '1.1em'}>
+                    {w}
+                  </tspan>
+                ))}
+              </text>
+
+              {/* Data point circle */}
+              <circle cx={p.x} cy={p.y} r={isHov ? 5 : 3}
+                fill={TEAL} stroke="#0d1117" strokeWidth="1.5"
+                style={{ transition: 'r 0.15s' }} />
+            </g>
+          )
+        })}
+
+        {/* Composite score in centre */}
+        <text x={CX} y={CY - 6} textAnchor="middle"
+          style={{ fontSize: '14px', fontWeight: 700, fill: TEAL, fontFamily: 'system-ui' }}>
+          {Math.round(
+            AXES_FULL.reduce((sum, ax) => sum + (scores[ax.key] ?? 0), 0) / NUM_AXES
+          )}
+        </text>
+        <text x={CX} y={CY + 8} textAnchor="middle"
+          style={{ fontSize: '7px', fill: 'rgba(255,255,255,0.3)', fontFamily: 'system-ui', letterSpacing: '0.05em' }}>
+          SCORE
+        </text>
+      </svg>
+
+      {/* Hover tooltip */}
+      {hovered && (() => {
+        const ax        = AXES_FULL.find(a => a.key === hovered)!
+        const userVal   = scores[ax.key]    ?? 0
+        const cohortVal = cohortAvg[ax.key] ?? 50
+        const decileVal = topDecile[ax.key] ?? 85
+        const delta     = userVal - cohortVal
+        return (
+          <div style={{
+            position: 'absolute', top: `${SIZE + 4}px`, left: 0, right: 0,
+            padding: '8px 12px', borderRadius: '8px',
+            background: '#161b22', border: `1px solid ${BORDER}`,
+            fontSize: '12px', zIndex: 10,
+          }}>
+            <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, margin: '0 0 5px' }}>
+              {ax.label}
+            </p>
+            <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+              <span style={{ color: 'rgba(255,255,255,0.7)' }}>
+                You: <strong style={{ color: TEAL }}>{userVal}</strong>
+              </span>
+              <span style={{ color: 'rgba(255,255,255,0.4)' }}>
+                Cohort avg: {cohortVal}
+                <span style={{ color: delta >= 0 ? TEAL : '#EF4444', marginLeft: '4px' }}>
+                  ({delta >= 0 ? '+' : ''}{delta})
+                </span>
+              </span>
+              <span style={{ color: 'rgba(255,255,255,0.4)' }}>
+                Top 10%: {decileVal}
+              </span>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: '14px', marginTop: '8px', flexWrap: 'wrap' }}>
+        {[
+          { color: TEAL,                    label: 'You',          dashed: false },
+          { color: 'rgba(255,255,255,0.5)', label: 'Cohort avg',   dashed: false },
+          { color: 'rgba(245,158,11,0.7)',  label: 'Top 10%',      dashed: true  },
+        ].map(l => (
+          <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <svg width="18" height="10">
+              <line x1="0" y1="5" x2="18" y2="5"
+                stroke={l.color} strokeWidth="1.5"
+                strokeDasharray={l.dashed ? '4 3' : 'none'} />
+            </svg>
+            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)' }}>{l.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -480,14 +639,15 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
         {/* ── Section 5: Market Position ── */}
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
           <SectionHeader label={`Compared to ${data.cohort}s`} />
-          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
 
             {/* Radar */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-              <RadarMini scores={data.pentagram.scores} cohortAvg={data.pentagram.cohort_avg} />
-              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', margin: 0, textAlign: 'center' }}>
-                — You &nbsp;&nbsp; — Cohort avg
-              </p>
+            <div style={{ width: '260px', flexShrink: 0 }}>
+              <RadarMini
+                scores={data.pentagram.scores}
+                cohortAvg={data.pentagram.cohort_avg}
+                topDecile={data.pentagram.top_decile}
+              />
             </div>
 
             {/* Benchmarks */}
