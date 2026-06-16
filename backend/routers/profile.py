@@ -1224,6 +1224,252 @@ def _compute_market_position(pentagram_scores: dict, cohort: str) -> dict:
     }
 
 
+# ── Career DNA helpers ───────────────────────────────────────
+
+RECOMMENDED_ACTIONS: dict[str, list[dict]] = {
+    "impact_magnitude": [
+        {"action": "Document business outcomes with metrics from your current role", "points": 14, "effort": "Low"},
+        {"action": "Lead a product initiative with measurable revenue or user impact", "points": 12, "effort": "Medium"},
+        {"action": "Write a case study on a shipped product with quantified results", "points": 8, "effort": "Low"},
+    ],
+    "leadership_signals": [
+        {"action": "Lead an org-wide or cross-functional initiative", "points": 12, "effort": "High"},
+        {"action": "Mentor 1–2 junior PMs formally", "points": 7, "effort": "Medium"},
+        {"action": "Present a product strategy to executive stakeholders", "points": 9, "effort": "Medium"},
+    ],
+    "technical_depth": [
+        {"action": "Get hands-on with a technical project alongside engineering", "points": 10, "effort": "High"},
+        {"action": "Complete a SQL or system design course and apply it at work", "points": 7, "effort": "Medium"},
+        {"action": "Write a technical spec or architecture doc for a feature", "points": 6, "effort": "Low"},
+    ],
+    "domain_expertise": [
+        {"action": "Deepen expertise in your primary industry domain", "points": 9, "effort": "Medium"},
+        {"action": "Publish a point of view on your domain on LinkedIn", "points": 6, "effort": "Low"},
+        {"action": "Take ownership of a domain-specific product area end to end", "points": 11, "effort": "High"},
+    ],
+    "learning_velocity": [
+        {"action": "Complete a relevant certification in your target skill area", "points": 7, "effort": "Medium"},
+        {"action": "Attend a product or industry conference and share learnings", "points": 5, "effort": "Low"},
+        {"action": "Start a structured learning sprint — one new skill per quarter", "points": 8, "effort": "Medium"},
+    ],
+}
+
+CAREER_PATHS: dict[str, list[dict]] = {
+    "Technical PM": [
+        {"path": "Principal PM", "probability": 72, "timeline": "18–24 months", "key_requirement": "Demonstrated org-wide impact"},
+        {"path": "Group PM / Head of Product", "probability": 58, "timeline": "24–36 months", "key_requirement": "People management experience"},
+        {"path": "Staff Engineer → Technical PM", "probability": 41, "timeline": "12–18 months", "key_requirement": "Deep technical execution"},
+    ],
+    "Data-Oriented PM": [
+        {"path": "Head of Data Products", "probability": 68, "timeline": "18–24 months", "key_requirement": "Full data platform ownership"},
+        {"path": "Principal PM, Analytics", "probability": 61, "timeline": "12–18 months", "key_requirement": "Cross-functional data leadership"},
+        {"path": "Director of Product, Data", "probability": 44, "timeline": "30–42 months", "key_requirement": "P&L or business ownership"},
+    ],
+    "Growth PM": [
+        {"path": "Head of Growth", "probability": 74, "timeline": "12–18 months", "key_requirement": "Proven revenue growth ownership"},
+        {"path": "VP Growth", "probability": 49, "timeline": "36–48 months", "key_requirement": "Multi-channel growth leadership"},
+        {"path": "Founder / CPO", "probability": 38, "timeline": "48+ months", "key_requirement": "Full business ownership experience"},
+    ],
+    "Data Scientist": [
+        {"path": "Staff Data Scientist", "probability": 70, "timeline": "12–24 months", "key_requirement": "Technical depth + mentorship"},
+        {"path": "ML Engineer / Applied Scientist", "probability": 55, "timeline": "12–18 months", "key_requirement": "Production ML deployment"},
+        {"path": "Head of Data Science", "probability": 42, "timeline": "30–42 months", "key_requirement": "Team leadership + business impact"},
+    ],
+    "ML Engineer": [
+        {"path": "Staff ML Engineer", "probability": 73, "timeline": "12–24 months", "key_requirement": "Large-scale ML systems"},
+        {"path": "Principal ML Engineer", "probability": 52, "timeline": "24–36 months", "key_requirement": "Org-wide technical influence"},
+        {"path": "Head of AI/ML", "probability": 40, "timeline": "36–48 months", "key_requirement": "Team + business ownership"},
+    ],
+    "Analytics Engineer": [
+        {"path": "Staff Analytics Engineer", "probability": 69, "timeline": "12–24 months", "key_requirement": "Platform-level data ownership"},
+        {"path": "Head of Analytics Engineering", "probability": 51, "timeline": "24–36 months", "key_requirement": "Team leadership + strategy"},
+        {"path": "Director of Data", "probability": 38, "timeline": "36–48 months", "key_requirement": "Business + technical ownership"},
+    ],
+    "Full-Stack Engineer": [
+        {"path": "Staff Engineer", "probability": 71, "timeline": "12–24 months", "key_requirement": "System design + org influence"},
+        {"path": "Engineering Manager", "probability": 60, "timeline": "18–30 months", "key_requirement": "People leadership"},
+        {"path": "Principal Engineer", "probability": 45, "timeline": "24–36 months", "key_requirement": "Architectural leadership"},
+    ],
+    "Backend Engineer": [
+        {"path": "Staff Engineer", "probability": 70, "timeline": "12–24 months", "key_requirement": "Distributed systems expertise"},
+        {"path": "Engineering Manager", "probability": 58, "timeline": "18–30 months", "key_requirement": "Team leadership"},
+        {"path": "Principal Engineer", "probability": 44, "timeline": "24–36 months", "key_requirement": "Technical strategy"},
+    ],
+    "Engineering Manager": [
+        {"path": "Senior Engineering Manager", "probability": 75, "timeline": "12–18 months", "key_requirement": "Multi-team leadership"},
+        {"path": "Director of Engineering", "probability": 58, "timeline": "24–36 months", "key_requirement": "Org design + strategy"},
+        {"path": "VP Engineering", "probability": 38, "timeline": "42–60 months", "key_requirement": "Business + people ownership"},
+    ],
+}
+
+COMPENSATION_RANGES: dict[str, dict[str, dict[str, int]]] = {
+    "Technical PM": {
+        "junior":          {"low": 12, "mid": 18, "high": 25},
+        "mid":             {"low": 20, "mid": 30, "high": 42},
+        "senior":          {"low": 35, "mid": 50, "high": 70},
+        "senior_manager":  {"low": 50, "mid": 70, "high": 95},
+        "director":        {"low": 70, "mid": 95, "high": 130},
+        "vp":              {"low": 100, "mid": 140, "high": 200},
+    },
+    "Data Scientist": {
+        "junior":          {"low": 10, "mid": 16, "high": 22},
+        "mid":             {"low": 18, "mid": 28, "high": 40},
+        "senior":          {"low": 30, "mid": 45, "high": 65},
+        "senior_manager":  {"low": 45, "mid": 65, "high": 90},
+        "director":        {"low": 65, "mid": 90, "high": 125},
+        "vp":              {"low": 90, "mid": 130, "high": 180},
+    },
+    "ML Engineer": {
+        "junior":          {"low": 12, "mid": 18, "high": 26},
+        "mid":             {"low": 22, "mid": 32, "high": 46},
+        "senior":          {"low": 38, "mid": 55, "high": 80},
+        "senior_manager":  {"low": 55, "mid": 78, "high": 110},
+        "director":        {"low": 80, "mid": 110, "high": 150},
+        "vp":              {"low": 110, "mid": 155, "high": 220},
+    },
+    "Analytics Engineer": {
+        "junior":          {"low": 10, "mid": 15, "high": 20},
+        "mid":             {"low": 16, "mid": 24, "high": 35},
+        "senior":          {"low": 28, "mid": 40, "high": 58},
+        "senior_manager":  {"low": 40, "mid": 58, "high": 80},
+        "director":        {"low": 58, "mid": 80, "high": 110},
+        "vp":              {"low": 80, "mid": 115, "high": 160},
+    },
+    "Full-Stack Engineer": {
+        "junior":          {"low": 8, "mid": 14, "high": 20},
+        "mid":             {"low": 16, "mid": 24, "high": 35},
+        "senior":          {"low": 28, "mid": 42, "high": 60},
+        "senior_manager":  {"low": 42, "mid": 60, "high": 85},
+        "director":        {"low": 60, "mid": 85, "high": 120},
+        "vp":              {"low": 85, "mid": 120, "high": 170},
+    },
+}
+
+AXIS_LABELS = {
+    "technical_depth":    "Technical Depth",
+    "domain_expertise":   "Domain Expertise",
+    "impact_magnitude":   "Impact Magnitude",
+    "leadership_signals": "Leadership",
+    "learning_velocity":  "Learning Velocity",
+}
+
+def _get_recommended_actions(top_gaps: list[dict]) -> list[dict]:
+    actions = []
+    for gap in top_gaps[:3]:
+        axis_raw = gap["axis"].lower().replace(" ", "_")
+        pool = RECOMMENDED_ACTIONS.get(axis_raw, [])
+        if pool:
+            best = pool[0]
+            actions.append({
+                "action":      best["action"],
+                "points":      best["points"],
+                "effort":      best["effort"],
+                "gap_axis":    gap["axis"],
+            })
+    # Pad to 3 if fewer gaps
+    while len(actions) < 3:
+        actions.append({
+            "action": "Take on a stretch assignment outside your current scope",
+            "points": 5,
+            "effort": "Medium",
+            "gap_axis": "General",
+        })
+    return actions[:3]
+
+
+def _get_career_paths(cohort: str, impact_pattern: str, trajectory: str) -> list[dict]:
+    paths = CAREER_PATHS.get(cohort, [
+        {"path": f"Senior {cohort}", "probability": 65, "timeline": "12–24 months", "key_requirement": "Consistent high performance"},
+        {"path": f"Lead {cohort}", "probability": 48, "timeline": "24–36 months", "key_requirement": "Team or domain leadership"},
+        {"path": "People Manager", "probability": 35, "timeline": "18–30 months", "key_requirement": "Mentorship + org impact"},
+    ])
+    # Boost top path if accelerating
+    if trajectory == "Accelerating" and paths:
+        paths[0] = {**paths[0], "probability": min(95, paths[0]["probability"] + 10)}
+    # Builder pattern boosts founding/startup paths
+    if impact_pattern == "Builder":
+        paths = [{**p, "probability": min(95, p["probability"] + 8)} for p in paths]
+    return paths
+
+
+def _get_compensation_estimate(cohort: str, seniority: str, years_exp: int) -> dict:
+    cohort_comp = COMPENSATION_RANGES.get(cohort, COMPENSATION_RANGES.get("Technical PM", {}))
+
+    # Map expanded seniority to comp table keys
+    seniority_map = {
+        "intern": "junior", "junior": "junior", "mid": "mid",
+        "senior": "senior", "lead": "senior", "staff": "senior",
+        "principal": "senior_manager", "manager": "senior_manager",
+        "senior_manager": "senior_manager", "associate_director": "director",
+        "director": "director", "senior_director": "director",
+        "vp": "vp", "svp": "vp", "evp": "vp", "c-suite": "vp",
+    }
+    comp_key  = seniority_map.get(seniority, "mid")
+    next_key_map = {"junior": "mid", "mid": "senior", "senior": "senior_manager", "senior_manager": "director", "director": "vp", "vp": "vp"}
+    next_key  = next_key_map.get(comp_key, "vp")
+
+    current   = cohort_comp.get(comp_key,  {"low": 20, "mid": 30, "high": 45})
+    next_level = cohort_comp.get(next_key, {"low": 35, "mid": 50, "high": 70})
+
+    return {
+        "current_range": {"low": current["low"], "high": current["high"]},
+        "current_mid":   current["mid"],
+        "next_level_range": {"low": next_level["low"], "high": next_level["high"]},
+        "currency": "LPA",
+        "note": "Based on Indian tech market 2026. Actuals vary by company tier and location.",
+    }
+
+
+def _get_market_benchmarks(pentagram_scores: dict, cohort: str) -> list[dict]:
+    from services.pentagram import COHORT_AVERAGES, TOP_DECILE
+
+    cohort_avg = COHORT_AVERAGES.get(cohort, COHORT_AVERAGES["Career Explorer"])
+    top_dec    = TOP_DECILE.get(cohort, TOP_DECILE["Career Explorer"])
+    benchmarks = []
+
+    for ax, label in AXIS_LABELS.items():
+        user_val  = pentagram_scores.get(ax, 0)
+        avg_val   = cohort_avg.get(ax, 50)
+        top_val   = top_dec.get(ax, 85)
+
+        if top_val > avg_val:
+            pct = (user_val - avg_val) / (top_val - avg_val) * 100
+        else:
+            pct = 50
+        pct = max(0, min(100, pct))
+
+        percentile_display = round(pct)
+        if percentile_display >= 75:
+            position = f"Top {100 - percentile_display}%"
+            color = "#10B981"
+        elif percentile_display >= 50:
+            position = f"Top {100 - percentile_display}%"
+            color = "#3B82F6"
+        elif percentile_display >= 25:
+            position = f"Bottom {100 - percentile_display}%"
+            color = "#F59E0B"
+        else:
+            position = f"Bottom {100 - percentile_display}%"
+            color = "#EF4444"
+
+        if "Top 0%" in position:
+            position = "Top 1%"
+        if "Bottom 100%" in position:
+            position = "Bottom 99%"
+
+        benchmarks.append({
+            "axis":      label,
+            "user":      user_val,
+            "avg":       avg_val,
+            "top":       top_val,
+            "percentile": round(pct),
+            "position":  position,
+            "color":     color,
+        })
+
+    return sorted(benchmarks, key=lambda x: x["percentile"], reverse=True)
+
+
 @router.get("/career-dna/{user_id}")
 async def get_career_dna(user_id: str):
     try:
@@ -1235,17 +1481,13 @@ async def get_career_dna(user_id: str):
             raise HTTPException(status_code=404, detail="Profile not found")
 
         p = profile.data[0]
-        cohort           = p.get("cohort") or "Career Explorer"
-        impact_pattern   = p.get("impact_pattern") or ""
-        seniority        = p.get("seniority_level") or "mid"
-        years_exp        = p.get("years_of_experience") or 0
-        raw_text         = p.get("raw_profile_text") or ""
-        work_history     = p.get("work_history") or []
-        full_name        = p.get("full_name") or ""
-        extracted_skills = p.get("extracted_skills") or []
-
-        if isinstance(extracted_skills, list):
-            extracted_skills = [s for s in extracted_skills if isinstance(s, str)]
+        cohort         = p.get("cohort") or "Career Explorer"
+        impact_pattern = p.get("impact_pattern") or ""
+        seniority      = p.get("seniority_level") or "mid"
+        years_exp      = p.get("years_of_experience") or 0
+        raw_text       = p.get("raw_profile_text") or ""
+        work_history   = p.get("work_history") or []
+        full_name      = p.get("full_name") or ""
 
         # Pentagram — use cache if available
         cached_penta = p.get("pentagram_scores")
@@ -1262,8 +1504,20 @@ async def get_career_dna(user_id: str):
         # Promotion readiness
         readiness = _compute_promotion_readiness(penta, cohort, trajectory, years_exp, seniority)
 
+        # Recommended actions from top gaps
+        actions = _get_recommended_actions(readiness["top_gaps"])
+
         # Market position
         market = _compute_market_position(penta, cohort)
+
+        # Per-axis market benchmarks
+        benchmarks = _get_market_benchmarks(penta, cohort)
+
+        # Career paths
+        paths = _get_career_paths(cohort, impact_pattern, trajectory)
+
+        # Compensation estimate
+        compensation = _get_compensation_estimate(cohort, seniority, years_exp)
 
         # Next role
         cohort_roles = NEXT_ROLE_MAP.get(cohort, {})
@@ -1275,13 +1529,6 @@ async def get_career_dna(user_id: str):
 
         # Top 3 strengths
         cohort_avg = COHORT_AVERAGES.get(cohort, COHORT_AVERAGES["Career Explorer"])
-        AXIS_LABELS = {
-            "technical_depth":    "Technical Depth",
-            "domain_expertise":   "Domain Expertise",
-            "impact_magnitude":   "Impact Magnitude",
-            "leadership_signals": "Leadership",
-            "learning_velocity":  "Learning Velocity",
-        }
         strengths = sorted(
             [
                 {
@@ -1315,20 +1562,244 @@ async def get_career_dna(user_id: str):
             "years_of_experience": years_exp,
             "trajectory":          trajectory_data,
             "pentagram": {
-                "scores": {
-                    ax: penta.get(ax, 0)
-                    for ax in ["technical_depth", "domain_expertise", "impact_magnitude", "leadership_signals", "learning_velocity"]
-                },
+                "scores":     {ax: penta.get(ax, 0) for ax in AXIS_LABELS},
                 "composite":  penta.get("composite_score", 0),
                 "cohort_avg": cohort_avg,
                 "top_decile": TOP_DECILE.get(cohort, TOP_DECILE["Career Explorer"]),
             },
-            "promotion_readiness": readiness,
-            "market_position":     market,
-            "next_role":           next_role,
-            "top_strengths":       strengths,
-            "share_text":          share_text,
+            "promotion_readiness":  readiness,
+            "recommended_actions":  actions,
+            "market_position":      market,
+            "market_benchmarks":    benchmarks,
+            "career_paths":         paths,
+            "compensation":         compensation,
+            "next_role":            next_role,
+            "top_strengths":        strengths,
+            "share_text":           share_text,
         }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Career Decision Engine ───────────────────────────────────
+
+DECISION_TYPES = ["mba", "startup_vs_enterprise", "management_path", "ic_path", "move_abroad", "job_change"]
+
+class CareerDecisionRequest(BaseModel):
+    user_id: str
+    decision_type: str
+    force_regenerate: bool = False
+
+@router.post("/career-decision")
+async def career_decision(req: CareerDecisionRequest):
+    try:
+        import anthropic
+        import json
+        import re
+
+        if req.decision_type not in DECISION_TYPES:
+            raise HTTPException(status_code=400, detail=f"decision_type must be one of {DECISION_TYPES}")
+
+        profile = supabase.table("user_profiles").select("*").eq("user_id", req.user_id).execute()
+        if not profile.data:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        p = profile.data[0]
+
+        # Check cache
+        cache_key = f"decision_{req.decision_type}"
+        cached = p.get(cache_key)
+        if cached and not req.force_regenerate:
+            return json.loads(cached) if isinstance(cached, str) else cached
+
+        cohort         = p.get("cohort") or "Career Explorer"
+        impact_pattern = p.get("impact_pattern") or ""
+        seniority      = p.get("seniority_level") or "mid"
+        years_exp      = p.get("years_of_experience") or 0
+        trajectory     = p.get("pentagram_scores", {})
+        salary_target  = p.get("salary_target_lpa") or 0
+        raw_text       = p.get("raw_profile_text") or ""
+        location       = p.get("location") or "India"
+
+        DECISION_PROMPTS = {
+            "mba": f"""You are a senior career advisor for tech professionals in India.
+
+Analyse whether this professional should pursue an MBA.
+
+Profile:
+- Cohort: {cohort}
+- Impact Pattern: {impact_pattern}
+- Seniority: {seniority}
+- Years of experience: {years_exp}
+- Location: {location}
+- Salary target: ₹{salary_target} LPA
+- Work history summary: {raw_text[:800]}
+
+Consider: career trajectory, opportunity cost, ROI, alternative paths.
+MBA costs ₹25–40L for top Indian schools, ₹80L–1.5Cr for international.
+
+Return ONLY valid JSON:
+{{
+  "recommendation": "Yes" | "No" | "Maybe",
+  "confidence": 0-100,
+  "summary": "2 sentence summary of recommendation",
+  "reasons_for": ["reason1", "reason2"],
+  "reasons_against": ["reason1", "reason2"],
+  "opportunity_cost": "What they give up",
+  "expected_roi": "Low" | "Medium" | "High",
+  "alternative": "Better alternative path if No/Maybe",
+  "timeline": "When to reconsider if Maybe"
+}}""",
+
+            "startup_vs_enterprise": f"""You are a senior career advisor for tech professionals in India.
+
+Analyse whether this professional is better suited for a startup or enterprise right now.
+
+Profile:
+- Cohort: {cohort}
+- Impact Pattern: {impact_pattern}
+- Seniority: {seniority}
+- Years of experience: {years_exp}
+- Work history: {raw_text[:800]}
+
+Return ONLY valid JSON:
+{{
+  "recommendation": "Startup" | "Enterprise" | "Either",
+  "confidence": 0-100,
+  "summary": "2 sentence summary",
+  "startup_fit_score": 0-100,
+  "enterprise_fit_score": 0-100,
+  "startup_pros": ["pro1", "pro2"],
+  "startup_cons": ["con1", "con2"],
+  "enterprise_pros": ["pro1", "pro2"],
+  "enterprise_cons": ["con1", "con2"],
+  "ideal_stage": "Seed" | "Series A" | "Series B" | "Late Stage" | "Public"
+}}""",
+
+            "management_path": f"""You are a senior career advisor for tech professionals in India.
+
+Analyse whether this professional should move into people management or stay IC.
+
+Profile:
+- Cohort: {cohort}
+- Impact Pattern: {impact_pattern}
+- Seniority: {seniority}
+- Years of experience: {years_exp}
+- Work history: {raw_text[:800]}
+
+Return ONLY valid JSON:
+{{
+  "recommendation": "Management" | "IC" | "Either",
+  "confidence": 0-100,
+  "summary": "2 sentence summary",
+  "management_readiness": 0-100,
+  "ic_ceiling": "How far they can go as IC",
+  "management_pros": ["pro1", "pro2"],
+  "management_cons": ["con1", "con2"],
+  "first_step": "Specific next step toward chosen path"
+}}""",
+
+            "move_abroad": f"""You are a senior career advisor for tech professionals in India.
+
+Analyse whether this professional should consider moving abroad for their career.
+
+Profile:
+- Cohort: {cohort}
+- Impact Pattern: {impact_pattern}
+- Seniority: {seniority}
+- Years of experience: {years_exp}
+- Location: {location}
+- Work history: {raw_text[:800]}
+
+Return ONLY valid JSON:
+{{
+  "recommendation": "Yes" | "No" | "Maybe",
+  "confidence": 0-100,
+  "summary": "2 sentence summary",
+  "best_markets": ["market1", "market2"],
+  "compensation_uplift": "Expected % increase",
+  "career_impact": "How it affects career trajectory",
+  "visa_difficulty": "Easy" | "Medium" | "Hard",
+  "best_timing": "When is the right time",
+  "alternative": "Alternative if staying in India"
+}}""",
+
+            "ic_path": f"""You are a senior career advisor for tech professionals in India.
+
+Analyse this professional's individual contributor career path and ceiling.
+
+Profile:
+- Cohort: {cohort}
+- Impact Pattern: {impact_pattern}
+- Seniority: {seniority}
+- Years of experience: {years_exp}
+- Work history: {raw_text[:800]}
+
+Return ONLY valid JSON:
+{{
+  "ic_ceiling": "Highest realistic IC level",
+  "confidence": 0-100,
+  "summary": "2 sentence summary",
+  "years_to_ceiling": "Estimated years",
+  "key_skills_needed": ["skill1", "skill2", "skill3"],
+  "biggest_risk": "Main risk on IC path",
+  "compensation_ceiling": "Max realistic comp as IC in India (LPA)"
+}}""",
+
+            "job_change": f"""You are a senior career advisor for tech professionals in India.
+
+Analyse whether this professional should change jobs now or stay.
+
+Profile:
+- Cohort: {cohort}
+- Impact Pattern: {impact_pattern}
+- Seniority: {seniority}
+- Years of experience: {years_exp}
+- Salary target: ₹{salary_target} LPA
+- Work history: {raw_text[:800]}
+
+Return ONLY valid JSON:
+{{
+  "recommendation": "Change now" | "Stay 6 months" | "Stay 12+ months",
+  "confidence": 0-100,
+  "summary": "2 sentence summary",
+  "reasons_to_change": ["reason1", "reason2"],
+  "reasons_to_stay": ["reason1", "reason2"],
+  "expected_salary_jump": "% increase on job change",
+  "best_target_companies": ["company1", "company2", "company3"],
+  "best_timing": "Optimal timing for move"
+}}""",
+        }
+
+        prompt = DECISION_PROMPTS[req.decision_type]
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        content = message.content[0].text.strip()
+        content = re.sub(r'^```json\s*', '', content)
+        content = re.sub(r'\s*```$', '', content)
+        result  = json.loads(content)
+        result["decision_type"] = req.decision_type
+
+        # Cache in user_profiles — store up to 6 decision types
+        # Using a jsonb column approach: store all decisions in one field
+        existing_decisions = p.get("career_decisions") or {}
+        if isinstance(existing_decisions, str):
+            existing_decisions = json.loads(existing_decisions)
+        existing_decisions[req.decision_type] = result
+
+        supabase.table("user_profiles").update({
+            "career_decisions": json.dumps(existing_decisions)
+        }).eq("user_id", req.user_id).execute()
+
+        return result
 
     except HTTPException:
         raise
