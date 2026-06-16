@@ -10,6 +10,7 @@ import ContactDetailsForm from '@/components/profile/ContactDetailsForm'
 import PreferencesPanel from '@/components/profile/PreferencesPanel'
 import PrepTab from '@/components/dashboard/PrepTab'
 import ToolsTab from '@/components/dashboard/ToolsTab'
+import CareerDNA from '@/components/dashboard/CareerDNA'
 
 function ExpandableSkills({ skills }: { skills: string[] }) {
   const [expanded, setExpanded] = useState(false)
@@ -84,7 +85,7 @@ export default function DashboardTabs({
   topMatchScore, generationCount, profileSkills = [],
   hasProfile, hasTracks, initialTab, impactPattern = '', salaryTargetLpa,
 }: DashboardTabsProps) {
-  const defaultTab = initialTab || (hasTracks ? 'discover' : 'profile')
+  const defaultTab = initialTab || (hasTracks ? 'career' : 'profile')
   const [activeTab, setActiveTab] = useState<string>(defaultTab)
   const [trackerKey, setTrackerKey] = useState(0)
   const [searchStatus, setSearchStatus] = useState('ACTIVE')
@@ -201,6 +202,11 @@ export default function DashboardTabs({
             </div>
           )}
 
+          {/* Career tab */}
+          {activeTab === 'career' && (
+            <CareerDNA userId={userId} />
+          )}
+          
           {/* Pipeline tab */}
           {activeTab === 'pipeline' && (
             <KanbanBoard key={trackerKey} userId={userId} />
