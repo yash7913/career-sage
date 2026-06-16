@@ -78,20 +78,22 @@ export default function Sidebar({
   const fullySetUp = hasProfile && hasTracks
 
   const navItems = fullySetUp
-    ? [
-        { key: 'discover', icon: '⚡', label: 'Discover', locked: false },
-        { key: 'pipeline', icon: '📋', label: 'Pipeline', locked: false },
-        { key: 'prep', icon: '🎯', label: 'Prep', locked: false },
-        { key: 'tools', icon: '🛠', label: 'Tools', locked: false },
-        { key: 'profile', icon: '👤', label: 'Profile', locked: false },
-      ]
-    : [
-        { key: 'profile', icon: '👤', label: 'Profile', locked: false },
-        { key: 'discover', icon: '⚡', label: 'Discover', locked: !hasProfile },
-        { key: 'pipeline', icon: '📋', label: 'Pipeline', locked: !hasProfile },
-        { key: 'prep', icon: '🎯', label: 'Prep', locked: !hasProfile },
-        { key: 'tools', icon: '🛠', label: 'Tools', locked: !hasProfile },
-      ]
+  ? [
+      { key: 'career', icon: '🧬', label: 'Career', locked: false },
+      { key: 'discover', icon: '⚡', label: 'Discover', locked: false },
+      { key: 'pipeline', icon: '📋', label: 'Pipeline', locked: false },
+      { key: 'prep', icon: '🎯', label: 'Prep', locked: false },
+      { key: 'tools', icon: '🛠', label: 'Tools', locked: false },
+      { key: 'profile', icon: '👤', label: 'Profile', locked: false },
+    ]
+  : [
+      { key: 'profile', icon: '👤', label: 'Profile', locked: false },
+      { key: 'career', icon: '🧬', label: 'Career', locked: !hasProfile },
+      { key: 'discover', icon: '⚡', label: 'Discover', locked: !hasProfile },
+      { key: 'pipeline', icon: '📋', label: 'Pipeline', locked: !hasProfile },
+      { key: 'prep', icon: '🎯', label: 'Prep', locked: !hasProfile },
+      { key: 'tools', icon: '🛠', label: 'Tools', locked: !hasProfile },
+    ]
 
   return (
     <div className="cs-sidebar-wrap" style={{
