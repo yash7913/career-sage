@@ -782,3 +782,555 @@ async def accept_inferred_skills(req: AcceptSkillsRequest):
         return {"status": "ok", "added": len(new_skills), "total": len(updated)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class LinkedInImportRequest(BaseModel):
+    user_id: str
+    linkedin_url: str
+
+@router.post("/import-linkedin")
+async def import_linkedin_profile(req: LinkedInImportRequest):
+    try:
+        import httpx
+        import json
+
+        apify_token = os.getenv("APIFY_API_TOKEN")
+        if not apify_token:
+            raise HTTPException(status_code=500, detail="Apify token not configured")
+
+        # Call Apify LinkedIn profile scraper
+        actor_id = "M2FMdjRVeF1HPGFcc"
+        run_url = f"https://api.apify.com/v2/acts/{actor_id}/run-sync-get-dataset-items?token={apify_token}&timeout=60"
+
+        async with httpx.AsyncClient(timeout=90) as client:
+            run_res = await client.post(run_url, json={
+                "urls": [req.linkedin_url]
+            })
+        if not run_res.status_code == 200:
+            raise HTTPException(status_code=500, detail=f"Apify error: {run_res.text}")
+
+        items = run_res.json()
+        if not items or len(items) == 0:
+            raise HTTPException(status_code=404, detail="No profile data returned from LinkedIn")
+
+        li = items[0]
+
+        # Extract work history
+        experience = li.get("experience") or []
+        work_history = []
+        all_text_parts = []
+
+        for exp in experience:
+            company = exp.get("companyName") or ""
+            position = exp.get("position") or ""
+            description = exp.get("description") or ""
+            start = exp.get("startDate", {})
+            end = exp.get("endDate", {})
+
+            start_date = f"{start.get('year', '')}-01" if start.get('year') else None
+            end_date = f"{end.get('year', '')}-01" if end.get('year') and end.get('text') != 'Present' else None
+            is_current = end.get('text') == 'Present'
+
+            work_history.append({
+                "title": position,
+                "company": company,
+                "start_date": start_date,
+                "end_date": end_date,
+                "is_current": is_current,
+                "employment_type": (exp.get("employmentType") or "full-time").lower(),
+            })
+
+            if description:
+                all_text_parts.append(f"{position} at {company}: {description}")
+
+        # Extract skills
+        li_skills = li.get("skills") or []
+        extracted_skills = [s.get("name") for s in li_skills if s.get("name") and len(s.get("name", "")) < 40]
+
+        # Extract education
+        education = li.get("education") or []
+        education_data = []
+        for edu in education:
+            education_data.append({
+                "institution": edu.get("schoolName"),
+                "degree": edu.get("degree"),
+                "field_of_study": edu.get("fieldOfStudy"),
+                "graduation_year": (edu.get("endDate") or {}).get("year"),
+                "source_confidence": "explicit",
+            })
+
+        # Build raw profile text
+        about = li.get("about") or ""
+        headline = li.get("headline") or ""
+        location_data = li.get("location") or {}
+        location_text = location_data.get("linkedinText") or ""
+
+        raw_profile_text = f"HEADLINE: {headline}\n\nABOUT: {about}\n\nROLES: " + \
+            ", ".join([f"{w['title']} at {w['company']}" for w in work_history[:5]]) + \
+            "\n\nSKILLS: " + ", ".join(extracted_skills[:30]) + \
+            "\n\nEDUCATION: " + ", ".join([f"{e.get('degree')} in {e.get('field_of_study')} at {e.get('institution')}" for e in education_data[:3]]) + \
+            "\n\nEXPERIENCE DETAILS:\n" + "\n\n".join(all_text_parts[:5])
+
+        # Build summary
+        full_name = f"{li.get('firstName', '')} {li.get('lastName', '')}".strip()
+        current_pos = (li.get("currentPosition") or [{}])[0]
+        current_company = current_pos.get("companyName") or ""
+        summary = f"{full_name} — {headline}. Currently at {current_company}. {about[:200] if about else ''}"
+
+        # Calculate years of experience
+        years_exp = 0
+        if work_history:
+            import datetime
+            earliest = None
+            for w in work_history:
+                if w.get("start_date"):
+                    try:
+                        yr = int(w["start_date"].split("-")[0])
+                        if earliest is None or yr < earliest:
+                            earliest = yr
+                    except:
+                        pass
+            if earliest:
+                years_exp = datetime.datetime.now().year - earliest
+
+        # Save to profile
+        updates = {
+            "linkedin_url": req.linkedin_url,
+            "extracted_skills": extracted_skills,
+            "education_data": education_data,
+            "work_history": work_history,
+            "raw_profile_text": raw_profile_text[:3000],
+            "extracted_summary": summary[:500],
+            "years_of_experience": years_exp,
+        }
+        if full_name:
+            updates["full_name"] = full_name
+        if location_text:
+            updates["location"] = location_text
+
+        supabase.table("user_profiles").update(updates).eq("user_id", req.user_id).execute()
+
+        return {
+            "status": "ok",
+            "name": full_name,
+            "headline": headline,
+            "skills_count": len(extracted_skills),
+            "roles_count": len(work_history),
+            "education_count": len(education_data),
+            "location": location_text,
+            "preview": {
+                "skills": extracted_skills[:10],
+                "roles": [f"{w['title']} at {w['company']}" for w in work_history[:3]],
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Career DNA ───────────────────────────────────────────────
+
+NEXT_ROLE_MAP: dict[str, dict[str, str]] = {
+    "Technical PM": {
+        "intern":             "Associate Product Manager",
+        "junior":             "Product Manager",
+        "mid":                "Senior Product Manager",
+        "senior":             "Senior Product Manager II",
+        "lead":               "Lead Product Manager",
+        "staff":              "Staff Product Manager",
+        "principal":          "Principal Product Manager",
+        "manager":            "Group Product Manager",
+        "senior_manager":     "Senior Group PM / Principal PM",
+        "associate_director": "Director of Product",
+        "director":           "Senior Director of Product",
+        "senior_director":    "VP of Product",
+        "vp":                 "SVP of Product",
+        "svp":                "EVP / Chief Product Officer",
+        "evp":                "Chief Product Officer",
+    },
+    "Data-Oriented PM": {
+        "intern":             "Associate PM, Data",
+        "junior":             "Product Manager, Data",
+        "mid":                "Senior PM, Data Products",
+        "senior":             "Senior PM II, Data Products",
+        "lead":               "Lead PM, Data Platform",
+        "staff":              "Staff PM, Data",
+        "principal":          "Principal PM, Data",
+        "manager":            "Group PM, Data",
+        "senior_manager":     "Senior Group PM, Data",
+        "associate_director": "Director of Product, Data",
+        "director":           "Senior Director, Data Products",
+        "senior_director":    "VP Product, Data Platform",
+        "vp":                 "SVP Product",
+        "svp":                "EVP / Chief Product Officer",
+        "evp":                "Chief Product Officer",
+    },
+    "Growth PM": {
+        "intern":             "Associate Growth PM",
+        "junior":             "Growth PM",
+        "mid":                "Senior Growth PM",
+        "senior":             "Senior Growth PM II",
+        "lead":               "Lead Growth PM",
+        "staff":              "Staff Growth PM",
+        "principal":          "Principal Growth PM",
+        "manager":            "Group PM, Growth",
+        "senior_manager":     "Head of Growth",
+        "associate_director": "Director of Growth",
+        "director":           "Senior Director of Growth",
+        "senior_director":    "VP Growth",
+        "vp":                 "SVP Growth",
+        "svp":                "EVP / Chief Growth Officer",
+        "evp":                "Chief Growth Officer",
+    },
+    "Data Scientist": {
+        "intern":             "Junior Data Scientist",
+        "junior":             "Data Scientist",
+        "mid":                "Senior Data Scientist",
+        "senior":             "Senior Data Scientist II",
+        "lead":               "Lead Data Scientist",
+        "staff":              "Staff Data Scientist",
+        "principal":          "Principal Data Scientist",
+        "manager":            "Manager, Data Science",
+        "senior_manager":     "Senior Manager, Data Science",
+        "associate_director": "Associate Director, Data Science",
+        "director":           "Director of Data Science",
+        "senior_director":    "Senior Director, Data Science",
+        "vp":                 "VP Data Science",
+        "svp":                "SVP Data & Analytics",
+        "evp":                "Chief Data Officer",
+    },
+    "Analytics Engineer": {
+        "intern":             "Junior Analytics Engineer",
+        "junior":             "Analytics Engineer",
+        "mid":                "Senior Analytics Engineer",
+        "senior":             "Senior Analytics Engineer II",
+        "lead":               "Lead Analytics Engineer",
+        "staff":              "Staff Analytics Engineer",
+        "principal":          "Principal Analytics Engineer",
+        "manager":            "Manager, Analytics Engineering",
+        "senior_manager":     "Senior Manager, Analytics Engineering",
+        "associate_director": "Associate Director, Data",
+        "director":           "Director of Analytics Engineering",
+        "senior_director":    "Senior Director, Data Platform",
+        "vp":                 "VP Data",
+        "svp":                "SVP Data & Analytics",
+        "evp":                "Chief Data Officer",
+    },
+    "ML Engineer": {
+        "intern":             "Junior ML Engineer",
+        "junior":             "ML Engineer",
+        "mid":                "Senior ML Engineer",
+        "senior":             "Senior ML Engineer II",
+        "lead":               "Lead ML Engineer",
+        "staff":              "Staff ML Engineer",
+        "principal":          "Principal ML Engineer",
+        "manager":            "Manager, ML Engineering",
+        "senior_manager":     "Senior Manager, ML",
+        "associate_director": "Associate Director, AI/ML",
+        "director":           "Director of ML Engineering",
+        "senior_director":    "Senior Director, AI/ML",
+        "vp":                 "VP AI/ML",
+        "svp":                "SVP Artificial Intelligence",
+        "evp":                "Chief AI Officer",
+    },
+    "Full-Stack Engineer": {
+        "intern":             "Junior Software Engineer",
+        "junior":             "Software Engineer",
+        "mid":                "Senior Software Engineer",
+        "senior":             "Senior Software Engineer II",
+        "lead":               "Lead Engineer",
+        "staff":              "Staff Engineer",
+        "principal":          "Principal Engineer",
+        "manager":            "Engineering Manager",
+        "senior_manager":     "Senior Engineering Manager",
+        "associate_director": "Associate Director, Engineering",
+        "director":           "Director of Engineering",
+        "senior_director":    "Senior Director, Engineering",
+        "vp":                 "VP Engineering",
+        "svp":                "SVP Engineering",
+        "evp":                "EVP Engineering / CTO",
+    },
+    "Backend Engineer": {
+        "intern":             "Junior Backend Engineer",
+        "junior":             "Backend Engineer",
+        "mid":                "Senior Backend Engineer",
+        "senior":             "Senior Backend Engineer II",
+        "lead":               "Lead Backend Engineer",
+        "staff":              "Staff Engineer",
+        "principal":          "Principal Engineer",
+        "manager":            "Engineering Manager",
+        "senior_manager":     "Senior Engineering Manager",
+        "associate_director": "Associate Director, Engineering",
+        "director":           "Director of Engineering",
+        "senior_director":    "Senior Director, Engineering",
+        "vp":                 "VP Engineering",
+        "svp":                "SVP Engineering",
+        "evp":                "EVP Engineering / CTO",
+    },
+    "Engineering Manager": {
+        "intern":             "Associate Engineering Manager",
+        "junior":             "Engineering Manager",
+        "mid":                "Engineering Manager",
+        "senior":             "Senior Engineering Manager",
+        "lead":               "Senior Engineering Manager",
+        "staff":              "Senior Engineering Manager",
+        "principal":          "Senior Engineering Manager",
+        "manager":            "Senior Engineering Manager",
+        "senior_manager":     "Associate Director, Engineering",
+        "associate_director": "Director of Engineering",
+        "director":           "Senior Director of Engineering",
+        "senior_director":    "VP Engineering",
+        "vp":                 "SVP Engineering",
+        "svp":                "EVP Engineering",
+        "evp":                "CTO",
+    },
+}
+
+SENIORITY_ORDER = [
+    "intern",
+    "junior",
+    "mid",
+    "senior",
+    "lead",
+    "staff",
+    "principal",
+    "manager",
+    "senior_manager",
+    "associate_director",
+    "director",
+    "senior_director",
+    "vp",
+    "svp",
+    "evp",
+    "c-suite",
+]
+
+def _next_seniority(current: str) -> str:
+    try:
+        idx = SENIORITY_ORDER.index(current)
+        return SENIORITY_ORDER[min(idx + 1, len(SENIORITY_ORDER) - 1)]
+    except ValueError:
+        return "senior"
+
+
+def _compute_promotion_readiness(
+    pentagram_scores: dict,
+    cohort: str,
+    trajectory: str,
+    years_exp: int,
+    seniority_level: str,
+) -> dict:
+    from services.pentagram import COHORT_AVERAGES, TOP_DECILE
+
+    axes = ["technical_depth", "domain_expertise", "impact_magnitude", "leadership_signals", "learning_velocity"]
+    cohort_avg = COHORT_AVERAGES.get(cohort, COHORT_AVERAGES["Career Explorer"])
+    top_dec    = TOP_DECILE.get(cohort, TOP_DECILE["Career Explorer"])
+
+    axis_scores = []
+    gaps = []
+    for ax in axes:
+        user_val = pentagram_scores.get(ax, 0)
+        avg_val  = cohort_avg.get(ax, 50)
+        top_val  = top_dec.get(ax, 85)
+        if top_val > avg_val:
+            norm = (user_val - avg_val) / (top_val - avg_val) * 100
+        else:
+            norm = 50
+        norm = max(0, min(100, norm))
+        axis_scores.append(norm)
+        if norm < 60:
+            label = ax.replace("_", " ").title()
+            gaps.append({
+                "axis": label,
+                "gap": round(top_val - user_val),
+                "user": user_val,
+                "top_decile": top_val,
+            })
+
+    base_score = round(sum(axis_scores) / len(axis_scores))
+    trajectory_bonus = {
+        "Accelerating": 10,
+        "On-track": 0,
+        "Plateauing": -10,
+        "Pivoting": -5,
+    }.get(trajectory, 0)
+
+    seniority_idx = SENIORITY_ORDER.index(seniority_level) if seniority_level in SENIORITY_ORDER else 2
+    expected_min_years = [0, 1, 3, 5, 7, 9, 11, 8, 11, 13, 14, 17, 18, 22, 26, 30]
+    years_bonus = 5 if years_exp >= expected_min_years[seniority_idx] else -5
+
+    readiness = max(0, min(99, base_score + trajectory_bonus + years_bonus))
+
+    if readiness >= 75:
+        verdict, verdict_color, timeline = "Ready now", "#10B981", "0–6 months"
+    elif readiness >= 55:
+        verdict, verdict_color, timeline = "Almost there", "#F59E0B", "6–12 months"
+    elif readiness >= 35:
+        verdict, verdict_color, timeline = "Building toward it", "#3B82F6", "12–24 months"
+    else:
+        verdict, verdict_color, timeline = "Early stage", "#7F77DD", "24+ months"
+
+    return {
+        "score": readiness,
+        "verdict": verdict,
+        "verdict_color": verdict_color,
+        "timeline": timeline,
+        "top_gaps": sorted(gaps, key=lambda x: x["gap"], reverse=True)[:3],
+        "axis_scores": {ax: round(axis_scores[i]) for i, ax in enumerate(axes)},
+    }
+
+
+def _compute_market_position(pentagram_scores: dict, cohort: str) -> dict:
+    from services.pentagram import COHORT_AVERAGES, TOP_DECILE
+
+    axes = ["technical_depth", "domain_expertise", "impact_magnitude", "leadership_signals", "learning_velocity"]
+    cohort_avg = COHORT_AVERAGES.get(cohort, COHORT_AVERAGES["Career Explorer"])
+
+    axes_above_avg = sum(
+        1 for ax in axes
+        if pentagram_scores.get(ax, 0) >= cohort_avg.get(ax, 50)
+    )
+    composite = pentagram_scores.get("composite_score", 50)
+
+    if composite >= 80:
+        percentile = 90 + min(9, (composite - 80) // 2)
+    elif composite >= 65:
+        percentile = round(70 + (composite - 65) * 1.3)
+    elif composite >= 50:
+        percentile = round(45 + (composite - 50) * 1.7)
+    elif composite >= 35:
+        percentile = round(20 + (composite - 35) * 1.7)
+    else:
+        percentile = max(5, composite // 2)
+
+    percentile = min(99, max(1, percentile))
+
+    if percentile >= 80:
+        label = f"Top {100 - percentile}% of {cohort}s"
+    elif percentile >= 50:
+        label = f"Above average {cohort}"
+    elif percentile >= 30:
+        label = f"Average {cohort}"
+    else:
+        label = f"Building toward {cohort} average"
+
+    return {
+        "percentile": percentile,
+        "label": label,
+        "axes_above_avg": axes_above_avg,
+        "total_axes": len(axes),
+        "composite_score": composite,
+    }
+
+
+@router.get("/career-dna/{user_id}")
+async def get_career_dna(user_id: str):
+    try:
+        from services.pentagram import compute_pentagram, COHORT_AVERAGES, TOP_DECILE
+        from services.trajectory import classify_trajectory
+
+        profile = supabase.table("user_profiles").select("*").eq("user_id", user_id).execute()
+        if not profile.data:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        p = profile.data[0]
+        cohort           = p.get("cohort") or "Career Explorer"
+        impact_pattern   = p.get("impact_pattern") or ""
+        seniority        = p.get("seniority_level") or "mid"
+        years_exp        = p.get("years_of_experience") or 0
+        raw_text         = p.get("raw_profile_text") or ""
+        work_history     = p.get("work_history") or []
+        full_name        = p.get("full_name") or ""
+        extracted_skills = p.get("extracted_skills") or []
+
+        if isinstance(extracted_skills, list):
+            extracted_skills = [s for s in extracted_skills if isinstance(s, str)]
+
+        # Pentagram — use cache if available
+        cached_penta = p.get("pentagram_scores")
+        if cached_penta and isinstance(cached_penta, dict) and cached_penta.get("composite_score"):
+            penta = cached_penta
+        else:
+            penta = compute_pentagram(p)
+            supabase.table("user_profiles").update({"pentagram_scores": penta}).eq("user_id", user_id).execute()
+
+        # Trajectory
+        trajectory_data = classify_trajectory(raw_text, work_history, years_exp, cohort)
+        trajectory      = trajectory_data.get("trajectory", "On-track")
+
+        # Promotion readiness
+        readiness = _compute_promotion_readiness(penta, cohort, trajectory, years_exp, seniority)
+
+        # Market position
+        market = _compute_market_position(penta, cohort)
+
+        # Next role
+        cohort_roles = NEXT_ROLE_MAP.get(cohort, {})
+        next_role = (
+            cohort_roles.get(seniority)
+            or cohort_roles.get(_next_seniority(seniority))
+            or f"Senior {cohort}"
+        )
+
+        # Top 3 strengths
+        cohort_avg = COHORT_AVERAGES.get(cohort, COHORT_AVERAGES["Career Explorer"])
+        AXIS_LABELS = {
+            "technical_depth":    "Technical Depth",
+            "domain_expertise":   "Domain Expertise",
+            "impact_magnitude":   "Impact Magnitude",
+            "leadership_signals": "Leadership",
+            "learning_velocity":  "Learning Velocity",
+        }
+        strengths = sorted(
+            [
+                {
+                    "axis":   AXIS_LABELS[ax],
+                    "score":  penta.get(ax, 0),
+                    "vs_avg": penta.get(ax, 0) - cohort_avg.get(ax, 50),
+                }
+                for ax in AXIS_LABELS
+            ],
+            key=lambda x: x["vs_avg"],
+            reverse=True,
+        )[:3]
+
+        # Share text
+        share_text = (
+            f"Just got my Career DNA on Career Sage 🧬\n\n"
+            f"Cohort: {cohort}\n"
+            f"Impact Pattern: {impact_pattern}\n"
+            f"Market Position: {market['label']}\n"
+            f"Promotion Readiness: {readiness['verdict']} ({readiness['score']}%)\n"
+            f"Most Likely Next Role: {next_role}\n\n"
+            f"Find out yours → career-sage-sigma.vercel.app"
+        )
+
+        return {
+            "user_id":             user_id,
+            "full_name":           full_name,
+            "cohort":              cohort,
+            "impact_pattern":      impact_pattern,
+            "seniority_level":     seniority,
+            "years_of_experience": years_exp,
+            "trajectory":          trajectory_data,
+            "pentagram": {
+                "scores": {
+                    ax: penta.get(ax, 0)
+                    for ax in ["technical_depth", "domain_expertise", "impact_magnitude", "leadership_signals", "learning_velocity"]
+                },
+                "composite":  penta.get("composite_score", 0),
+                "cohort_avg": cohort_avg,
+                "top_decile": TOP_DECILE.get(cohort, TOP_DECILE["Career Explorer"]),
+            },
+            "promotion_readiness": readiness,
+            "market_position":     market,
+            "next_role":           next_role,
+            "top_strengths":       strengths,
+            "share_text":          share_text,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
