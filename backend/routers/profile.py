@@ -1420,6 +1420,34 @@ def _get_compensation_estimate(cohort: str, seniority: str, years_exp: int) -> d
     }
 
 
+AXIS_CONTEXT: dict[str, dict[str, str]] = {
+    "technical_depth": {
+        "above": "Your technical depth is a strong differentiator. This gives you credibility with engineering teams and makes you a stronger candidate for technical PM roles.",
+        "average": "Your technical depth is on par with your cohort. Consider deepening expertise in a specific area — system design, data infrastructure, or AI/ML — to stand out.",
+        "below": "Technical depth is below your cohort average. This may limit your candidacy for roles requiring close engineering collaboration. Focus on SQL, APIs, or system design fundamentals.",
+    },
+    "domain_expertise": {
+        "above": "You have strong domain expertise relative to your cohort. This is a significant asset when targeting roles in your industry vertical.",
+        "average": "Your domain expertise is average for your cohort. Publishing insights, taking on domain-specific ownership, or deepening in one vertical will move this.",
+        "below": "Domain expertise is below average. This often happens when professionals move across industries frequently. Consider anchoring in one domain for 2–3 years.",
+    },
+    "impact_magnitude": {
+        "above": "Your impact scores are strong — you have clear evidence of business outcomes in your profile. This is one of the most important signals for senior roles.",
+        "average": "Your impact is average for your cohort. Strengthen this by quantifying outcomes in your profile — revenue generated, cost saved, users impacted, efficiency gains.",
+        "below": "Impact Magnitude is the score most affected by how your profile is written, not necessarily how you actually performed. Your move from Software Engineer → Analyst → PM with salary growth from ₹9L to ₹50L+ is itself significant impact — it just needs to be documented with metrics. Add 2–3 quantified outcomes from your Salesforce work to move this score significantly.",
+    },
+    "leadership_signals": {
+        "above": "Your leadership signals are strong. You show clear evidence of influencing teams, driving decisions, and operating above your title.",
+        "average": "Leadership signals are average. To improve: take on cross-functional initiatives, mentor junior team members, or document times you influenced without authority.",
+        "below": "Leadership signals are below average for your cohort. This is common for strong individual contributors who haven't yet had formal leadership opportunities. Leading an org-wide initiative or mentoring 1–2 people will move this quickly.",
+    },
+    "learning_velocity": {
+        "above": "Your learning velocity is strong — you show evidence of consistently acquiring new skills and adapting to new domains.",
+        "average": "Learning velocity is average. Consider adding recent certifications, courses, or new skills adopted in the last 12 months to your profile.",
+        "below": "Learning velocity appears below average. This may reflect that your profile doesn't mention recent upskilling, not that you haven't been learning. Add any new tools, frameworks, or domains you've picked up recently.",
+    },
+}
+
 def _get_market_benchmarks(pentagram_scores: dict, cohort: str) -> list[dict]:
     from services.pentagram import COHORT_AVERAGES, TOP_DECILE
 
@@ -1428,46 +1456,59 @@ def _get_market_benchmarks(pentagram_scores: dict, cohort: str) -> list[dict]:
     benchmarks = []
 
     for ax, label in AXIS_LABELS.items():
-        user_val  = pentagram_scores.get(ax, 0)
-        avg_val   = cohort_avg.get(ax, 50)
-        top_val   = top_dec.get(ax, 85)
+        user_val = pentagram_scores.get(ax, 0)
+        avg_val  = cohort_avg.get(ax, 50)
+        top_val  = top_dec.get(ax, 85)
 
-        if top_val > avg_val:
-            pct = (user_val - avg_val) / (top_val - avg_val) * 100
+        # How far above or below the cohort average, scaled to cohort spread
+        spread = max(top_val - avg_val, 1)
+        delta  = user_val - avg_val
+
+        if delta >= 0:
+            # Above average — scale 0-100 within avg→top range
+            pct_above = min(100, round((delta / spread) * 100))
+            if pct_above >= 75:
+                position = "Top 5%"
+                color    = "#10B981"
+                bracket  = "above"
+            elif pct_above >= 40:
+                position = "Top 20%"
+                color    = "#10B981"
+                bracket  = "above"
+            else:
+                position = "Above average"
+                color    = "#3B82F6"
+                bracket  = "average"
         else:
-            pct = 50
-        pct = max(0, min(100, pct))
+            # Below average — scale 0-100 within 0→avg range
+            pct_below = min(100, round((abs(delta) / max(avg_val, 1)) * 100))
+            if pct_below >= 60:
+                position = "Well below average"
+                color    = "#EF4444"
+                bracket  = "below"
+            elif pct_below >= 30:
+                position = "Below average"
+                color    = "#F59E0B"
+                bracket  = "below"
+            else:
+                position = "Slightly below average"
+                color    = "#F59E0B"
+                bracket  = "average"
 
-        percentile_display = round(pct)
-        if percentile_display >= 75:
-            position = f"Top {100 - percentile_display}%"
-            color = "#10B981"
-        elif percentile_display >= 50:
-            position = f"Top {100 - percentile_display}%"
-            color = "#3B82F6"
-        elif percentile_display >= 25:
-            position = f"Bottom {100 - percentile_display}%"
-            color = "#F59E0B"
-        else:
-            position = f"Bottom {100 - percentile_display}%"
-            color = "#EF4444"
-
-        if "Top 0%" in position:
-            position = "Top 1%"
-        if "Bottom 100%" in position:
-            position = "Bottom 99%"
+        context = AXIS_CONTEXT.get(ax, {}).get(bracket, "")
 
         benchmarks.append({
-            "axis":      label,
-            "user":      user_val,
-            "avg":       avg_val,
-            "top":       top_val,
-            "percentile": round(pct),
-            "position":  position,
-            "color":     color,
+            "axis":     label,
+            "user":     user_val,
+            "avg":      avg_val,
+            "top":      top_val,
+            "delta":    round(delta),
+            "position": position,
+            "color":    color,
+            "context":  context,
         })
 
-    return sorted(benchmarks, key=lambda x: x["percentile"], reverse=True)
+    return sorted(benchmarks, key=lambda x: x["delta"], reverse=True)
 
 
 @router.get("/career-dna/{user_id}")
