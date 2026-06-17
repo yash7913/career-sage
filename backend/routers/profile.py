@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from middleware.rate_limiter import check_generation_limit, increment_generation_count
 from pydantic import BaseModel
 from typing import Optional
 import os
@@ -470,6 +471,7 @@ class GenerateStarRequest(BaseModel):
 @router.post("/generate-star-stories")
 async def generate_star_stories(req: GenerateStarRequest):
     try:
+        await check_generation_limit(req.user_id, "star_stories")
         import anthropic
         import json
         profile = supabase.table("user_profiles").select("*").eq("user_id", req.user_id).execute()
@@ -581,6 +583,7 @@ Return only the JSON object, no markdown."""
         supabase.table("user_profiles").update({
             "generated_star_stories": json.dumps(data)
         }).eq("user_id", req.user_id).execute()
+        await increment_generation_count(req.user_id)
 
         return data
 
@@ -600,6 +603,7 @@ class OfferAnalysisRequest(BaseModel):
 @router.post("/analyse-offer")
 async def analyse_offer(req: OfferAnalysisRequest):
     try:
+        await check_generation_limit(req.user_id, "offer_analysis")
         import anthropic
         profile = supabase.table("user_profiles").select("*").eq("user_id", req.user_id).execute()
         p = profile.data[0] if profile.data else {}
@@ -673,6 +677,7 @@ Return only JSON, no markdown."""
         content = message.content[0].text.strip()
         content = re.sub(r'^```json\s*', '', content)
         content = re.sub(r'\s*```$', '', content)
+        await increment_generation_count(req.user_id)
         return json.loads(content)
 
     except Exception as e:
