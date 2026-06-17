@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Optional
 import os
@@ -1050,6 +1050,135 @@ Rules:
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/import-linkedin-pdf")
+async def import_linkedin_pdf(
+    user_id: str = Form(...),
+    linkedin_url: Optional[str] = Form(None),
+    file: UploadFile = File(...),
+):
+    try:
+        import anthropic
+        import json
+        import re
+        from services.profile_extractor import extract_text_from_bytes
+
+        if not file.filename.endswith(".pdf"):
+            raise HTTPException(status_code=400, detail="Only PDF files are supported")
+
+        file_bytes = await file.read()
+        if len(file_bytes) < 1000:
+            raise HTTPException(status_code=400, detail="PDF too small — please upload your full LinkedIn profile export")
+
+        # Extract text from PDF
+        text = extract_text_from_bytes(file_bytes, file.filename)
+        if not text or len(text.strip()) < 100:
+            raise HTTPException(status_code=400, detail="Could not extract text from PDF. Make sure it's a LinkedIn profile export.")
+
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+        prompt = f"""You are extracting structured career data from a LinkedIn profile PDF export.
+
+LinkedIn profile text:
+{text[:6000]}
+
+Extract and return ONLY valid JSON:
+{{
+  "full_name": "extracted name or null",
+  "headline": "job title/headline or null",
+  "location": "location or null",
+  "about": "summary/about section text or null",
+  "skills": ["skill1", "skill2"],
+  "work_history": [
+    {{
+      "title": "Job Title",
+      "company": "Company Name",
+      "start_date": "YYYY-MM or null",
+      "end_date": "YYYY-MM or null",
+      "is_current": false,
+      "description": "role description or null"
+    }}
+  ],
+  "education": [
+    {{
+      "institution": "University Name",
+      "degree": "Degree",
+      "field_of_study": "Field",
+      "graduation_year": 2020
+    }}
+  ],
+  "certifications": ["cert1", "cert2"]
+}}
+
+Rules:
+- Extract only what is present in the text — never fabricate
+- Skills: extract all explicitly listed skills and infer from job descriptions, max 40
+- Work history: extract all roles, most recent first
+- Dates: use YYYY-MM format, estimate month as 01 if only year given
+- Return ONLY the JSON object, no markdown"""
+
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        content = message.content[0].text.strip()
+        content = re.sub(r'^```json\s*', '', content)
+        content = re.sub(r'^```\s*', '', content)
+        content = re.sub(r'\s*```$', '', content)
+        match = re.search(r'\{.*\}', content, re.DOTALL)
+        if not match:
+            raise HTTPException(status_code=500, detail="Could not parse LinkedIn PDF")
+
+        data = json.loads(match.group())
+
+        # Get existing profile
+        profile = supabase.table("user_profiles").select("extracted_skills, work_history").eq("user_id", user_id).execute()
+        existing_skills = profile.data[0].get("extracted_skills") or [] if profile.data else []
+        existing_lower  = {s.lower() for s in existing_skills}
+
+        # Merge skills
+        new_skills = [s for s in (data.get("skills") or []) if s.lower() not in existing_lower and len(s) < 50]
+        all_skills = existing_skills + new_skills
+
+        # Build updates
+        updates: dict = {
+            "extracted_skills": all_skills,
+            "skill_categories": None,  # Invalidate cache
+        }
+        if data.get("work_history"):
+            updates["work_history"] = data["work_history"]
+        if data.get("education"):
+            updates["education_data"] = data["education"]
+        if data.get("full_name"):
+            updates["full_name"] = data["full_name"]
+        if data.get("location"):
+            updates["location"] = data["location"]
+        if data.get("about"):
+            updates["extracted_summary"] = data["about"][:500]
+        if linkedin_url and "linkedin.com/in/" in linkedin_url:
+            updates["linkedin_url"] = linkedin_url
+
+        # Rebuild raw_profile_text
+        roles_text  = ", ".join([f"{w.get('title')} at {w.get('company')}" for w in (data.get("work_history") or [])[:5]])
+        skills_text = ", ".join(all_skills[:30])
+        about_text  = (data.get("about") or "")[:400]
+        raw_text    = f"ROLES: {roles_text}\nSKILLS: {skills_text}\nABOUT: {about_text}"
+        updates["raw_profile_text"] = raw_text[:3000]
+
+        supabase.table("user_profiles").update(updates).eq("user_id", user_id).execute()
+
+        return {
+            "status": "ok",
+            "skills_added":    len(new_skills),
+            "roles_found":     len(data.get("work_history") or []),
+            "education_found": len(data.get("education") or []),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ── Career DNA ───────────────────────────────────────────────
 

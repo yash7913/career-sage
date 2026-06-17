@@ -147,7 +147,7 @@ export default function ContactDetailsForm({ userId }: { userId: string }) {
                 color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontWeight: 600,
               }}
             >
-              Paste profile text
+              Upload LinkedIn PDF
             </button>
           )}
           {importStatus === 'done' && (
@@ -164,44 +164,64 @@ export default function ContactDetailsForm({ userId }: { userId: string }) {
 
         {importStatus === 'pasting' && (
           <div>
-            <textarea
-              value={pastedText}
-              onChange={e => setPastedText(e.target.value)}
-              placeholder="Paste your LinkedIn profile text here..."
-              rows={6}
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '10px 14px', borderRadius: '8px', cursor: 'pointer',
+              background: 'rgba(255,255,255,0.04)', border: `1px dashed rgba(255,255,255,0.15)`,
+              color: 'rgba(255,255,255,0.5)', fontSize: '12px',
+            }}>
+              <span style={{ fontSize: '20px' }}>📄</span>
+              <div>
+                <p style={{ margin: 0, fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
+                  Upload LinkedIn PDF export
+                </p>
+                <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>
+                  LinkedIn → Me → Settings → Data Privacy → Get a copy of your data → Download profile as PDF
+                </p>
+              </div>
+              <input
+                type="file"
+                accept=".pdf"
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  setImportStatus('parsing')
+                  const formData = new FormData()
+                  formData.append('file', file)
+                  formData.append('user_id', userId)
+                  if (linkedinUrl) formData.append('linkedin_url', linkedinUrl)
+                  try {
+                    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/import-linkedin-pdf`, {
+                      method: 'POST',
+                      body: formData,
+                    })
+                    const data = await res.json()
+                    if (data.status === 'ok') {
+                      setImportStatus('done')
+                      setImportMessage(`Imported — ${data.skills_added} skills added, ${data.roles_found} roles found`)
+                      setTimeout(() => window.location.reload(), 2000)
+                    } else {
+                      setImportStatus('error')
+                      setImportMessage(data.detail || 'Import failed. Try again.')
+                    }
+                  } catch {
+                    setImportStatus('error')
+                    setImportMessage('Import failed. Check your connection.')
+                  }
+                }}
+              />
+            </label>
+            <button
+              onClick={() => setImportStatus('idle')}
               style={{
-                width: '100%', padding: '10px 12px', borderRadius: '8px',
-                background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`,
-                color: '#fff', fontSize: '12px', resize: 'vertical',
-                fontFamily: 'system-ui, sans-serif', outline: 'none',
-                boxSizing: 'border-box',
+                marginTop: '8px', padding: '6px 14px', borderRadius: '7px',
+                background: 'transparent', border: `1px solid ${BORDER}`,
+                color: 'rgba(255,255,255,0.3)', fontSize: '12px', cursor: 'pointer',
               }}
-            />
-            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-              <button
-                onClick={handleImportPaste}
-                disabled={!pastedText.trim()}
-                style={{
-                  padding: '7px 16px', borderRadius: '7px',
-                  background: pastedText.trim() ? TEAL : 'rgba(255,255,255,0.06)',
-                  color: pastedText.trim() ? '#fff' : 'rgba(255,255,255,0.3)',
-                  border: 'none', fontSize: '12px', fontWeight: 600,
-                  cursor: pastedText.trim() ? 'pointer' : 'not-allowed',
-                }}
-              >
-                Import profile
-              </button>
-              <button
-                onClick={() => { setImportStatus('idle'); setPastedText('') }}
-                style={{
-                  padding: '7px 16px', borderRadius: '7px',
-                  background: 'transparent', border: `1px solid ${BORDER}`,
-                  color: 'rgba(255,255,255,0.3)', fontSize: '12px', cursor: 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-            </div>
+            >
+              Cancel
+            </button>
           </div>
         )}
 
