@@ -1788,7 +1788,12 @@ def _get_compensation_estimate(
         disp_unit      = CURRENCY_UNIT.get(display_curr, "thousands")
 
         base_display   = round(convert(current_base, current_comp_currency, display_curr), 1)
-        equity_display = round(from_usd(current_equity_usd or 0, display_curr), 1)
+        # Equity is in USD — convert to local currency, then to same unit as base
+        equity_raw     = from_usd(current_equity_usd or 0, display_curr)
+        # If display currency is INR (stored in lakhs), divide by 100000
+        # If display currency is others (stored in thousands), divide by 1000
+        equity_divisor = 100000 if display_curr == "INR" else 1000
+        equity_display = round(equity_raw / equity_divisor, 2)
         var_display    = round(convert(current_base * ((current_variable_pct or 0) / 100), current_comp_currency, display_curr), 1)
         total_display  = round(base_display + equity_display + var_display, 1)
 
