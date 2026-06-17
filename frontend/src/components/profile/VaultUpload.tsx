@@ -7,7 +7,7 @@ const TEAL = '#10B981'
 const CARD = '#161b22'
 const BORDER = 'rgba(255,255,255,0.07)'
 
-type DocTag = 'RESUME' | 'PROJECT_DETAIL' | 'SLIDES' | 'CERTIFICATION' | 'OTHER'
+type DocTag = 'RESUME' | 'LINKEDIN_EXPORT' | 'PROJECT_DETAIL' | 'SLIDES' | 'CERTIFICATION' | 'OTHER'
 
 interface UploadedFile {
   name: string
@@ -19,6 +19,7 @@ interface UploadedFile {
 
 const TAG_OPTIONS: { value: DocTag; label: string }[] = [
   { value: 'RESUME', label: 'Resume' },
+  { value: 'LINKEDIN_EXPORT', label: 'LinkedIn Export' },
   { value: 'PROJECT_DETAIL', label: 'Project' },
   { value: 'SLIDES', label: 'Slides' },
   { value: 'CERTIFICATION', label: 'Certification' },
@@ -85,9 +86,10 @@ export default function VaultUpload({
       if (!user) return
 
       for (const file of accepted) {
+        const isLinkedinExport = file.name.toLowerCase().includes('linkedin') || file.name.toLowerCase().includes('profile')
         setFiles(prev => [
           ...prev,
-          { name: file.name, size: file.size, tag: 'RESUME', status: 'uploading' },
+          { name: file.name, size: file.size, tag: isLinkedinExport ? 'LINKEDIN_EXPORT' : 'RESUME', status: 'uploading' },
         ])
 
         try {
@@ -422,6 +424,16 @@ const res = await fetch(
       )}
 
       {/* Extract button */}
+      {files.some(f => f.status === 'done' && f.tag === 'LINKEDIN_EXPORT') && (
+        <div style={{
+          padding: '10px 14px', borderRadius: '8px', marginBottom: '8px',
+          background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
+          fontSize: '12px', color: 'rgba(245,158,11,0.8)', lineHeight: 1.5,
+        }}>
+          💡 LinkedIn Export detected — use the <strong>Upload PDF</strong> button in the LinkedIn section above to import it. The extract button below is for resumes only.
+        </div>
+      )}
+
       {doneCount > 0 && !extractionDone && (
         <button
           onClick={handleExtract}
