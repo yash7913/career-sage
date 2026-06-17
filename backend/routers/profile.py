@@ -928,6 +928,128 @@ async def import_linkedin_profile(req: LinkedInImportRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class LinkedInTextImportRequest(BaseModel):
+    user_id: str
+    linkedin_text: str
+    linkedin_url: Optional[str] = None
+
+@router.post("/import-linkedin-text")
+async def import_linkedin_text(req: LinkedInTextImportRequest):
+    try:
+        import anthropic
+        import json
+        import re
+
+        if not req.linkedin_text or len(req.linkedin_text.strip()) < 100:
+            raise HTTPException(status_code=400, detail="Pasted text too short. Please paste your full LinkedIn profile.")
+
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+        prompt = f"""You are extracting structured career data from a LinkedIn profile that has been copy-pasted as plain text.
+
+LinkedIn profile text:
+{req.linkedin_text[:6000]}
+
+Extract and return ONLY valid JSON:
+{{
+  "full_name": "extracted name or null",
+  "headline": "job title/headline or null",
+  "location": "location or null",
+  "about": "about section text or null",
+  "skills": ["skill1", "skill2"],
+  "work_history": [
+    {{
+      "title": "Job Title",
+      "company": "Company Name",
+      "start_date": "YYYY-MM or null",
+      "end_date": "YYYY-MM or null",
+      "is_current": false,
+      "description": "role description or null"
+    }}
+  ],
+  "education": [
+    {{
+      "institution": "University Name",
+      "degree": "Degree",
+      "field_of_study": "Field",
+      "graduation_year": 2020
+    }}
+  ]
+}}
+
+Rules:
+- Extract only what is present in the text — never fabricate
+- Skills: extract all explicitly listed skills, max 40
+- Work history: extract all roles in order, most recent first
+- Dates: use YYYY-MM format, null if not found
+- Return ONLY the JSON object, no markdown"""
+
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        content = message.content[0].text.strip()
+        content = re.sub(r'^```json\s*', '', content)
+        content = re.sub(r'^```\s*', '', content)
+        content = re.sub(r'\s*```$', '', content)
+        match = re.search(r'\{.*\}', content, re.DOTALL)
+        if not match:
+            raise HTTPException(status_code=500, detail="Could not parse LinkedIn profile text")
+
+        data = json.loads(match.group())
+
+        # Get existing profile
+        profile = supabase.table("user_profiles").select("extracted_skills, work_history").eq("user_id", req.user_id).execute()
+        existing_skills = profile.data[0].get("extracted_skills") or [] if profile.data else []
+        existing_lower  = {s.lower() for s in existing_skills}
+
+        # Merge skills
+        new_skills = [s for s in (data.get("skills") or []) if s.lower() not in existing_lower and len(s) < 50]
+        all_skills = existing_skills + new_skills
+
+        # Build updates
+        updates: dict = {"extracted_skills": all_skills}
+        if data.get("work_history"):
+            updates["work_history"] = data["work_history"]
+        if data.get("education"):
+            updates["education_data"] = data["education"]
+        if data.get("full_name"):
+            updates["full_name"] = data["full_name"]
+        if data.get("location"):
+            updates["location"] = data["location"]
+        if data.get("about"):
+            updates["extracted_summary"] = data["about"][:500]
+        if req.linkedin_url and "linkedin.com/in/" in req.linkedin_url:
+            updates["linkedin_url"] = req.linkedin_url
+
+        # Rebuild raw_profile_text
+        roles_text = ", ".join([
+            f"{w.get('title')} at {w.get('company')}"
+            for w in (data.get("work_history") or [])[:5]
+        ])
+        skills_text = ", ".join(all_skills[:30])
+        raw_text = f"ROLES: {roles_text}\nSKILLS: {skills_text}\nABOUT: {(data.get('about') or '')[:300]}"
+        updates["raw_profile_text"] = raw_text[:3000]
+
+        # Invalidate skill categories cache so it regenerates
+        updates["skill_categories"] = None
+
+        supabase.table("user_profiles").update(updates).eq("user_id", req.user_id).execute()
+
+        return {
+            "status": "ok",
+            "skills_added": len(new_skills),
+            "roles_found": len(data.get("work_history") or []),
+            "education_found": len(data.get("education") or []),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # ── Career DNA ───────────────────────────────────────────────
 

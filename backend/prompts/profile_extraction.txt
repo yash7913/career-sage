@@ -39,6 +39,7 @@ Extract and return a JSON object with exactly these fields. Return ONLY the JSON
   "extracted_summary": "...",
   "career_tracks": ["software engineering"],
   "certifications": [],
+  "linkedin_url": null,
   "raw_profile_text": "..."
 }}
 
@@ -88,6 +89,11 @@ certifications:
 - Professional credentials listed separately from education
 - year: integer or null
 - Empty array if none found
+
+linkedin_url:
+- Extract the full LinkedIn profile URL if present anywhere in the document
+- Format: https://linkedin.com/in/username or https://www.linkedin.com/in/username
+- Return null if not found — never construct or guess a URL
 
 raw_profile_text:
 - Format strictly as:

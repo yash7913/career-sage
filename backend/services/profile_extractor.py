@@ -151,15 +151,23 @@ async def extract_and_save_profile(user_id: str) -> dict:
         )
         years_of_experience = max(0, current_year - earliest_grad)
 
-    supabase.table("user_profiles").update({
+    update_data = {
         "extracted_skills": flat_skills,
         "education_data": extracted.get("education_data", []),
         "extracted_summary": extracted.get("extracted_summary", ""),
         "raw_profile_text": extracted.get("raw_profile_text", ""),
         "profile_completeness_score": completeness,
         "cohort": cohort,
-	"years_of_experience": years_of_experience,
-    }).eq("user_id", user_id).execute()
+        "years_of_experience": years_of_experience,
+    }
+
+    # Only update linkedin_url if found in resume — don't overwrite manually entered one
+    linkedin_url = extracted.get("linkedin_url")
+    if linkedin_url and "linkedin.com/in/" in linkedin_url:
+        update_data["linkedin_url"] = linkedin_url
+        print(f"LinkedIn URL extracted: {linkedin_url}")
+
+    supabase.table("user_profiles").update(update_data).eq("user_id", user_id).execute()
 
     print("Profile saved to Supabase successfully")
 
