@@ -857,6 +857,57 @@ class LinkedInImportRequest(BaseModel):
     user_id: str
     linkedin_url: str
 
+class ClassifyDocumentRequest(BaseModel):
+    user_id: str
+    file_name: str
+    text_preview: str  # First 800 chars of extracted text
+
+@router.post("/documents/classify")
+async def classify_document(req: ClassifyDocumentRequest):
+    try:
+        import anthropic
+        import re
+
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+        prompt = f"""You are classifying a professional document. Based on the filename and text preview, classify it into exactly one category.
+
+Filename: {req.file_name}
+Text preview: {req.text_preview[:800]}
+
+Categories:
+- RESUME: CV, resume, work history document
+- LINKEDIN_EXPORT: LinkedIn profile export PDF
+- PROJECT_DETAIL: Project documentation, case study, portfolio piece, PRD, product requirements
+- CERTIFICATION: Certificate, diploma, credential, course completion
+- SLIDES: Presentation, slide deck, pitch deck
+- OTHER: Anything that doesn't fit the above
+
+Rules:
+- If the text mentions "LinkedIn" prominently or looks like a LinkedIn profile export, classify as LINKEDIN_EXPORT
+- If the text has job titles, work history, education section — it's a RESUME
+- If the text describes a product, feature, requirements, user stories, or project outcomes — it's PROJECT_DETAIL
+- If the text is a certificate or mentions "certificate of completion" — it's CERTIFICATION
+- If the filename ends in .pptx or text suggests slides — it's SLIDES
+
+Return ONLY the category name, nothing else. Example: RESUME"""
+
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=20,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        tag = message.content[0].text.strip().upper()
+        valid_tags = ["RESUME", "LINKEDIN_EXPORT", "PROJECT_DETAIL", "CERTIFICATION", "SLIDES", "OTHER"]
+        if tag not in valid_tags:
+            tag = "OTHER"
+
+        return {"tag": tag}
+
+    except Exception as e:
+        return {"tag": "RESUME"}  # Fallback — never break upload flow
+
 @router.post("/import-linkedin")
 async def import_linkedin_profile(req: LinkedInImportRequest):
     try:

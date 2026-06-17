@@ -34,6 +34,20 @@ const ACCEPTED_TYPES = {
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
 }
 
+async function extractTextPreview(file: File): Promise<string> {
+  try {
+    if (file.name.endsWith('.pdf')) {
+      // Read first 2KB of PDF as text — enough for classification
+      const text = await file.text().catch(() => '')
+      return text.slice(0, 800)
+    }
+    const text = await file.text()
+    return text.slice(0, 800)
+  } catch {
+    return ''
+  }
+}
+
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
@@ -86,26 +100,45 @@ export default function VaultUpload({
       if (!user) return
 
       for (const file of accepted) {
+        // Start with filename-based guess while content classification runs
         const fname = file.name.toLowerCase()
-        const isLinkedinExport = fname.includes('linkedin') || fname.includes('profile')
-        const isProject = fname.includes('project') || fname.includes('portfolio') || fname.includes('case')
-        const isCert = fname.includes('cert') || fname.includes('certificate') || fname.includes('diploma')
-        const isSlides = fname.includes('slide') || fname.includes('deck') || fname.includes('presentation') || fname.endsWith('.pptx')
-
-        const autoTag = isLinkedinExport ? 'LINKEDIN_EXPORT'
-          : isProject ? 'PROJECT_DETAIL'
-          : isCert ? 'CERTIFICATION'
-          : isSlides ? 'SLIDES'
-          : 'RESUME'
+        const isSlides = fname.endsWith('.pptx') || fname.includes('slide') || fname.includes('deck')
+        const initialTag = isSlides ? 'SLIDES' : 'RESUME'
 
         setFiles(prev => [
           ...prev,
-          { name: file.name, size: file.size, tag: autoTag, status: 'uploading' },
+          { name: file.name, size: file.size, tag: initialTag, status: 'uploading' },
         ])
 
-        if (isLinkedinExport) {
-          handleLinkedinPdf(file)
+        // Content-based classification runs in background
+        const classifyFile = async () => {
+          try {
+            const textPreview = await extractTextPreview(file)
+            const res = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/profile/documents/classify`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  user_id: user.id,
+                  file_name: file.name,
+                  text_preview: textPreview,
+                }),
+              }
+            )
+            if (res.ok) {
+              const { tag } = await res.json()
+              setFiles(prev => prev.map(f =>
+                f.name === file.name ? { ...f, tag } : f
+              ))
+              // Auto-trigger LinkedIn import if classified as LinkedIn export
+              if (tag === 'LINKEDIN_EXPORT') {
+                handleLinkedinPdf(file)
+              }
+            }
+          } catch {}
         }
+        classifyFile()
 
         // Auto-trigger LinkedIn import for LinkedIn exports
         if (isLinkedinExport) {
