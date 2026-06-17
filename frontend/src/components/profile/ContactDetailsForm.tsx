@@ -175,8 +175,15 @@ export default function ContactDetailsForm({ userId }: { userId: string }) {
                 <p style={{ margin: 0, fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
                   Upload LinkedIn PDF export
                 </p>
-                <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>
-                  LinkedIn → Me → Settings → Data Privacy → Get a copy of your data → Download profile as PDF
+                <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'rgba(255,255,255,0.3)', lineHeight: 1.6 }}>
+                  On LinkedIn: click <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Me</strong> (top right)
+                  → <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Settings & Privacy</strong>
+                  → <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Data Privacy</strong>
+                  → <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Get a copy of your data</strong>
+                  → <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Want something in particular?</strong>
+                  → tick <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Profile</strong>
+                  → <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Request archive</strong>.
+                  Usually ready in under a minute.
                 </p>
               </div>
               <input

@@ -47,7 +47,35 @@ export default function VaultUpload({
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [extracting, setExtracting] = useState(false)
   const [extractionDone, setExtractionDone] = useState(false)
+  const [linkedinImporting, setLinkedinImporting] = useState(false)
+  const [linkedinResult, setLinkedinResult] = useState<string | null>(null)
   const supabase = createClient()
+
+  const handleLinkedinPdf = async (file: File) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    setLinkedinImporting(true)
+    setLinkedinResult(null)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('user_id', user.id)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/import-linkedin-pdf`, {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await res.json()
+      if (data.status === 'ok') {
+        setLinkedinResult(`✓ ${data.skills_added} skills added · ${data.roles_found} roles found`)
+      } else {
+        setLinkedinResult(`✕ ${data.detail || 'Import failed'}`)
+      }
+    } catch {
+      setLinkedinResult('✕ Import failed. Try again.')
+    } finally {
+      setLinkedinImporting(false)
+    }
+  }
 
   const onDrop = useCallback(
     async (accepted: File[]) => {
@@ -230,6 +258,54 @@ const res = await fetch(
         >
           Browse files
         </button>
+      </div>
+
+      {/* LinkedIn PDF import */}
+      <div style={{
+        border: `1px solid ${BORDER}`,
+        borderRadius: '12px',
+        padding: '1rem 1.25rem',
+        marginBottom: '1rem',
+        background: 'rgba(255,255,255,0.02)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.7)', margin: '0 0 4px' }}>
+              Also import from LinkedIn
+            </p>
+            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0, lineHeight: 1.6 }}>
+              On LinkedIn: <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Me</strong> → <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Settings & Privacy</strong> → <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Data Privacy</strong> → <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Get a copy of your data</strong> → tick <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Profile</strong> → <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Request archive</strong>. Ready in under a minute.
+            </p>
+            {linkedinResult && (
+              <p style={{
+                fontSize: '11px', margin: '6px 0 0', fontWeight: 600,
+                color: linkedinResult.startsWith('✓') ? TEAL : '#EF4444',
+              }}>
+                {linkedinResult}
+              </p>
+            )}
+          </div>
+          <label style={{
+            padding: '7px 14px', borderRadius: '8px', cursor: 'pointer',
+            background: linkedinImporting ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.05)',
+            border: `1px solid ${linkedinImporting ? 'rgba(16,185,129,0.3)' : BORDER}`,
+            color: linkedinImporting ? TEAL : 'rgba(255,255,255,0.5)',
+            fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap',
+            flexShrink: 0,
+          }}>
+            {linkedinImporting ? '⏳ Importing...' : '⬆ Upload PDF'}
+            <input
+              type="file"
+              accept=".pdf"
+              style={{ display: 'none' }}
+              disabled={linkedinImporting}
+              onChange={e => {
+                const file = e.target.files?.[0]
+                if (file) handleLinkedinPdf(file)
+              }}
+            />
+          </label>
+        </div>
       </div>
 
       {/* File list */}
