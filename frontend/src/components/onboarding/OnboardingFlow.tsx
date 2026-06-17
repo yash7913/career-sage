@@ -260,7 +260,17 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
             <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1.5rem' }}>
               Career Sage extracts your skills, experience, and summary automatically. You can also import your LinkedIn PDF.
             </p>
-            <VaultUpload onExtractionComplete={() => setStep(3)} />
+            <VaultUpload onExtractionComplete={async () => {
+              // Auto-fill profile fields from extraction
+              try {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/${userId}`)
+                const data = await res.json()
+                if (data.full_name && !fullName) setFullName(data.full_name)
+                if (data.location && !location) setLocation(data.location)
+                if (data.phone && !currentRole) setCurrentRole('')
+              } catch {}
+              setStep(3)
+            }} />
             <button
               onClick={() => setStep(3)}
               style={{

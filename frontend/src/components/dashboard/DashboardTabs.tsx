@@ -12,6 +12,7 @@ import PrepTab from '@/components/dashboard/PrepTab'
 import ToolsTab from '@/components/dashboard/ToolsTab'
 import CareerDNA from '@/components/dashboard/CareerDNA'
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow'
+import DocumentManager from '@/components/profile/DocumentManager'
 
 function ExpandableSkills({ skills }: { skills: string[] }) {
   const [expanded, setExpanded] = useState(false)
@@ -86,7 +87,9 @@ export default function DashboardTabs({
   topMatchScore, generationCount, profileSkills = [],
   hasProfile, hasTracks, initialTab, impactPattern = '', salaryTargetLpa,
 }: DashboardTabsProps) {
-  const defaultTab = initialTab || (hasTracks ? 'career' : 'profile')
+  const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+  const tabFromUrl = params?.get('tab') || null
+  const defaultTab = tabFromUrl || initialTab || (hasTracks ? 'career' : 'profile')
   const [activeTab, setActiveTab] = useState<string>(defaultTab)
   const [trackerKey, setTrackerKey] = useState(0)
   const [searchStatus, setSearchStatus] = useState('ACTIVE')
@@ -108,10 +111,9 @@ export default function DashboardTabs({
       <OnboardingFlow
         userId={userId}
         userName={userName}
-        onComplete={() => {
+        onComplete={async () => {
           setShowOnboarding(false)
-          setActiveTab('career')
-          window.location.reload()
+          window.location.href = '/?tab=career'
         }}
       />
     )
@@ -281,6 +283,12 @@ function ProfileTab({
           </p>
         )}
         <VaultUpload onExtractionComplete={() => setTimeout(() => window.location.reload(), 2000)} />
+          <div style={{ marginTop: '1.5rem' }}>
+          <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+            YOUR UPLOADED FILES
+          </p>
+          <DocumentManager userId={userId} />
+        </div>
       </div>
 
       {/* Career tracks */}

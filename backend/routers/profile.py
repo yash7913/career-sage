@@ -814,6 +814,45 @@ async def accept_inferred_skills(req: AcceptSkillsRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ── Document management ──────────────────────────────────────
+
+@router.get("/documents/{user_id}")
+async def get_user_documents(user_id: str):
+    try:
+        result = supabase.table("user_documents").select(
+            "doc_id, file_name, doc_tag, is_active, created_at"
+        ).eq("user_id", user_id).order("created_at", desc=True).execute()
+        return {"documents": result.data or []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ToggleDocumentRequest(BaseModel):
+    user_id: str
+    doc_id: str
+    is_active: bool
+
+@router.patch("/documents/toggle")
+async def toggle_document(req: ToggleDocumentRequest):
+    try:
+        # Verify doc belongs to user
+        doc = supabase.table("user_documents").select("doc_id").eq(
+            "doc_id", req.doc_id
+        ).eq("user_id", req.user_id).execute()
+
+        if not doc.data:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        supabase.table("user_documents").update({
+            "is_active": req.is_active
+        }).eq("doc_id", req.doc_id).execute()
+
+        return {"status": "ok", "is_active": req.is_active}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 class LinkedInImportRequest(BaseModel):
     user_id: str
     linkedin_url: str
