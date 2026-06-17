@@ -151,6 +151,29 @@ async def extract_and_save_profile(user_id: str) -> dict:
         )
         years_of_experience = max(0, current_year - earliest_grad)
 
+    # Derive seniority from years of experience + extracted title signals
+    raw_seniority = extracted.get("seniority_level", "mid")
+    
+    # Override with years-based logic for accuracy
+    if years_of_experience >= 15:
+        seniority = "director"
+    elif years_of_experience >= 12:
+        seniority = "senior_manager"
+    elif years_of_experience >= 9:
+        seniority = "senior"
+    elif years_of_experience >= 6:
+        seniority = "senior"
+    elif years_of_experience >= 3:
+        seniority = "mid"
+    elif years_of_experience >= 1:
+        seniority = "junior"
+    else:
+        seniority = "intern"
+
+    # If Claude detected lead/manager/director signals, trust that over years
+    if raw_seniority in ("lead", "manager", "senior_manager", "director", "vp", "c-suite"):
+        seniority = raw_seniority
+
     update_data = {
         "extracted_skills": flat_skills,
         "education_data": extracted.get("education_data", []),
@@ -159,6 +182,7 @@ async def extract_and_save_profile(user_id: str) -> dict:
         "profile_completeness_score": completeness,
         "cohort": cohort,
         "years_of_experience": years_of_experience,
+        "seniority_level": seniority,
     }
 
     # Only update linkedin_url if found in resume — don't overwrite manually entered one

@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import ThemeToggle from '@/components/ui/ThemeToggle'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -329,9 +328,7 @@ export default function Sidebar({
         borderTop: `1px solid ${BORDER}`,
         flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '4px',
       }}>
-        <div style={{ display: 'flex', justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '6px 0' : '6px 12px' }}>
-          <ThemeToggle />
-        </div>
+        
         {collapsed && (
           <button onClick={() => setCollapsed(false)} style={{
             background: 'none', border: 'none', color: 'rgba(255,255,255,0.25)',
