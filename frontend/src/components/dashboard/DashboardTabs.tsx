@@ -111,9 +111,9 @@ export default function DashboardTabs({
       <OnboardingFlow
         userId={userId}
         userName={userName}
-        onComplete={async () => {
+        onComplete={() => {
           setShowOnboarding(false)
-          window.location.href = '/?tab=career'
+          setActiveTab('career')
         }}
       />
     )

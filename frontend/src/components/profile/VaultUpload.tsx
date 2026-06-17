@@ -86,11 +86,31 @@ export default function VaultUpload({
       if (!user) return
 
       for (const file of accepted) {
-        const isLinkedinExport = file.name.toLowerCase().includes('linkedin') || file.name.toLowerCase().includes('profile')
+        const fname = file.name.toLowerCase()
+        const isLinkedinExport = fname.includes('linkedin') || fname.includes('profile')
+        const isProject = fname.includes('project') || fname.includes('portfolio') || fname.includes('case')
+        const isCert = fname.includes('cert') || fname.includes('certificate') || fname.includes('diploma')
+        const isSlides = fname.includes('slide') || fname.includes('deck') || fname.includes('presentation') || fname.endsWith('.pptx')
+
+        const autoTag = isLinkedinExport ? 'LINKEDIN_EXPORT'
+          : isProject ? 'PROJECT_DETAIL'
+          : isCert ? 'CERTIFICATION'
+          : isSlides ? 'SLIDES'
+          : 'RESUME'
+
         setFiles(prev => [
           ...prev,
-          { name: file.name, size: file.size, tag: isLinkedinExport ? 'LINKEDIN_EXPORT' : 'RESUME', status: 'uploading' },
+          { name: file.name, size: file.size, tag: autoTag, status: 'uploading' },
         ])
+
+        if (isLinkedinExport) {
+          handleLinkedinPdf(file)
+        }
+
+        // Auto-trigger LinkedIn import for LinkedIn exports
+        if (isLinkedinExport) {
+          handleLinkedinPdf(file)
+        }
 
         try {
           const arrayBuffer = await file.arrayBuffer()

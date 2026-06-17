@@ -70,6 +70,10 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
   const [fullName, setFullName] = useState(userName || '')
   const [location, setLocation] = useState('')
   const [currentRole, setCurrentRole] = useState('')
+  const [fullName, setFullName] = useState(userName || '')
+  const [location, setLocation] = useState('')
+  const [phone, setPhone] = useState('')
+  const [currentRole, setCurrentRole] = useState('')
 
   // Step 4 — Career status
   const [careerStatus, setCareerStatus] = useState('')
@@ -135,7 +139,7 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
       if (step === 1) {
         await saveStep({ search_status: searchStatus })
       } else if (step === 3) {
-        await saveStep({ full_name: fullName, location })
+        await saveStep({ full_name: fullName, location, phone: phone || undefined })
       } else if (step === 4) {
         await saveStep({ career_status: careerStatus })
       } else if (step === 5) {
@@ -261,13 +265,22 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
               Career Sage extracts your skills, experience, and summary automatically. You can also import your LinkedIn PDF.
             </p>
             <VaultUpload onExtractionComplete={async () => {
-              // Auto-fill profile fields from extraction
               try {
                 const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/${userId}`)
                 const data = await res.json()
-                if (data.full_name && !fullName) setFullName(data.full_name)
-                if (data.location && !location) setLocation(data.location)
-                if (data.phone && !currentRole) setCurrentRole('')
+                if (data.full_name) setFullName(data.full_name)
+                if (data.location) setLocation(data.location)
+                if (data.phone) setPhone(data.phone)
+                // Extract current role from raw_profile_text ROLES line
+                const rawText = data.raw_profile_text || ''
+                const rolesLine = rawText.split('\n').find((l: string) => l.startsWith('ROLES:'))
+                if (rolesLine) {
+                  const firstRole = rolesLine.replace('ROLES:', '').split(',')[0].trim()
+                  const roleTitle = firstRole.split(' at ')[0].trim()
+                  if (roleTitle) setCurrentRole(roleTitle)
+                  const company = firstRole.split(' at ')[1]?.split('(')[0]?.trim()
+                  if (company) setCurrentCompany(company)
+                }
               } catch {}
               setStep(3)
             }} />
@@ -299,6 +312,10 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>LOCATION</label>
                 <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Hyderabad, India" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>PHONE</label>
+                <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" style={inputStyle} />
               </div>
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>CURRENT OR MOST RECENT ROLE</label>
