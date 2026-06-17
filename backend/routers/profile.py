@@ -170,6 +170,12 @@ class PreferencesUpdateRequest(BaseModel):
     preferred_company_stage: Optional[str] = None
     preferred_work_mode: Optional[str] = None
     location: Optional[str] = None
+    current_base_lpa: Optional[float] = None
+    current_equity_usd: Optional[float] = None
+    current_variable_pct: Optional[float] = None
+    preferred_currency: Optional[str] = None
+    current_comp_currency: Optional[str] = None
+    target_market: Optional[list] = None
 
 @router.patch("/preferences")
 async def update_preferences(req: PreferencesUpdateRequest):
@@ -188,6 +194,18 @@ async def update_preferences(req: PreferencesUpdateRequest):
             updates["preferred_work_mode"] = req.preferred_work_mode
         if req.location is not None:
             updates["location"] = req.location
+        if req.current_base_lpa is not None:
+            updates["current_base_lpa"] = req.current_base_lpa
+        if req.current_equity_usd is not None:
+            updates["current_equity_usd"] = req.current_equity_usd
+        if req.current_variable_pct is not None:
+            updates["current_variable_pct"] = req.current_variable_pct
+        if req.preferred_currency is not None:
+            updates["preferred_currency"] = req.preferred_currency
+        if req.current_comp_currency is not None:
+            updates["current_comp_currency"] = req.current_comp_currency
+        if req.target_market is not None:
+            updates["target_market"] = req.target_market
 
         supabase.table("user_profiles").update(updates).eq("user_id", req.user_id).execute()
         return {"status": "ok", "impact_pattern": impact_pattern}
@@ -1715,32 +1733,117 @@ def _get_career_paths(cohort: str, impact_pattern: str, trajectory: str) -> list
     return paths
 
 
-def _get_compensation_estimate(cohort: str, seniority: str, years_exp: int) -> dict:
-    cohort_comp = COMPENSATION_RANGES.get(cohort, COMPENSATION_RANGES.get("Technical PM", {}))
+def _get_compensation_estimate(
+    cohort: str,
+    seniority: str,
+    years_exp: int,
+    current_base: float = None,
+    current_equity_usd: float = None,
+    current_variable_pct: float = None,
+    preferred_currency: str = "INR",
+    current_comp_currency: str = "INR",
+    market: str = "India",
+) -> dict:
+    from services.currency import (
+        get_market_comp, compute_actual_comp_usd,
+        convert, CURRENCY_SYMBOLS, CURRENCY_UNIT, MARKET_COMP_RANGES
+    )
 
-    # Map expanded seniority to comp table keys
-    seniority_map = {
-        "intern": "junior", "junior": "junior", "mid": "mid",
-        "senior": "senior", "lead": "senior", "staff": "senior",
-        "principal": "senior_manager", "manager": "senior_manager",
-        "senior_manager": "senior_manager", "associate_director": "director",
-        "director": "director", "senior_director": "director",
-        "vp": "vp", "svp": "vp", "evp": "vp", "c-suite": "vp",
-    }
-    comp_key  = seniority_map.get(seniority, "mid")
-    next_key_map = {"junior": "mid", "mid": "senior", "senior": "senior_manager", "senior_manager": "director", "director": "vp", "vp": "vp"}
-    next_key  = next_key_map.get(comp_key, "vp")
+    # Get market comp range
+    market_comp = get_market_comp(cohort, seniority, market)
 
-    current   = cohort_comp.get(comp_key,  {"low": 20, "mid": 30, "high": 45})
-    next_level = cohort_comp.get(next_key, {"low": 35, "mid": 50, "high": 70})
+    # Fallback to India if market not found
+    if not market_comp:
+        market_comp = get_market_comp(cohort, seniority, "India") or {
+            "currency": "INR",
+            "current_range": {"low": 20, "high": 45},
+            "current_mid": 30,
+            "next_level_range": {"low": 35, "high": 70},
+            "market": "India",
+            "unit": "lakhs",
+        }
+
+    comp_currency = market_comp["currency"]
+    symbol        = CURRENCY_SYMBOLS.get(comp_currency, "$")
+
+    # Calculate actual total comp if provided
+    actual_total_usd  = None
+    actual_breakdown  = None
+    market_position   = None
+    position_color    = None
+
+    if current_base is not None:
+        comp_data = compute_actual_comp_usd(
+            base=current_base,
+            currency=current_comp_currency,
+            equity_usd=current_equity_usd or 0,
+            variable_pct=current_variable_pct or 0,
+        )
+        actual_total_usd = comp_data["total_usd"]
+
+        # Convert components to display currency
+        from services.currency import from_usd, to_usd
+        display_curr   = preferred_currency or comp_currency
+        disp_symbol    = CURRENCY_SYMBOLS.get(display_curr, "$")
+        disp_unit      = CURRENCY_UNIT.get(display_curr, "thousands")
+
+        base_display   = round(convert(current_base, current_comp_currency, display_curr), 1)
+        equity_display = round(from_usd(current_equity_usd or 0, display_curr), 1)
+        var_display    = round(convert(current_base * ((current_variable_pct or 0) / 100), current_comp_currency, display_curr), 1)
+        total_display  = round(base_display + equity_display + var_display, 1)
+
+        actual_breakdown = {
+            "base":     base_display,
+            "equity":   equity_display,
+            "variable": var_display,
+            "total":    total_display,
+            "currency": display_curr,
+            "symbol":   disp_symbol,
+            "unit":     disp_unit,
+        }
+
+        # Market positioning — compare total USD to market mid in USD
+        market_mid_local = market_comp["current_mid"]
+        market_mid_usd   = to_usd(market_mid_local, comp_currency) * (1000 if CURRENCY_UNIT.get(comp_currency) == "thousands" else 100000)
+
+        # Normalise actual total to same unit
+        actual_normalised = actual_total_usd
+
+        if actual_normalised >= market_comp["current_range"]["high"] * (1000 if CURRENCY_UNIT.get(comp_currency) == "thousands" else 100000) * RATES_TO_USD_APPROX.get(comp_currency, 1):
+            market_position = "Above market"
+            position_color  = "#10B981"
+        elif actual_normalised >= market_mid_usd:
+            market_position = "At market"
+            position_color  = "#3B82F6"
+        else:
+            market_position = "Below market"
+            position_color  = "#F59E0B"
 
     return {
-        "current_range": {"low": current["low"], "high": current["high"]},
-        "current_mid":   current["mid"],
-        "next_level_range": {"low": next_level["low"], "high": next_level["high"]},
-        "currency": "LPA",
-        "note": "Based on Indian tech market 2026. Actuals vary by company tier and location.",
+        "market":          market,
+        "currency":        comp_currency,
+        "symbol":          symbol,
+        "current_range":   market_comp["current_range"],
+        "current_mid":     market_comp["current_mid"],
+        "next_level_range": market_comp["next_level_range"],
+        "actual_total_usd": actual_total_usd,
+        "actual_breakdown": actual_breakdown,
+        "market_position":  market_position,
+        "position_color":   position_color,
+        "note": f"Based on {market} tech market 2026. Actuals vary by company tier and location.",
     }
+
+# Approximate rates for market positioning calculation
+RATES_TO_USD_APPROX = {
+    "INR": 1/83.5/100000,   # LPA to USD
+    "USD": 1/1000,           # K to USD
+    "GBP": 1.27/1000,
+    "SGD": 0.74/1000,
+    "CAD": 0.73/1000,
+    "AUD": 0.65/1000,
+    "AED": 0.27/1000,
+    "EUR": 1.08/1000,
+}
 
 
 AXIS_CONTEXT: dict[str, dict[str, str]] = {
@@ -1972,8 +2075,24 @@ async def get_career_dna(user_id: str):
         # Career paths
         paths = _get_career_paths(cohort, impact_pattern, trajectory)
 
-        # Compensation estimate
-        compensation = _get_compensation_estimate(cohort, seniority, years_exp)
+        # Compensation estimate — use actual comp if provided
+        current_base          = p.get("current_base_lpa")
+        current_equity        = p.get("current_equity_usd")
+        current_variable      = p.get("current_variable_pct")
+        preferred_currency    = p.get("preferred_currency") or "INR"
+        current_comp_currency = p.get("current_comp_currency") or "INR"
+        target_markets        = p.get("target_market") or ["India"]
+        primary_market        = target_markets[0] if target_markets else "India"
+
+        compensation = _get_compensation_estimate(
+            cohort, seniority, years_exp,
+            current_base=current_base,
+            current_equity_usd=current_equity,
+            current_variable_pct=current_variable,
+            preferred_currency=preferred_currency,
+            current_comp_currency=current_comp_currency,
+            market=primary_market,
+        )
 
         # Next role
         cohort_roles = NEXT_ROLE_MAP.get(cohort, {})
