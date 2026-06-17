@@ -149,6 +149,10 @@ class ContactUpdateRequest(BaseModel):
     phone: Optional[str] = None
     location: Optional[str] = None
     linkedin_url: Optional[str] = None
+    current_company: Optional[str] = None
+    current_level: Optional[str] = None
+    career_status: Optional[str] = None
+    onboarding_complete: Optional[bool] = None
 
 @router.patch("/contact")
 async def update_contact(req: ContactUpdateRequest):
@@ -158,6 +162,10 @@ async def update_contact(req: ContactUpdateRequest):
         if req.phone is not None: updates["phone"] = req.phone
         if req.location is not None: updates["location"] = req.location
         if req.linkedin_url is not None: updates["linkedin_url"] = req.linkedin_url
+        if req.current_company is not None: updates["current_company"] = req.current_company
+        if req.current_level is not None: updates["current_level"] = req.current_level
+        if req.career_status is not None: updates["career_status"] = req.career_status
+        if req.onboarding_complete is not None: updates["onboarding_complete"] = req.onboarding_complete
         if updates:
             supabase.table("user_profiles").update(updates).eq("user_id", req.user_id).execute()
         return {"status": "ok"}
