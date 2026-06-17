@@ -140,11 +140,6 @@ export default function VaultUpload({
         }
         classifyFile()
 
-        // Auto-trigger LinkedIn import for LinkedIn exports
-        if (isLinkedinExport) {
-          handleLinkedinPdf(file)
-        }
-
         try {
           const arrayBuffer = await file.arrayBuffer()
           const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer)
