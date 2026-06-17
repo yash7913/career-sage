@@ -11,6 +11,7 @@ import PreferencesPanel from '@/components/profile/PreferencesPanel'
 import PrepTab from '@/components/dashboard/PrepTab'
 import ToolsTab from '@/components/dashboard/ToolsTab'
 import CareerDNA from '@/components/dashboard/CareerDNA'
+import OnboardingFlow from '@/components/onboarding/OnboardingFlow'
 
 function ExpandableSkills({ skills }: { skills: string[] }) {
   const [expanded, setExpanded] = useState(false)
@@ -89,6 +90,7 @@ export default function DashboardTabs({
   const [activeTab, setActiveTab] = useState<string>(defaultTab)
   const [trackerKey, setTrackerKey] = useState(0)
   const [searchStatus, setSearchStatus] = useState('ACTIVE')
+  const [showOnboarding, setShowOnboarding] = useState(!hasProfile)
 
   const handleSearchStatusChange = async (status: string) => {
     setSearchStatus(status)
@@ -99,6 +101,20 @@ export default function DashboardTabs({
         body: JSON.stringify({ user_id: userId, search_status: status }),
       })
     } catch {}
+  }
+
+  if (showOnboarding) {
+    return (
+      <OnboardingFlow
+        userId={userId}
+        userName={userName}
+        onComplete={() => {
+          setShowOnboarding(false)
+          setActiveTab('career')
+          window.location.reload()
+        }}
+      />
+    )
   }
 
   return (
@@ -126,7 +142,8 @@ export default function DashboardTabs({
       <div style={{ flex: 1, overflowY: 'auto', minHeight: '100vh' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2.5rem 2rem' }}>
 
-          {/* Welcome heading */}
+          {/* Welcome heading — hidden on Career tab */}
+          {activeTab !== 'career' && (
           <div style={{ marginBottom: '1.5rem' }}>
             <h1 style={{ fontSize: '28px', fontWeight: 700, margin: '0 0 6px', letterSpacing: '-1px' }}>
               Welcome back, <span className="cs-shimmer">{userName}</span>
@@ -155,9 +172,10 @@ export default function DashboardTabs({
               </div>
             )}
           </div>
+          )}
 
           {/* Stats row */}
-          {hasProfile && hasTracks && (
+          {hasProfile && hasTracks && activeTab !== 'career' && (
             <StatsRow
               matchedJobs={matchedJobs}
               applicationsTracked={applicationsTracked}
@@ -204,7 +222,9 @@ export default function DashboardTabs({
 
           {/* Career tab */}
           {activeTab === 'career' && (
-            <CareerDNA userId={userId} />
+            <div style={{ paddingTop: '8px' }}>
+              <CareerDNA userId={userId} skills={profileSkills} />
+            </div>
           )}
           
           {/* Pipeline tab */}
