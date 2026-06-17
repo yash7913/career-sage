@@ -18,7 +18,8 @@ export default async function DashboardPage() {
   const pipeline = pipelineRes.ok ? await pipelineRes.json() : []
 
   const completeness = profile?.profile_completeness_score ?? 0
-  const hasProfile = completeness > 0
+  const onboardingComplete = profile?.onboarding_complete ?? false
+  const hasProfile = completeness > 0 || onboardingComplete
   const hasTracks = tracks.length > 0
 
   const tier = profile?.tier_status ?? 'GENERAL_FREE'
