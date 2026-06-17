@@ -2,13 +2,12 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { TierProvider } from '@/lib/tier-context'
 import './globals.css'
-import { ThemeProvider } from '@/lib/theme-context'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Career Sage',
-  description: 'AI-powered job search command center',
+  description: 'AI-powered career intelligence platform',
 }
 
 export default function RootLayout({
@@ -17,13 +16,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <ThemeProvider>
-	<TierProvider>
+    <html lang="en" data-theme="dark" style={{ colorScheme: 'dark' }}>
+      <body className={inter.className} style={{ background: '#0d1117', color: '#ffffff', minHeight: '100vh' }}>
+        <TierProvider>
           {children}
         </TierProvider>
-	</ThemeProvider>
       </body>
     </html>
   )
