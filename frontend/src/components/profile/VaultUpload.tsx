@@ -104,7 +104,10 @@ export default function VaultUpload({
 
           const { error: uploadError } = await supabase.storage
             .from('user-documents')
-            .upload(storagePath, file, { upsert: true })
+            .upload(storagePath, file, {
+              upsert: true,
+              contentType: file.type || 'application/pdf',
+            })
 
           if (uploadError) throw uploadError
 
