@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import VaultUpload from '@/components/profile/VaultUpload'
 
 const TEAL = '#10B981'
@@ -45,13 +45,8 @@ const EQUITY_RATES: Record<string, number> = {
   CAD: 1.37, AUD: 1.54, AED: 3.67, EUR: 0.93,
 }
 
-const LEVEL_OPTIONS = [
-  'L3', 'L4', 'L5', 'L6', 'L7', 'L8',
-  'Associate', 'Junior', 'Mid-level', 'Senior', 'Staff', 'Principal',
-  'Lead', 'Manager', 'Senior Manager', 'Director', 'VP', 'C-Suite',
-]
 
-const TOTAL_STEPS = 8
+const TOTAL_STEPS = 9
 
 interface OnboardingFlowProps {
   userId: string
@@ -69,9 +64,6 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
   // Step 3 — Basic profile
   const [fullName, setFullName] = useState(userName || '')
   const [location, setLocation] = useState('')
-  const [currentRole, setCurrentRole] = useState('')
-  const [fullName, setFullName] = useState(userName || '')
-  const [location, setLocation] = useState('')
   const [phone, setPhone] = useState('')
   const [currentRole, setCurrentRole] = useState('')
 
@@ -87,6 +79,13 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
   const [currentBase, setCurrentBase] = useState('')
   const [currentEquityUsd, setCurrentEquityUsd] = useState('')
   const [currentVariablePct, setCurrentVariablePct] = useState('')
+
+// Step 7.5 — Track setup (now Step 8)
+  const [trackName, setTrackName] = useState('')
+  const [trackRoles, setTrackRoles] = useState('')
+  const [trackColor, setTrackColor] = useState('teal')
+  const [trackCreated, setTrackCreated] = useState(false)
+  const [trackCreating, setTrackCreating] = useState(false)
 
   // Step 7 — Preferences
   const [targetMarkets, setTargetMarkets] = useState<string[]>(['India'])
@@ -115,6 +114,27 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
     setTargetMarkets(prev =>
       prev.includes(market) ? prev.filter(m => m !== market) : [...prev, market]
     )
+  }
+
+  const createTrack = async () => {
+    if (!trackName.trim()) return
+    setTrackCreating(true)
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tracks/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          track_name: trackName,
+          target_roles: trackRoles ? trackRoles.split(',').map(r => r.trim()).filter(Boolean) : [],
+          track_color: trackColor,
+        }),
+      })
+      if (res.ok) {
+        setTrackCreated(true)
+      }
+    } catch {}
+    setTrackCreating(false)
   }
 
   const saveStep = async (stepData: Record<string, unknown>) => {
@@ -154,12 +174,16 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
         })
       } else if (step === 7) {
         await savePreferences({
-          target_market:          targetMarkets,
-          preferred_work_mode:    workMode,
+          target_market:           targetMarkets,
+          preferred_work_mode:     workMode,
           preferred_company_stage: companyStage === 'any' ? null : companyStage,
-          salary_target_lpa:      salaryTarget ? parseInt(salaryTarget) : null,
+          salary_target_lpa:       salaryTarget ? parseInt(salaryTarget) : null,
         })
       } else if (step === 8) {
+        if (!trackCreated && trackName.trim()) {
+          await createTrack()
+        }
+      } else if (step === 9) {
         await saveStep({ onboarding_complete: true })
         onComplete()
         return
@@ -177,6 +201,7 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
     if (step === 3) return !!fullName.trim()
     if (step === 4) return !!careerStatus
     if (step === 5) return !!currentCompany.trim()
+    if (step === 8) return trackCreated || !!trackName.trim()
     return true
   }
 
@@ -259,7 +284,7 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
         {/* ── Step 2: Resume upload ── */}
         {step === 2 && (
           <div>
-            <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 8px' }}>STEP 2 OF 8</p>
+            <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 8px' }}>STEP 2 OF 9</p>
             <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#fff', margin: '0 0 6px' }}>Upload your documents</h2>
             <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1.5rem' }}>
               Career Sage extracts your skills, experience, and summary automatically. You can also import your LinkedIn PDF.
@@ -498,16 +523,118 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
           </div>
         )}
 
-        {/* ── Step 8: Done ── */}
+        {/* ── Step 8: Career Track ── */}
         {step === 8 && (
+          <div>
+            <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 8px' }}>CAREER TRACK</p>
+            <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#fff', margin: '0 0 6px' }}>Set up your first career track</h2>
+            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1.5rem', lineHeight: 1.6 }}>
+              A career track defines what you are targeting. Your job feed, resume generation, and match scores are all built around this.
+            </p>
+
+            {trackCreated ? (
+              <div style={{
+                padding: '1.25rem', borderRadius: '12px',
+                background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)',
+                textAlign: 'center',
+              }}>
+                <p style={{ fontSize: '20px', margin: '0 0 8px' }}>✓</p>
+                <p style={{ fontSize: '14px', fontWeight: 600, color: TEAL, margin: '0 0 4px' }}>
+                  {trackName} track created
+                </p>
+                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                  Your job feed is being personalised.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>
+                    TRACK NAME
+                  </label>
+                  <input
+                    value={trackName}
+                    onChange={e => setTrackName(e.target.value)}
+                    placeholder="e.g. Senior PM at a Series B startup"
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>
+                    TARGET ROLES (comma separated)
+                  </label>
+                  <input
+                    value={trackRoles}
+                    onChange={e => setTrackRoles(e.target.value)}
+                    placeholder="e.g. Senior PM, Group PM, Head of Product"
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em', display: 'block', marginBottom: '8px' }}>
+                    TRACK COLOUR
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {[
+                      { value: 'teal',   color: '#10B981' },
+                      { value: 'purple', color: '#7F77DD' },
+                      { value: 'blue',   color: '#3B82F6' },
+                      { value: 'amber',  color: '#F59E0B' },
+                      { value: 'coral',  color: '#F97316' },
+                    ].map(c => (
+                      <div
+                        key={c.value}
+                        onClick={() => setTrackColor(c.value)}
+                        style={{
+                          width: '28px', height: '28px', borderRadius: '50%',
+                          background: c.color, cursor: 'pointer',
+                          border: trackColor === c.value ? '3px solid #fff' : '3px solid transparent',
+                          transition: 'border 0.15s',
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={createTrack}
+                  disabled={!trackName.trim() || trackCreating}
+                  style={{
+                    padding: '12px', borderRadius: '10px',
+                    background: trackName.trim() ? TEAL : 'rgba(255,255,255,0.06)',
+                    color: trackName.trim() ? '#fff' : 'rgba(255,255,255,0.3)',
+                    border: 'none', fontSize: '14px', fontWeight: 600,
+                    cursor: trackName.trim() ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  {trackCreating ? 'Creating...' : 'Create track →'}
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={() => setStep(9)}
+              style={{
+                marginTop: '12px', width: '100%', padding: '10px',
+                background: 'transparent', border: `1px solid ${BORDER}`,
+                borderRadius: '10px', color: 'rgba(255,255,255,0.3)',
+                fontSize: '13px', cursor: 'pointer',
+              }}
+            >
+              Skip for now →
+            </button>
+          </div>
+        )}
+
+        {/* ── Step 9: Done ── */}
+        {step === 9 && (
           <div style={{ textAlign: 'center', padding: '1rem 0' }}>
             <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🎉</p>
             <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', margin: '0 0 10px' }}>You're all set!</h2>
             <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.5)', margin: '0 0 6px', lineHeight: 1.6 }}>
-              Career Sage is now building your Career DNA.
+              Career Sage is building your Career DNA.
             </p>
             <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.3)', margin: '0 0 2rem', lineHeight: 1.6 }}>
-              Your personalised job feed, promotion readiness score, and market position are ready to explore.
+              Your personalised job feed, promotion readiness score, and market position are ready.
             </p>
             <div style={{
               padding: '14px', borderRadius: '12px', marginBottom: '1.5rem',
@@ -530,7 +657,7 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
 
         {/* Navigation buttons */}
         <div style={{ display: 'flex', gap: '10px', marginTop: '1.5rem' }}>
-          {step > 1 && step < 8 && (
+          {step > 1 && step < 9 && (
             <button onClick={() => setStep(s => s - 1)} style={{
               padding: '12px 20px', borderRadius: '10px',
               background: 'transparent', border: `1px solid ${BORDER}`,
@@ -552,14 +679,14 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
                 transition: 'all 0.15s',
               }}
             >
-              {saving ? 'Saving...' : step === 8 ? '🚀 Go to Career DNA' : 'Continue →'}
+              {saving ? 'Saving...' : step === 9 ? '🚀 Go to Career DNA' : 'Continue →'}
             </button>
           )}
         </div>
       </div>
 
       {/* Skip onboarding entirely */}
-      {step < 8 && (
+      {step < 9 && (
         <button
           onClick={async () => {
             await saveStep({ onboarding_complete: true })

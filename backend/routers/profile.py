@@ -2146,11 +2146,12 @@ async def get_career_dna(user_id: str):
             market=primary_market,
         )
 
-        # Next role
+        # Next role — based on current seniority, boosted by trajectory
         cohort_roles = NEXT_ROLE_MAP.get(cohort, {})
+        next_seniority = _next_seniority(seniority)
         next_role = (
-            cohort_roles.get(seniority)
-            or cohort_roles.get(_next_seniority(seniority))
+            cohort_roles.get(next_seniority)
+            or cohort_roles.get(seniority)
             or f"Senior {cohort}"
         )
 

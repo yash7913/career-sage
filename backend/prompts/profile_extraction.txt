@@ -39,6 +39,7 @@ Extract and return a JSON object with exactly these fields. Return ONLY the JSON
   "extracted_summary": "...",
   "career_tracks": ["software engineering"],
   "certifications": [],
+  "phone": null,
   "linkedin_url": null,
   "raw_profile_text": "..."
 }}
@@ -90,10 +91,10 @@ certifications:
 - year: integer or null
 - Empty array if none found
 
-linkedin_url:
-- Extract the full LinkedIn profile URL if present anywhere in the document
-- Format: https://linkedin.com/in/username or https://www.linkedin.com/in/username
-- Return null if not found — never construct or guess a URL
+phone:
+- Extract the phone number if present anywhere in the document
+- Include country code if present (e.g. +91 9866934483)
+- Return null if not found — never fabricate a phone number
 
 raw_profile_text:
 - Format strictly as:

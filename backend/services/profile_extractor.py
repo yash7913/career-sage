@@ -141,15 +141,68 @@ async def extract_and_save_profile(user_id: str) -> dict:
 
     import datetime
     current_year = datetime.datetime.now().year
+
+    # Calculate years of experience from work history (most accurate)
+    work_history = extracted.get("work_history", [])
     years_of_experience = 0
-    if extracted.get("education_data"):
-        earliest_grad = min(
-            (e.get("graduation_year") or current_year
-             for e in extracted.get("education_data", [])
-             if isinstance(e, dict) and e.get("graduation_year")),
-            default=current_year
+    current_role_title   = ""
+    current_company_name = ""
+
+    if work_history:
+        # Sort by start_date descending to find most recent role
+        def parse_year(date_str):
+            if not date_str:
+                return 0
+            try:
+                return int(str(date_str)[:4])
+            except:
+                return 0
+
+        sorted_history = sorted(
+            [w for w in work_history if isinstance(w, dict)],
+            key=lambda w: parse_year(w.get("start_date")),
+            reverse=True
         )
-        years_of_experience = max(0, current_year - earliest_grad)
+
+        # Most recent role = first after sorting by start_date desc
+        if sorted_history:
+            most_recent = sorted_history[0]
+            current_role_title   = most_recent.get("title") or ""
+            current_company_name = most_recent.get("company") or ""
+
+        # Years of experience = current year - earliest start date
+        earliest_year = None
+        for w in work_history:
+            yr = parse_year(w.get("start_date"))
+            if yr > 1990:  # sanity check
+                if earliest_year is None or yr < earliest_year:
+                    earliest_year = yr
+
+        if earliest_year:
+            years_of_experience = max(0, current_year - earliest_year)
+        else:
+            # Fallback to graduation year
+            if extracted.get("education_data"):
+                earliest_grad = min(
+                    (e.get("graduation_year") or current_year
+                     for e in extracted.get("education_data", [])
+                     if isinstance(e, dict) and e.get("graduation_year")),
+                    default=current_year
+                )
+                years_of_experience = max(0, current_year - earliest_grad)
+    else:
+        # No work history — fallback to graduation year
+        if extracted.get("education_data"):
+            earliest_grad = min(
+                (e.get("graduation_year") or current_year
+                 for e in extracted.get("education_data", [])
+                 if isinstance(e, dict) and e.get("graduation_year")),
+                default=current_year
+            )
+            years_of_experience = max(0, current_year - earliest_grad)
+
+    print(f"Most recent role: {current_role_title} at {current_company_name}")
+    print(f"Years of experience: {years_of_experience}")
 
     # Derive seniority from years of experience + extracted title signals
     raw_seniority = extracted.get("seniority_level", "mid")
@@ -175,15 +228,21 @@ async def extract_and_save_profile(user_id: str) -> dict:
         seniority = raw_seniority
 
     update_data = {
-        "extracted_skills": flat_skills,
-        "education_data": extracted.get("education_data", []),
-        "extracted_summary": extracted.get("extracted_summary", ""),
-        "raw_profile_text": extracted.get("raw_profile_text", ""),
+        "extracted_skills":          flat_skills,
+        "education_data":            extracted.get("education_data", []),
+        "extracted_summary":         extracted.get("extracted_summary", ""),
+        "raw_profile_text":          extracted.get("raw_profile_text", ""),
         "profile_completeness_score": completeness,
-        "cohort": cohort,
-        "years_of_experience": years_of_experience,
-        "seniority_level": seniority,
+        "cohort":                    cohort,
+        "years_of_experience":       years_of_experience,
+        "seniority_level":           seniority,
     }
+
+    # Save current role and company if found
+    if current_role_title:
+        update_data["current_company"] = current_company_name
+    if extracted.get("phone"):
+        update_data["phone"] = extracted.get("phone")
 
     # Only update linkedin_url if found in resume — don't overwrite manually entered one
     linkedin_url = extracted.get("linkedin_url")
