@@ -1001,7 +1001,7 @@ Rules:
         data = json.loads(match.group())
 
         # Get existing profile
-        profile = supabase.table("user_profiles").select("extracted_skills, work_history").eq("user_id", req.user_id).execute()
+        profile = supabase.table("user_profiles").select("extracted_skills").eq("user_id", req.user_id).execute()
         existing_skills = profile.data[0].get("extracted_skills") or [] if profile.data else []
         existing_lower  = {s.lower() for s in existing_skills}
 
@@ -1011,8 +1011,6 @@ Rules:
 
         # Build updates
         updates: dict = {"extracted_skills": all_skills}
-        if data.get("work_history"):
-            updates["work_history"] = data["work_history"]
         if data.get("education"):
             updates["education_data"] = data["education"]
         if data.get("full_name"):
@@ -1133,7 +1131,7 @@ Rules:
         data = json.loads(match.group())
 
         # Get existing profile
-        profile = supabase.table("user_profiles").select("extracted_skills, work_history").eq("user_id", user_id).execute()
+        profile = supabase.table("user_profiles").select("extracted_skills").eq("user_id", user_id).execute()
         existing_skills = profile.data[0].get("extracted_skills") or [] if profile.data else []
         existing_lower  = {s.lower() for s in existing_skills}
 
@@ -1141,13 +1139,11 @@ Rules:
         new_skills = [s for s in (data.get("skills") or []) if s.lower() not in existing_lower and len(s) < 50]
         all_skills = existing_skills + new_skills
 
-        # Build updates
+        # Build updates — only columns that exist in user_profiles
         updates: dict = {
             "extracted_skills": all_skills,
-            "skill_categories": None,  # Invalidate cache
+            "skill_categories": None,
         }
-        if data.get("work_history"):
-            updates["work_history"] = data["work_history"]
         if data.get("education"):
             updates["education_data"] = data["education"]
         if data.get("full_name"):
