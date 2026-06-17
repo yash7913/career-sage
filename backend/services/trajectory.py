@@ -91,17 +91,33 @@ def classify_trajectory(
     ]
     plateau_count = sum(1 for s in plateau_signals if s in text_lower)
 
+    # Strong accelerating signals
+    current_seniority = seniority_levels[0] if seniority_levels else 0
+    is_accelerating = (
+        seniority_growth >= 2
+        or has_promotions
+        or current_seniority >= 3  # Currently at senior/lead/staff/principal level
+        or (years_of_experience >= 8 and current_seniority >= 2)  # 8+ years and mid+ = accelerating
+        or len(set(seniority_levels)) >= 2  # Multiple seniority levels = growth
+    )
+
+    # Plateauing signals — only trigger if NOT accelerating
+    is_plateauing = (
+        not is_accelerating
+        and (plateau_count >= 2 or (years_of_experience >= 5 and seniority_growth <= 0))
+    )
+
     if is_pivoting or (domain_counts and len(domain_counts) >= 3):
         trajectory = "Pivoting"
         description = "Your career shows significant domain or function changes. Career Sage will help translate your transferable skills into your target role's language."
         color = "#F59E0B"
         icon = "🔄"
-    elif seniority_growth >= 2 or has_promotions or (years_of_experience > 0 and len(roles) > 0 and seniority_levels and seniority_levels[0] >= 3):
+    elif is_accelerating:
         trajectory = "Accelerating"
         description = "Strong upward trajectory — your seniority progression and scope of impact are above average for your cohort. Focus on expanding your leadership footprint."
         color = "#10B981"
         icon = "🚀"
-    elif plateau_count >= 2 or (years_of_experience >= 5 and seniority_growth <= 0):
+    elif is_plateauing:
         trajectory = "Plateauing"
         description = "Your career shows signs of levelling out. This is common after 5+ years in one domain. Consider a new challenge, domain expansion, or leadership move."
         color = "#EF4444"

@@ -1169,6 +1169,77 @@ Rules:
 
         supabase.table("user_profiles").update(updates).eq("user_id", user_id).execute()
 
+        # Re-run cohort classification and seniority detection with new data
+        try:
+            from services.cohort_classifier import classify_cohort
+            import datetime
+
+            all_skills_for_cohort = all_skills
+            cohort = classify_cohort(
+                extracted_skills=all_skills_for_cohort,
+                raw_profile_text=raw_text,
+                work_history=data.get("work_history") or [],
+                years_of_experience=0,
+            )
+
+            # Calculate years of experience from work history
+            years_exp = 0
+            work_hist = data.get("work_history") or []
+            if work_hist:
+                earliest = None
+                for w in work_hist:
+                    sd = w.get("start_date") or ""
+                    if sd:
+                        try:
+                            yr = int(sd[:4])
+                            if earliest is None or yr < earliest:
+                                earliest = yr
+                        except:
+                            pass
+                if earliest:
+                    years_exp = datetime.datetime.now().year - earliest
+
+            # Derive seniority from years
+            if years_exp >= 15:
+                seniority = "director"
+            elif years_exp >= 12:
+                seniority = "senior_manager"
+            elif years_exp >= 9:
+                seniority = "senior"
+            elif years_exp >= 6:
+                seniority = "senior"
+            elif years_exp >= 3:
+                seniority = "mid"
+            elif years_exp >= 1:
+                seniority = "junior"
+            else:
+                seniority = "mid"
+
+            # Build a richer raw_profile_text
+            roles_list = [
+                f"{w.get('title')} at {w.get('company')} ({(w.get('start_date') or '')[:4]}–{(w.get('end_date') or 'Present')[:4] if not w.get('is_current') else 'Present'})"
+                for w in work_hist[:6]
+            ]
+            about_text  = (data.get("about") or "")[:400]
+            skills_text = ", ".join(all_skills[:30])
+            rich_raw_text = (
+                f"ROLES: {', '.join(roles_list)}\n"
+                f"SKILLS: {skills_text}\n"
+                f"ABOUT: {about_text}\n"
+                f"ACHIEVEMENTS: Extracted from LinkedIn profile"
+            )
+
+            supabase.table("user_profiles").update({
+                "cohort":              cohort,
+                "years_of_experience": years_exp,
+                "seniority_level":     seniority,
+                "raw_profile_text":    rich_raw_text[:3000],
+                "skill_categories":    None,
+            }).eq("user_id", user_id).execute()
+
+        except Exception as enrich_err:
+            print(f"Post-import enrichment failed: {enrich_err}")
+
         return {
             "status": "ok",
             "skills_added":    len(new_skills),
@@ -1848,8 +1919,25 @@ async def get_career_dna(user_id: str):
         seniority      = p.get("seniority_level") or "mid"
         years_exp      = p.get("years_of_experience") or 0
         raw_text       = p.get("raw_profile_text") or ""
-        work_history   = p.get("work_history") or []
+
+        
         full_name      = p.get("full_name") or ""
+
+        # work_history column doesn't exist — parse roles from raw_profile_text
+        work_history = []
+        if raw_text:
+            for line in raw_text.split("\n"):
+                if line.startswith("ROLES:"):
+                    roles_line = line.replace("ROLES:", "").strip()
+                    for role in roles_line.split(","):
+                        role = role.strip()
+                        if " at " in role:
+                            parts = role.split(" at ")
+                            work_history.append({
+                                "title":   parts[0].strip(),
+                                "company": parts[1].split("(")[0].strip(),
+                            })
+                    break
         extracted_skills = p.get("extracted_skills") or []
         if isinstance(extracted_skills, list):
             extracted_skills = [s for s in extracted_skills if isinstance(s, str)]
