@@ -853,6 +853,38 @@ async def toggle_document(req: ToggleDocumentRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class DeleteDocumentRequest(BaseModel):
+    user_id: str
+    doc_id: str
+
+@router.delete("/documents/delete")
+async def delete_document(req: DeleteDocumentRequest):
+    try:
+        # Verify doc belongs to user
+        doc = supabase.table("user_documents").select("doc_id, storage_path").eq(
+            "doc_id", req.doc_id
+        ).eq("user_id", req.user_id).execute()
+
+        if not doc.data:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        storage_path = doc.data[0]["storage_path"]
+
+        # Delete from Supabase Storage
+        try:
+            supabase.storage.from_("user-documents").remove([storage_path])
+        except Exception as storage_err:
+            print(f"Storage delete failed: {storage_err}")
+
+        # Delete from user_documents table
+        supabase.table("user_documents").delete().eq("doc_id", req.doc_id).execute()
+
+        return {"status": "deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 class LinkedInImportRequest(BaseModel):
     user_id: str
     linkedin_url: str

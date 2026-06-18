@@ -55,6 +55,26 @@ export default function DocumentManager({ userId }: { userId: string }) {
     setToggling(null)
   }
 
+  const handleDelete = async (docId: string, fileName: string) => {
+    if (!confirm(`Permanently delete "${fileName}"? This cannot be undone.`)) return
+    setToggling(docId)
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/documents/delete`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          doc_id: docId,
+          storage_path: '',
+        }),
+      })
+      if (res.ok) {
+        setDocs(prev => prev.filter(d => d.doc_id !== docId))
+      }
+    } catch {}
+    setToggling(null)
+  }
+
   if (loading) return (
     <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)' }}>Loading documents...</p>
   )
@@ -124,6 +144,21 @@ export default function DocumentManager({ userId }: { userId: string }) {
               }}
             >
               {toggling === doc.doc_id ? '...' : doc.is_active ? 'Ignore' : 'Restore'}
+            </button>
+
+            <button
+              onClick={() => handleDelete(doc.doc_id, doc.file_name)}
+              disabled={toggling === doc.doc_id}
+              style={{
+                padding: '5px 8px', borderRadius: '6px', cursor: 'pointer',
+                background: 'transparent',
+                border: `1px solid rgba(255,255,255,0.06)`,
+                color: 'rgba(255,255,255,0.2)',
+                fontSize: '11px',
+              }}
+              title="Permanently delete"
+            >
+              🗑
             </button>
           </div>
         </div>
