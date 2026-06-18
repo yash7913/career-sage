@@ -5,12 +5,12 @@ const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
 
 export default function ContactDetailsForm({ userId }: { userId: string }) {
-  const [fullName, setFullName]       = useState('')
-  const [phone, setPhone]             = useState('')
-  const [location, setLocation]       = useState('')
-  const [linkedinUrl, setLinkedinUrl] = useState('')
-  const [saving, setSaving]           = useState(false)
-  const [saved, setSaved]             = useState(false)
+  const [fullName,       setFullName]       = useState('')
+  const [phone,          setPhone]          = useState('')
+  const [location,       setLocation]       = useState('')
+  const [linkedinUrl,    setLinkedinUrl]    = useState('')
+  const [saving,         setSaving]         = useState(false)
+  const [saved,          setSaved]          = useState(false)
   const [urlFoundInResume, setUrlFoundInResume] = useState(false)
 
   useEffect(() => {
@@ -33,8 +33,8 @@ export default function ContactDetailsForm({ userId }: { userId: string }) {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: userId,
-          full_name: fullName,
+          user_id:      userId,
+          full_name:    fullName,
           phone,
           location,
           linkedin_url: linkedinUrl,
@@ -64,11 +64,11 @@ export default function ContactDetailsForm({ userId }: { userId: string }) {
 
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
         <div>
           <label style={labelStyle}>FULL NAME</label>
           <input value={fullName} onChange={e => setFullName(e.target.value)}
-            placeholder="Yashwanth Pasupula" style={inputStyle} />
+            placeholder="Yashwanth P" style={inputStyle} />
         </div>
         <div>
           <label style={labelStyle}>PHONE</label>
@@ -87,124 +87,13 @@ export default function ContactDetailsForm({ userId }: { userId: string }) {
               ✓ Found in resume
             </p>
           )}
-          <input value={linkedinUrl} onChange={e => { setLinkedinUrl(e.target.value); setUrlFoundInResume(false) }}
-            placeholder="linkedin.com/in/yourprofile" style={inputStyle} />
+          <input
+            value={linkedinUrl}
+            onChange={e => { setLinkedinUrl(e.target.value); setUrlFoundInResume(false) }}
+            placeholder="linkedin.com/in/yourprofile"
+            style={inputStyle}
+          />
         </div>
-      </div>
-
-      
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <p style={{ fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.5)', margin: 0 }}>
-            Import from LinkedIn
-          </p>
-          {importStatus === 'idle' && (
-            <button
-              onClick={() => setImportStatus('pasting')}
-              style={{
-                fontSize: '11px', padding: '4px 12px', borderRadius: '6px',
-                background: 'rgba(255,255,255,0.06)', border: `1px solid ${BORDER}`,
-                color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontWeight: 600,
-              }}
-            >
-              Upload LinkedIn PDF
-            </button>
-          )}
-          {importStatus === 'done' && (
-            <span style={{ fontSize: '11px', color: TEAL, fontWeight: 600 }}>✓ Done</span>
-          )}
-        </div>
-
-        {importStatus === 'idle' && (
-          <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', margin: 0, lineHeight: 1.5 }}>
-            Go to your LinkedIn profile → select all text (Ctrl+A) → copy (Ctrl+C) → paste below.
-            Career Sage will extract your work history, skills, and education automatically.
-          </p>
-        )}
-
-        {importStatus === 'pasting' && (
-          <div>
-            <label style={{
-              display: 'flex', alignItems: 'center', gap: '10px',
-              padding: '10px 14px', borderRadius: '8px', cursor: 'pointer',
-              background: 'rgba(255,255,255,0.04)', border: `1px dashed rgba(255,255,255,0.15)`,
-              color: 'rgba(255,255,255,0.5)', fontSize: '12px',
-            }}>
-              <span style={{ fontSize: '20px' }}>📄</span>
-              <div>
-                <p style={{ margin: 0, fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
-                  Upload LinkedIn PDF export
-                </p>
-                <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'rgba(255,255,255,0.3)', lineHeight: 1.6 }}>
-                  On LinkedIn: click <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Me</strong> (top right)
-                  → <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Settings & Privacy</strong>
-                  → <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Data Privacy</strong>
-                  → <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Get a copy of your data</strong>
-                  → <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Want something in particular?</strong>
-                  → tick <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Profile</strong>
-                  → <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Request archive</strong>.
-                  Usually ready in under a minute.
-                </p>
-              </div>
-              <input
-                type="file"
-                accept=".pdf"
-                style={{ display: 'none' }}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0]
-                  if (!file) return
-                  setImportStatus('parsing')
-                  const formData = new FormData()
-                  formData.append('file', file)
-                  formData.append('user_id', userId)
-                  if (linkedinUrl) formData.append('linkedin_url', linkedinUrl)
-                  try {
-                    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/import-linkedin-pdf`, {
-                      method: 'POST',
-                      body: formData,
-                    })
-                    const data = await res.json()
-                    if (data.status === 'ok') {
-                      setImportStatus('done')
-                      setImportMessage(`Imported — ${data.skills_added} skills added, ${data.roles_found} roles found`)
-                      setTimeout(() => window.location.reload(), 2000)
-                    } else {
-                      setImportStatus('error')
-                      setImportMessage(data.detail || 'Import failed. Try again.')
-                    }
-                  } catch {
-                    setImportStatus('error')
-                    setImportMessage('Import failed. Check your connection.')
-                  }
-                }}
-              />
-            </label>
-            <button
-              onClick={() => setImportStatus('idle')}
-              style={{
-                marginTop: '8px', padding: '6px 14px', borderRadius: '7px',
-                background: 'transparent', border: `1px solid ${BORDER}`,
-                color: 'rgba(255,255,255,0.3)', fontSize: '12px', cursor: 'pointer',
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-
-        {importStatus === 'parsing' && (
-          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
-            ⏳ Parsing your LinkedIn profile...
-          </p>
-        )}
-
-        {importMessage && (
-          <p style={{
-            fontSize: '11px', margin: '8px 0 0',
-            color: importStatus === 'done' ? TEAL : '#EF4444',
-          }}>
-            {importMessage}
-          </p>
-        )}
       </div>
 
       <button
