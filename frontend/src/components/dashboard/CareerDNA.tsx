@@ -860,7 +860,11 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
               </button>
             ))}
 
-            {/* ── Ask Career Sage ── */}
+
+          </div>
+        </div>
+
+        {/* ── Ask Career Sage ── */}
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
           <SectionHeader label="Ask Career Sage anything" />
           <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 14px', lineHeight: 1.5 }}>
@@ -939,8 +943,6 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
               </button>
             </div>
           )}
-        </div>
-          </div>
         </div>
 
       </div>
