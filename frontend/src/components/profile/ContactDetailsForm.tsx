@@ -11,11 +11,6 @@ export default function ContactDetailsForm({ userId }: { userId: string }) {
   const [linkedinUrl, setLinkedinUrl] = useState('')
   const [saving, setSaving]           = useState(false)
   const [saved, setSaved]             = useState(false)
-
-  // LinkedIn import states
-  const [importStatus, setImportStatus] = useState<'idle' | 'pasting' | 'parsing' | 'done' | 'error'>('idle')
-  const [pastedText, setPastedText]     = useState('')
-  const [importMessage, setImportMessage] = useState('')
   const [urlFoundInResume, setUrlFoundInResume] = useState(false)
 
   useEffect(() => {
@@ -49,35 +44,6 @@ export default function ContactDetailsForm({ userId }: { userId: string }) {
       setTimeout(() => setSaved(false), 3000)
     } finally {
       setSaving(false)
-    }
-  }
-
-  const handleImportPaste = async () => {
-    if (!pastedText.trim()) return
-    setImportStatus('parsing')
-    setImportMessage('')
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/import-linkedin-text`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          linkedin_text: pastedText,
-          linkedin_url: linkedinUrl,
-        }),
-      })
-      const data = await res.json()
-      if (data.status === 'ok') {
-        setImportStatus('done')
-        setImportMessage(`Imported — ${data.skills_added} skills added, ${data.roles_found} roles found`)
-        setTimeout(() => window.location.reload(), 2000)
-      } else {
-        setImportStatus('error')
-        setImportMessage(data.detail || 'Import failed. Try again.')
-      }
-    } catch {
-      setImportStatus('error')
-      setImportMessage('Import failed. Check your connection.')
     }
   }
 
@@ -126,14 +92,7 @@ export default function ContactDetailsForm({ userId }: { userId: string }) {
         </div>
       </div>
 
-      {/* LinkedIn import section */}
-      <div style={{
-        margin: '0 0 14px',
-        padding: '14px',
-        borderRadius: '10px',
-        background: 'rgba(255,255,255,0.02)',
-        border: `1px solid ${BORDER}`,
-      }}>
+      
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
           <p style={{ fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.5)', margin: 0 }}>
             Import from LinkedIn
