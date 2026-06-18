@@ -2324,6 +2324,7 @@ async def get_career_dna(user_id: str):
             "top_strengths":        strengths,
             "share_text":           share_text,
             "skill_categories":    skill_categories,
+            "work_history":        p.get("work_history") or [],
         }
 
     except HTTPException:

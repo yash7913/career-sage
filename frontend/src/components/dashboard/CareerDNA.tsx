@@ -28,6 +28,14 @@ interface DNAData {
   career_paths: CareerPath[]
   compensation: { current_range: { low: number; high: number }; current_mid: number; next_level_range: { low: number; high: number }; currency: string; note: string }
   top_strengths: { axis: string; score: number; vs_avg: number }[]
+  work_history: {
+    title: string
+    company: string
+    start_date: string
+    end_date: string | null
+    is_current: boolean
+    description?: string
+  }[]
   skill_categories: Record<string, string[]>
   share_text: string
 }
@@ -481,6 +489,98 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
             {data.trajectory.description}
           </p>
         </div>
+
+        {/* ── Career Journey ── */}
+        {data.work_history && data.work_history.length > 0 && (
+          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+              <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', margin: 0 }}>
+                CAREER JOURNEY
+              </p>
+              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', margin: 0 }}>
+                {data.work_history.length} roles · {data.years_of_experience} years
+              </p>
+            </div>
+
+            <div style={{ position: 'relative' }}>
+              {/* Vertical line */}
+              <div style={{
+                position: 'absolute', left: '7px', top: '8px',
+                bottom: '8px', width: '1px',
+                background: 'linear-gradient(to bottom, rgba(16,185,129,0.6), rgba(16,185,129,0.1))',
+              }} />
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                {[...data.work_history].reverse().map((role, i) => {
+                  const isFirst  = i === 0
+                  const isLast   = i === data.work_history.length - 1
+                  const startYr  = role.start_date ? role.start_date.slice(0, 4) : ''
+                  const endYr    = role.is_current ? 'Present' : role.end_date ? role.end_date.slice(0, 4) : ''
+                  const duration = (() => {
+                    if (!startYr) return ''
+                    const start = parseInt(startYr)
+                    const end   = role.is_current ? new Date().getFullYear() : parseInt(endYr) || new Date().getFullYear()
+                    const yrs   = end - start
+                    if (yrs === 0) return '< 1 yr'
+                    return `${yrs} yr${yrs > 1 ? 's' : ''}`
+                  })()
+
+                  return (
+                    <div key={i} style={{ display: 'flex', gap: '16px', paddingBottom: isLast ? '0' : '20px' }}>
+                      {/* Timeline dot */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                        <div style={{
+                          width: '15px', height: '15px', borderRadius: '50%', marginTop: '2px',
+                          background: role.is_current ? TEAL : isFirst ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.1)',
+                          border: `2px solid ${role.is_current ? TEAL : isFirst ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.15)'}`,
+                          flexShrink: 0,
+                        }} />
+                      </div>
+
+                      {/* Role content */}
+                      <div style={{ flex: 1, paddingTop: '0' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                          <div>
+                            <p style={{
+                              fontSize: '13px', fontWeight: 600, margin: '0 0 2px',
+                              color: role.is_current ? '#fff' : 'rgba(255,255,255,0.7)',
+                            }}>
+                              {role.title}
+                            </p>
+                            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                              {role.company}
+                            </p>
+                          </div>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <p style={{ fontSize: '11px', color: role.is_current ? TEAL : 'rgba(255,255,255,0.3)', margin: '0 0 2px', fontWeight: role.is_current ? 600 : 400 }}>
+                              {startYr}{endYr ? ` — ${endYr}` : ''}
+                            </p>
+                            {duration && (
+                              <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)', margin: 0 }}>
+                                {duration}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {role.is_current && role.description && (
+                          <p style={{
+                            fontSize: '11px', color: 'rgba(255,255,255,0.3)',
+                            margin: '6px 0 0', lineHeight: 1.5,
+                            display: '-webkit-box', WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
+                          }}>
+                            {role.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Skills ── */}
         {data.skill_categories && Object.keys(data.skill_categories).length > 0 && (
