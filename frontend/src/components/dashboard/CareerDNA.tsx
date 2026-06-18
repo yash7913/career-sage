@@ -401,6 +401,10 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
   const [copied, setCopied]         = useState(false)
   const [decisionLoading, setDecisionLoading] = useState<string | null>(null)
   const [decisionResult, setDecisionResult]   = useState<Record<string, unknown> | null>(null)
+  const [askQuestion, setAskQuestion]   = useState('')
+  const [askLoading, setAskLoading]     = useState(false)
+  const [askResult, setAskResult]       = useState<string | null>(null)
+
 
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/career-dna/${userId}`)
@@ -415,6 +419,24 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
     navigator.clipboard.writeText(data.share_text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2500)
+  }
+
+  const handleAsk = async () => {
+    if (!askQuestion.trim()) return
+    setAskLoading(true)
+    setAskResult(null)
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/ask-career-sage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, question: askQuestion }),
+      })
+      const data = await res.json()
+      setAskResult(data.answer)
+    } catch {
+      setAskResult('Something went wrong. Try again.')
+    }
+    setAskLoading(false)
   }
 
   const handleDecision = async (key: string) => {
@@ -837,6 +859,87 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
                 <span>{decisionLoading === opt.key ? 'Analysing...' : opt.label}</span>
               </button>
             ))}
+
+            {/* ── Ask Career Sage ── */}
+        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+          <SectionHeader label="Ask Career Sage anything" />
+          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 14px', lineHeight: 1.5 }}>
+            Ask any career question — personalised to your profile, experience, and goals.
+          </p>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <input
+              value={askQuestion}
+              onChange={e => setAskQuestion(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleAsk()}
+              placeholder="e.g. Am I ready for a Director role? Should I take this offer at ₹90L?"
+              style={{
+                flex: 1, padding: '10px 14px', borderRadius: '10px',
+                background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`,
+                color: '#fff', fontSize: '13px', outline: 'none',
+                fontFamily: 'system-ui',
+              }}
+            />
+            <button
+              onClick={handleAsk}
+              disabled={askLoading || !askQuestion.trim()}
+              style={{
+                padding: '10px 20px', borderRadius: '10px',
+                background: askQuestion.trim() ? TEAL : 'rgba(255,255,255,0.06)',
+                color: askQuestion.trim() ? '#fff' : 'rgba(255,255,255,0.3)',
+                border: 'none', fontSize: '13px', fontWeight: 600,
+                cursor: askQuestion.trim() && !askLoading ? 'pointer' : 'not-allowed',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {askLoading ? '...' : 'Ask →'}
+            </button>
+          </div>
+
+          {/* Quick prompts */}
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: askResult ? '14px' : '0' }}>
+            {[
+              'Am I ready for a Director role?',
+              'Should I negotiate my current offer?',
+              'How do I close my leadership gap?',
+              'Is now a good time to switch jobs?',
+            ].map(q => (
+              <button
+                key={q}
+                onClick={() => setAskQuestion(q)}
+                style={{
+                  fontSize: '11px', padding: '4px 10px', borderRadius: '999px',
+                  background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`,
+                  color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
+                }}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+
+          {askResult && (
+            <div style={{
+              padding: '14px', borderRadius: '10px', marginTop: '4px',
+              background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`,
+            }}>
+              <p style={{ fontSize: '12px', fontWeight: 700, color: TEAL, margin: '0 0 8px' }}>
+                Career Sage
+              </p>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', margin: 0, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                {askResult}
+              </p>
+              <button
+                onClick={() => { setAskResult(null); setAskQuestion('') }}
+                style={{
+                  marginTop: '10px', fontSize: '11px', color: 'rgba(255,255,255,0.25)',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                }}
+              >
+                Ask another question →
+              </button>
+            </div>
+          )}
+        </div>
           </div>
         </div>
 

@@ -2333,6 +2333,95 @@ async def get_career_dna(user_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class AskCareerSageRequest(BaseModel):
+    user_id: str
+    question: str
+
+@router.post("/ask-career-sage")
+async def ask_career_sage(req: AskCareerSageRequest):
+    try:
+        import anthropic
+        import json
+        import hashlib
+
+        if not req.question or len(req.question.strip()) < 5:
+            raise HTTPException(status_code=400, detail="Question too short")
+
+        profile = supabase.table("user_profiles").select("*").eq("user_id", req.user_id).execute()
+        if not profile.data:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        p = profile.data[0]
+
+        # Check cache — hash of question + user_id
+        q_hash = hashlib.md5(f"{req.user_id}:{req.question.strip().lower()}".encode()).hexdigest()
+        cached_answers = p.get("career_decisions") or {}
+        if isinstance(cached_answers, str):
+            cached_answers = json.loads(cached_answers)
+
+        cache_key = f"ask_{q_hash}"
+        if cache_key in cached_answers:
+            return {"answer": cached_answers[cache_key], "cached": True}
+
+        # Build profile context
+        cohort         = p.get("cohort") or "Tech Professional"
+        seniority      = p.get("seniority_level") or "senior"
+        years_exp      = p.get("years_of_experience") or 0
+        impact_pattern = p.get("impact_pattern") or ""
+        raw_text       = p.get("raw_profile_text") or ""
+        location       = p.get("location") or "India"
+        current_base   = p.get("current_base_lpa")
+        work_history   = p.get("work_history") or []
+
+        # Build work history summary
+        wh_summary = ""
+        if work_history:
+            roles = [f"{w.get('title')} at {w.get('company')} ({(w.get('start_date') or '')[:4]}–{(w.get('end_date') or 'Present')[:4] if not w.get('is_current') else 'Present'})" for w in work_history[:5]]
+            wh_summary = " → ".join(roles)
+
+        prompt = f"""You are Career Sage, an expert career advisor for tech professionals. Answer this career question with specific, actionable advice personalised to this professional's profile.
+
+Professional profile:
+- Cohort: {cohort}
+- Seniority: {seniority}
+- Years of experience: {years_exp}
+- Impact pattern: {impact_pattern}
+- Location: {location}
+- Current base: {'₹' + str(current_base) + ' LPA' if current_base else 'Not provided'}
+- Career arc: {wh_summary or raw_text[:400]}
+
+Question: {req.question}
+
+Guidelines:
+- Be direct and specific — no generic advice
+- Reference their actual profile details in your answer
+- Give a clear recommendation, not just "it depends"
+- Keep it under 200 words
+- Use a warm, coach-like tone
+- If you need information they haven't provided, say what would change your answer"""
+
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=400,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        answer = message.content[0].text.strip()
+
+        # Cache the answer
+        cached_answers[cache_key] = answer
+        supabase.table("user_profiles").update({
+            "career_decisions": json.dumps(cached_answers)
+        }).eq("user_id", req.user_id).execute()
+
+        return {"answer": answer, "cached": False}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ── Career Decision Engine ───────────────────────────────────
 
 DECISION_TYPES = ["mba", "startup_vs_enterprise", "management_path", "ic_path", "move_abroad", "job_change"]
