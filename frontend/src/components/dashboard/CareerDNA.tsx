@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import ProjectManager from '@/components/profile/ProjectManager'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -640,6 +641,15 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
             </div>
           </div>
         )}
+
+        {/* ── Projects ── */}
+        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+          <SectionHeader label="Projects" />
+          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1rem', lineHeight: 1.5 }}>
+            Case studies, PRDs, and portfolio pieces. Used to tailor your resume for each application.
+          </p>
+          <ProjectManager userId={userId} />
+        </div>
 
         {/* ── Section 2: Promotion Readiness ── */}
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>

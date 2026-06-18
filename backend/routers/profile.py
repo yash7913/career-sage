@@ -1450,8 +1450,7 @@ Rules:
             raise HTTPException(status_code=500, detail="Could not parse LinkedIn PDF")
 
         data = json.loads(match.group())
-        print(f"LinkedIn PDF parsed — work_history count: {len(data.get('work_history') or [])}")
-        print(f"LinkedIn PDF parsed — skills count: {len(data.get('skills') or [])}")
+        
 
         # Get existing profile
         profile = supabase.table("user_profiles").select("extracted_skills").eq("user_id", user_id).execute()
