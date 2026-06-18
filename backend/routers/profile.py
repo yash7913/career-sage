@@ -944,6 +944,110 @@ async def delete_project(project_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class SynthesizeProjectRequest(BaseModel):
+    user_id: str
+    project_id: str
+
+@router.post("/projects/{project_id}/synthesize")
+async def synthesize_project(project_id: str, req: SynthesizeProjectRequest):
+    try:
+        import anthropic
+
+        # Get project
+        project = supabase.table("user_projects").select("*").eq(
+            "project_id", project_id
+        ).eq("user_id", req.user_id).execute()
+
+        if not project.data:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        p = project.data[0]
+
+        # Get attached documents
+        doc_ids = p.get("doc_ids") or []
+        doc_text = ""
+
+        if doc_ids:
+            docs = supabase.table("user_documents").select("*").in_(
+                "doc_id", doc_ids
+            ).execute()
+            for doc in (docs.data or []):
+                try:
+                    file_bytes = supabase.storage.from_("user-documents").download(
+                        doc["storage_path"]
+                    )
+                    from services.profile_extractor import extract_text_from_bytes
+                    text = extract_text_from_bytes(file_bytes, doc["file_name"])
+                    if text:
+                        doc_text += f"\n\n--- {doc['file_name']} ---\n{text[:3000]}"
+                except:
+                    continue
+
+        # Build context from existing fields
+        context = f"""Project: {p.get('title', '')}
+Description: {p.get('description', '') or 'Not provided'}
+Outcomes: {p.get('outcomes', '') or 'Not provided'}
+Tech stack: {', '.join(p.get('tech_stack') or [])}
+{f'Documents:{doc_text}' if doc_text else ''}"""
+
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=300,
+            messages=[{"role": "user", "content": f"""Synthesize this project into a concise professional summary for a resume/portfolio.
+
+{context}
+
+Return a JSON object:
+{{
+  "summary": "2-3 sentence professional summary of what was built, why, and the impact",
+  "key_outcomes": ["outcome 1", "outcome 2", "outcome 3"],
+  "tech_stack": ["tech1", "tech2"],
+  "impact_score": 1-10
+}}
+
+Return ONLY valid JSON."""}]
+        )
+
+        raw = message.content[0].text.strip()
+        raw = raw.replace('```json', '').replace('```', '').strip()
+        result = json.loads(raw)
+
+        # Save synthesized summary
+        supabase.table("user_projects").update({
+            "synthesized_summary": result.get("summary"),
+            "tech_stack": result.get("tech_stack") or p.get("tech_stack") or [],
+        }).eq("project_id", project_id).execute()
+
+        return {"status": "ok", "result": result}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/projects/{project_id}/toggle-resume")
+async def toggle_project_resume(project_id: str, req: SynthesizeProjectRequest):
+    try:
+        project = supabase.table("user_projects").select("include_in_resume").eq(
+            "project_id", project_id
+        ).eq("user_id", req.user_id).execute()
+
+        if not project.data:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        current = project.data[0].get("include_in_resume", True)
+        supabase.table("user_projects").update({
+            "include_in_resume": not current
+        }).eq("project_id", project_id).execute()
+
+        return {"status": "ok", "include_in_resume": not current}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 class LinkedInImportRequest(BaseModel):
     user_id: str
     linkedin_url: str
