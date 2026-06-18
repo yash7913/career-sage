@@ -18,36 +18,12 @@ const CURRENCIES = [
   { value: 'EUR', label: '€ EUR — Euro',               unit: 'K/year' },
 ]
 
-const MARKETS = [
-  { value: 'India',     label: '🇮🇳 India' },
-  { value: 'US',        label: '🇺🇸 United States' },
-  { value: 'UK',        label: '🇬🇧 United Kingdom' },
-  { value: 'Singapore', label: '🇸🇬 Singapore' },
-  { value: 'Canada',    label: '🇨🇦 Canada' },
-  { value: 'Australia', label: '🇦🇺 Australia' },
-  { value: 'UAE',       label: '🇦🇪 UAE' },
-]
-
-const WORK_MODES = [
-  { value: 'remote',  label: '🌐 Remote' },
-  { value: 'hybrid',  label: '🏠 Hybrid' },
-  { value: 'onsite',  label: '🏢 On-site' },
-]
-
-const COMPANY_STAGES = [
-  { value: 'seed',       label: '🌱 Seed / Early' },
-  { value: 'growth',     label: '📈 Series B/C' },
-  { value: 'late',       label: '🦄 Late Stage' },
-  { value: 'enterprise', label: '🏢 Enterprise' },
-]
-
 const EQUITY_RATES: Record<string, number> = {
   USD: 1, INR: 83.5, GBP: 0.79, SGD: 1.35,
   CAD: 1.37, AUD: 1.54, AED: 3.67, EUR: 0.93,
 }
 
-
-const TOTAL_STEPS = 9
+const TOTAL_STEPS = 8
 
 interface OnboardingFlowProps {
   userId: string
@@ -59,40 +35,30 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
   const [step, setStep] = useState(1)
   const [saving, setSaving] = useState(false)
 
-  // Step 1 — Opportunity status
+  // Step 1
   const [searchStatus, setSearchStatus] = useState('ACTIVE')
 
-  // Step 3 — Basic profile
+  // Step 3
   const [fullName, setFullName] = useState(userName || '')
   const [location, setLocation] = useState('')
   const [phone, setPhone] = useState('')
   const [currentRole, setCurrentRole] = useState('')
 
-  // Step 4 — Career status
+  // Step 4
   const [careerStatus, setCareerStatus] = useState('')
 
-  // Step 5 — Company + level
+  // Step 5
   const [currentCompany, setCurrentCompany] = useState('')
   const [currentLevel, setCurrentLevel] = useState('')
 
-  // Step 6 — Compensation
+  // Step 6
   const [compCurrency, setCompCurrency] = useState('INR')
   const [currentBase, setCurrentBase] = useState('')
   const [currentEquityUsd, setCurrentEquityUsd] = useState('')
   const [currentVariablePct, setCurrentVariablePct] = useState('')
 
-// Step 7.5 — Track setup (now Step 8)
-  const [trackName, setTrackName] = useState('')
-  const [trackRoles, setTrackRoles] = useState('')
-  const [trackColor, setTrackColor] = useState('teal')
+  // Step 7 — Track
   const [trackCreated, setTrackCreated] = useState(false)
-  const [trackCreating, setTrackCreating] = useState(false)
-
-  // Step 7 — Preferences
-  const [targetMarkets, setTargetMarkets] = useState<string[]>(['India'])
-  const [workMode, setWorkMode] = useState('hybrid')
-  const [companyStage, setCompanyStage] = useState('any')
-  const [salaryTarget, setSalaryTarget] = useState('')
 
   const selectedCurrency = CURRENCIES.find(c => c.value === compCurrency) || CURRENCIES[0]
   const currencySymbol   = selectedCurrency.label.split(' ')[0]
@@ -103,40 +69,13 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
     const equityUsd = parseFloat(currentEquityUsd) || 0
     const variable  = parseFloat(currentVariablePct) || 0
     if (!base) return null
-    const rate         = EQUITY_RATES[compCurrency] || 1
-    const equityLocal  = compCurrency === 'INR'
+    const rate        = EQUITY_RATES[compCurrency] || 1
+    const equityLocal = compCurrency === 'INR'
       ? parseFloat((equityUsd / 100000 * rate).toFixed(2))
       : parseFloat((equityUsd / 1000).toFixed(2))
     const variableLocal = parseFloat((base * variable / 100).toFixed(2))
     return { base, equityLocal, variableLocal, total: parseFloat((base + equityLocal + variableLocal).toFixed(2)) }
   })()
-
-  const toggleMarket = (market: string) => {
-    setTargetMarkets(prev =>
-      prev.includes(market) ? prev.filter(m => m !== market) : [...prev, market]
-    )
-  }
-
-  const createTrack = async () => {
-    if (!trackName.trim()) return
-    setTrackCreating(true)
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tracks/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          track_name: trackName,
-          target_roles: trackRoles ? trackRoles.split(',').map(r => r.trim()).filter(Boolean) : [],
-          track_color: trackColor,
-        }),
-      })
-      if (res.ok) {
-        setTrackCreated(true)
-      }
-    } catch {}
-    setTrackCreating(false)
-  }
 
   const saveStep = async (stepData: Record<string, unknown>) => {
     await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/contact`, {
@@ -167,24 +106,13 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
         await saveStep({ current_company: currentCompany, current_level: currentLevel })
       } else if (step === 6) {
         await savePreferences({
-          current_base_lpa:     currentBase ? parseFloat(currentBase) : null,
-          current_equity_usd:   currentEquityUsd ? parseFloat(currentEquityUsd) : null,
-          current_variable_pct: currentVariablePct ? parseFloat(currentVariablePct) : null,
+          current_base_lpa:      currentBase ? parseFloat(currentBase) : null,
+          current_equity_usd:    currentEquityUsd ? parseFloat(currentEquityUsd) : null,
+          current_variable_pct:  currentVariablePct ? parseFloat(currentVariablePct) : null,
           current_comp_currency: compCurrency,
-          preferred_currency:   compCurrency,
-        })
-      } else if (step === 7) {
-        await savePreferences({
-          target_market:           targetMarkets,
-          preferred_work_mode:     workMode,
-          preferred_company_stage: companyStage === 'any' ? null : companyStage,
-          salary_target_lpa:       salaryTarget ? parseInt(salaryTarget) : null,
+          preferred_currency:    compCurrency,
         })
       } else if (step === 8) {
-        if (!trackCreated && trackName.trim()) {
-          await createTrack()
-        }
-      } else if (step === 9) {
         await saveStep({ onboarding_complete: true })
         onComplete()
         return
@@ -202,7 +130,6 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
     if (step === 3) return !!fullName.trim()
     if (step === 4) return !!careerStatus
     if (step === 5) return !!currentCompany.trim()
-    if (step === 8) return trackCreated || !!trackName.trim()
     return true
   }
 
@@ -264,9 +191,9 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
             <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1.5rem' }}>This helps Career Sage prioritise what to show you.</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
               {[
-                { key: 'ACTIVE',  icon: '🔍', label: 'Actively looking' },
-                { key: 'OPEN',    icon: '👋', label: 'Open to the right opportunity' },
-                { key: 'PAUSED',  icon: '😌', label: "Not looking right now" },
+                { key: 'ACTIVE', icon: '🔍', label: 'Actively looking' },
+                { key: 'OPEN',   icon: '👋', label: 'Open to the right opportunity' },
+                { key: 'PAUSED', icon: '😌', label: 'Not looking right now' },
               ].map(opt => (
                 <div key={opt.key} onClick={() => setSearchStatus(opt.key)} style={{
                   padding: '1.25rem 1rem', borderRadius: '12px', cursor: 'pointer', textAlign: 'center',
@@ -285,20 +212,18 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
         {/* ── Step 2: Resume upload ── */}
         {step === 2 && (
           <div>
-            <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 8px' }}>STEP 2 OF 9</p>
+            <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 8px' }}>STEP 2 OF 8</p>
             <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#fff', margin: '0 0 6px' }}>Upload your documents</h2>
             <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1.5rem' }}>
-              Career Sage extracts your skills, experience, and summary automatically. You can also import your LinkedIn PDF.
+              Career Sage extracts your skills, experience, and summary automatically. Drop your resume and LinkedIn PDF together.
             </p>
             <VaultUpload isOnboarding={true} onExtractionComplete={async () => {
               try {
-                // Mark onboarding as complete as soon as profile is extracted
                 await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/contact`, {
                   method: 'PATCH',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ user_id: userId, onboarding_complete: true }),
                 })
-
                 const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/${userId}`)
                 const data = await res.json()
                 if (data.full_name) setFullName(data.full_name)
@@ -336,8 +261,6 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
             <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 8px' }}>YOUR PROFILE</p>
             <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#fff', margin: '0 0 6px' }}>We found this — does it look right?</h2>
             <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1.5rem' }}>Extracted from your documents. Edit anything that's wrong.</p>
-
-            {/* Parsed confirmation banner */}
             {(currentRole || currentCompany) && (
               <div style={{
                 padding: '10px 14px', borderRadius: '10px', marginBottom: '14px',
@@ -346,11 +269,9 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
               }}>
                 <span style={{ fontSize: '16px' }}>✓</span>
                 <div>
-                  <p style={{ fontSize: '12px', fontWeight: 600, color: TEAL, margin: '0 0 2px' }}>
-                    Profile extracted successfully
-                  </p>
+                  <p style={{ fontSize: '12px', fontWeight: 600, color: TEAL, margin: '0 0 2px' }}>Profile extracted successfully</p>
                   <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
-                    {currentRole && `${currentRole}`}{currentCompany && ` at ${currentCompany}`}
+                    {currentRole}{currentCompany && ` at ${currentCompany}`}
                   </p>
                 </div>
               </div>
@@ -384,9 +305,9 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
             <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1.5rem' }}>Helps Career Sage personalise your experience.</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
               {[
-                { key: 'employed',    icon: '💼', label: 'Employed' },
-                { key: 'student',     icon: '🎓', label: 'Student' },
-                { key: 'unemployed',  icon: '🔎', label: 'Between roles' },
+                { key: 'employed',   icon: '💼', label: 'Employed' },
+                { key: 'student',    icon: '🎓', label: 'Student' },
+                { key: 'unemployed', icon: '🔎', label: 'Between roles' },
               ].map(opt => (
                 <div key={opt.key} onClick={() => setCareerStatus(opt.key)} style={{
                   padding: '1.25rem 1rem', borderRadius: '12px', cursor: 'pointer', textAlign: 'center',
@@ -493,95 +414,36 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
           </div>
         )}
 
-        {/* ── Step 7: Job preferences ── */}
+        {/* ── Step 7: Career Track ── */}
         {step === 7 && (
-          <div>
-            <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 8px' }}>JOB PREFERENCES</p>
-            <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#fff', margin: '0 0 6px' }}>What are you looking for?</h2>
-            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1.5rem' }}>Shapes your job feed and match scoring.</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              <div>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em', display: 'block', marginBottom: '8px' }}>TARGET MARKETS</label>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {MARKETS.map(m => (
-                    <div key={m.value} onClick={() => toggleMarket(m.value)} style={{
-                      padding: '6px 12px', borderRadius: '999px', cursor: 'pointer',
-                      background: targetMarkets.includes(m.value) ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.03)',
-                      border: `1px solid ${targetMarkets.includes(m.value) ? 'rgba(16,185,129,0.35)' : BORDER}`,
-                      fontSize: '12px', fontWeight: 500,
-                      color: targetMarkets.includes(m.value) ? TEAL : 'rgba(255,255,255,0.5)',
-                    }}>
-                      {m.label} {targetMarkets.includes(m.value) && '✓'}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em', display: 'block', marginBottom: '8px' }}>WORK MODE</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {WORK_MODES.map(m => (
-                    <div key={m.value} onClick={() => setWorkMode(m.value)} style={{
-                      flex: 1, padding: '10px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center',
-                      background: workMode === m.value ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.02)',
-                      border: `1px solid ${workMode === m.value ? TEAL : BORDER}`,
-                      fontSize: '12px', fontWeight: 600,
-                      color: workMode === m.value ? TEAL : 'rgba(255,255,255,0.5)',
-                    }}>
-                      {m.label}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>SALARY TARGET ({selectedCurrency.unit})</label>
-                  <input type="number" value={salaryTarget} onChange={e => setSalaryTarget(e.target.value)} placeholder={compCurrency === 'INR' ? '80' : '250'} style={inputStyle} />
-                </div>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>COMPANY STAGE</label>
-                  <select value={companyStage} onChange={e => setCompanyStage(e.target.value)} style={selectStyle}>
-                    <option value="any">No preference</option>
-                    {COMPANY_STAGES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── Step 8: Career Track ── */}
-        {step === 8 && (
           <div>
             <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 8px' }}>CAREER TRACK</p>
             <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#fff', margin: '0 0 6px' }}>Set up your first career track</h2>
             <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1.5rem', lineHeight: 1.6 }}>
-              A career track defines what you are targeting. Your job feed and match scores are built around this.
+              Define what you are targeting. Your job feed, resume generation, and match scores are built around this.
             </p>
             <TrackSetup
               userId={userId}
               onComplete={() => {
                 setTrackCreated(true)
-                setStep(9)
+                setStep(8)
               }}
             />
             {!trackCreated && (
-              <button
-                onClick={() => setStep(9)}
-                style={{
-                  marginTop: '12px', width: '100%', padding: '10px',
-                  background: 'transparent', border: `1px solid ${BORDER}`,
-                  borderRadius: '10px', color: 'rgba(255,255,255,0.3)',
-                  fontSize: '13px', cursor: 'pointer',
-                }}
-              >
+              <button onClick={() => setStep(8)} style={{
+                marginTop: '12px', width: '100%', padding: '10px',
+                background: 'transparent', border: `1px solid ${BORDER}`,
+                borderRadius: '10px', color: 'rgba(255,255,255,0.3)',
+                fontSize: '13px', cursor: 'pointer',
+              }}>
                 Skip for now →
               </button>
             )}
           </div>
         )}
 
-        {/* ── Step 9: Done ── */}
-        {step === 9 && (
+        {/* ── Step 8: Done ── */}
+        {step === 8 && (
           <div style={{ textAlign: 'center', padding: '1rem 0' }}>
             <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🎉</p>
             <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', margin: '0 0 10px' }}>You're all set!</h2>
@@ -610,9 +472,9 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
           </div>
         )}
 
-        {/* Navigation buttons */}
+        {/* Navigation */}
         <div style={{ display: 'flex', gap: '10px', marginTop: '1.5rem' }}>
-          {step > 1 && step < 9 && (
+          {step > 1 && step < 8 && step !== 7 && (
             <button onClick={() => setStep(s => s - 1)} style={{
               padding: '12px 20px', borderRadius: '10px',
               background: 'transparent', border: `1px solid ${BORDER}`,
@@ -621,7 +483,7 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
               ← Back
             </button>
           )}
-          {step !== 2 && step !== 8 && (
+          {step !== 2 && step !== 7 && (
             <button
               onClick={handleNext}
               disabled={saving || !canProceed()}
@@ -634,14 +496,14 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
                 transition: 'all 0.15s',
               }}
             >
-              {saving ? 'Saving...' : step === 9 ? '🚀 Go to Career DNA' : 'Continue →'}
+              {saving ? 'Saving...' : step === 8 ? '🚀 Go to Career DNA' : 'Continue →'}
             </button>
           )}
         </div>
       </div>
 
-      {/* Skip onboarding entirely */}
-      {step < 9 && (
+      {/* Skip entirely */}
+      {step < 8 && (
         <button
           onClick={async () => {
             await saveStep({ onboarding_complete: true })
