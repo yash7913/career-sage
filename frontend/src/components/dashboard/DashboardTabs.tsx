@@ -113,8 +113,7 @@ export default function DashboardTabs({
         userId={userId}
         userName={userName}
         onComplete={() => {
-          setShowOnboarding(false)
-          setActiveTab('career')
+          window.location.href = '/dashboard?tab=career'
         }}
       />
     )
