@@ -61,6 +61,12 @@ education_data:
 
 work_history:
 - Extract every role including part-time, freelance, contract
+- title: extract the CORE job title only — remove suffixes, team names, and project names
+  - "Lead, Product Management - Productivity Insights" → "Lead Product Manager"
+  - "Senior Software Engineer - Payments Platform" → "Senior Software Engineer"
+  - "Data Analyst, JAPA Business Insights" → "Data Analyst"
+  - "Associate Product Manager (APM)" → "Associate Product Manager"
+  - Keep seniority level and function — remove everything else
 - start_date and end_date: YYYY-MM format. If only year given use YYYY-01
 - end_date: null for current roles, set is_current to true
 - employment_type: one of full-time, part-time, contract, freelance, internship, board, unknown

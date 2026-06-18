@@ -1323,6 +1323,9 @@ Rules:
 - Extract only what is present in the text — never fabricate
 - Skills: extract all explicitly listed skills and infer from job descriptions, max 40
 - Work history: extract all roles, most recent first
+- Job titles: extract CORE title only — remove team names, project names, suffixes after ' - ' or ','
+  Examples: "Lead, Product Management - Productivity Insights" → "Lead Product Manager"
+            "Senior SWE - Payments" → "Senior Software Engineer"
 - Dates: use YYYY-MM format, estimate month as 01 if only year given
 - Return ONLY the JSON object, no markdown"""
 
