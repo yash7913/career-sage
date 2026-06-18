@@ -1441,8 +1441,6 @@ Rules:
         updates["raw_profile_text"] = raw_text[:3000]
 
         result = supabase.table("user_profiles").update(updates).eq("user_id", user_id).execute()
-        print(f"Update result: {result.data}")
-        print(f"Update keys: {list(updates.keys())}")
 
         # Re-run cohort classification and seniority detection with new data
         try:
