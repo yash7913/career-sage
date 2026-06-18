@@ -64,6 +64,7 @@ export default function VaultUpload({
   const [extractionDone, setExtractionDone] = useState(false)
   const [linkedinImporting, setLinkedinImporting] = useState(false)
   const [linkedinResult, setLinkedinResult] = useState<string | null>(null)
+  const [pendingLinkedinFiles, setPendingLinkedinFiles] = useState<File[]>([])
   const supabase = createClient()
 
   const handleLinkedinPdf = async (file: File) => {
@@ -137,31 +138,9 @@ export default function VaultUpload({
               setFiles(prev => prev.map(f =>
                 f.name === file.name ? { ...f, tag } : f
               ))
-              // Auto-trigger LinkedIn import silently — no UI blocking
+              // Queue LinkedIn files — import runs when user clicks Build my profile
               if (tag === 'LINKEDIN_EXPORT') {
-                const formData = new FormData()
-                formData.append('file', file)
-                formData.append('user_id', user.id)
-                // Fire and forget — don't await, don't block UI
-                fetch(
-                  `${process.env.NEXT_PUBLIC_API_URL}/api/profile/import-linkedin-pdf`,
-                  { method: 'POST', body: formData }
-                ).then(r => r.json()).then(data => {
-                  if (data.status === 'ok') {
-                    // Mark onboarding complete silently
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/contact`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ user_id: user.id, onboarding_complete: true }),
-                    }).catch(() => {})
-                    // Update file status silently
-                    setFiles(prev => prev.map(f =>
-                      f.name === file.name
-                        ? { ...f, error: `LinkedIn imported — ${data.skills_added} skills added` }
-                        : f
-                    ))
-                  }
-                }).catch(() => {})
+                setPendingLinkedinFiles(prev => [...prev, file])
               }
             }
           } catch {}
@@ -260,21 +239,31 @@ const res = await fetch(
 
     setExtracting(true)
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/profile/extract`,
-        {
+      // Run resume extraction and LinkedIn imports in parallel
+      const tasks: Promise<unknown>[] = [
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/extract`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ user_id: user.id }),
-        }
-      )
-      if (res.ok) {
-        setExtractionDone(true)
-        onExtractionComplete?.()
-      } else {
-        const err = await res.json()
-        console.error('Extraction failed:', err)
+        }),
+      ]
+
+      // Process any queued LinkedIn PDFs
+      for (const linkedinFile of pendingLinkedinFiles) {
+        const formData = new FormData()
+        formData.append('file', linkedinFile)
+        formData.append('user_id', user.id)
+        tasks.push(
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/import-linkedin-pdf`, {
+            method: 'POST',
+            body: formData,
+          })
+        )
       }
+
+      await Promise.all(tasks)
+      setExtractionDone(true)
+      onExtractionComplete?.()
     } catch (e) {
       console.error('Extraction error:', e)
     } finally {
@@ -535,11 +524,11 @@ const res = await fetch(
           }}
         >
           {extracting ? (
-            <>⟳ Extracting your profile — takes about 5 seconds...</>
+            <>⟳ Building your profile — this takes about 10 seconds...</>
           ) : (
             <>
-              ⚡ Build my profile from {doneCount} document
-              {doneCount > 1 ? 's' : ''}
+              ⚡ Build my profile from {doneCount} document{doneCount > 1 ? 's' : ''}
+              {pendingLinkedinFiles.length > 0 && ` + LinkedIn import`}
             </>
           )}
         </button>
