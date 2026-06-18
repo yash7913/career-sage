@@ -1250,6 +1250,8 @@ Rules:
             raise HTTPException(status_code=500, detail="Could not parse LinkedIn PDF")
 
         data = json.loads(match.group())
+        print(f"LinkedIn PDF parsed — work_history count: {len(data.get('work_history') or [])}")
+        print(f"LinkedIn PDF parsed — skills count: {len(data.get('skills') or [])}")
 
         # Get existing profile
         profile = supabase.table("user_profiles").select("extracted_skills").eq("user_id", user_id).execute()
@@ -1276,6 +1278,70 @@ Rules:
         if linkedin_url and "linkedin.com/in/" in linkedin_url:
             updates["linkedin_url"] = linkedin_url
 
+        # Store structured work history
+        if data.get("work_history"):
+            updates["work_history"] = data["work_history"]
+
+        # Rebuild rich raw_profile_text with full timeline
+        work_hist = data.get("work_history") or []
+        roles_list = []
+        for w in work_hist[:8]:
+            title   = w.get("title") or ""
+            company = w.get("company") or ""
+            start   = (w.get("start_date") or "")[:4]
+            end     = "Present" if w.get("is_current") else (w.get("end_date") or "")[:4]
+            if title and company:
+                roles_list.append(f"{title} at {company} ({start}–{end})")
+
+        skills_text = ", ".join(all_skills[:30])
+        about_text  = (data.get("about") or "")[:400]
+        rich_raw    = (
+            f"ROLES: {', '.join(roles_list)}\n"
+            f"SKILLS: {skills_text}\n"
+            f"ABOUT: {about_text}"
+        )
+        updates["raw_profile_text"] = rich_raw[:3000]
+
+        # Re-run cohort classification with richer data
+        try:
+            from services.cohort_classifier import classify_cohort
+            import datetime
+            cohort = classify_cohort(
+                extracted_skills=all_skills,
+                raw_profile_text=rich_raw,
+                work_history=work_hist,
+                years_of_experience=0,
+            )
+            updates["cohort"] = cohort
+
+            # Recalculate years of experience from work history
+            earliest = None
+            for w in work_hist:
+                sd = w.get("start_date") or ""
+                if sd:
+                    try:
+                        yr = int(sd[:4])
+                        if yr > 1990 and (earliest is None or yr < earliest):
+                            earliest = yr
+                    except:
+                        pass
+            if earliest:
+                updates["years_of_experience"] = max(0, datetime.datetime.now().year - earliest)
+
+            # Derive seniority from most recent role
+            if work_hist:
+                from services.trajectory import extract_seniority
+                most_recent_title = work_hist[0].get("title") or ""
+                seniority_level = extract_seniority(most_recent_title)
+                seniority_map = {0: "junior", 1: "mid", 2: "mid", 3: "senior", 4: "manager", 5: "vp"}
+                updates["seniority_level"] = seniority_map.get(seniority_level, "senior")
+
+            # Invalidate pentagram cache so it regenerates with new data
+            updates["pentagram_scores"] = None
+
+        except Exception as enrich_err:
+            print(f"Post-import enrichment failed: {enrich_err}")
+
         # Rebuild raw_profile_text
         roles_text  = ", ".join([f"{w.get('title')} at {w.get('company')}" for w in (data.get("work_history") or [])[:5]])
         skills_text = ", ".join(all_skills[:30])
@@ -1283,7 +1349,9 @@ Rules:
         raw_text    = f"ROLES: {roles_text}\nSKILLS: {skills_text}\nABOUT: {about_text}"
         updates["raw_profile_text"] = raw_text[:3000]
 
-        supabase.table("user_profiles").update(updates).eq("user_id", user_id).execute()
+        result = supabase.table("user_profiles").update(updates).eq("user_id", user_id).execute()
+        print(f"Update result: {result.data}")
+        print(f"Update keys: {list(updates.keys())}")
 
         # Re-run cohort classification and seniority detection with new data
         try:

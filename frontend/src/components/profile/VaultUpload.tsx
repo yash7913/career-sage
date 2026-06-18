@@ -82,6 +82,12 @@ export default function VaultUpload({
       const data = await res.json()
       if (data.status === 'ok') {
         setLinkedinResult(`✓ ${data.skills_added} skills added · ${data.roles_found} roles found`)
+        // Mark onboarding complete so tabs unlock immediately
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/contact`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: user.id, onboarding_complete: true }),
+        })
       } else {
         setLinkedinResult(`✕ ${data.detail || 'Import failed'}`)
       }

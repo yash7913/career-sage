@@ -291,12 +291,18 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
             </p>
             <VaultUpload onExtractionComplete={async () => {
               try {
+                // Mark onboarding as complete as soon as profile is extracted
+                await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/contact`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ user_id: userId, onboarding_complete: true }),
+                })
+
                 const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/${userId}`)
                 const data = await res.json()
                 if (data.full_name) setFullName(data.full_name)
                 if (data.location) setLocation(data.location)
                 if (data.phone) setPhone(data.phone)
-                // Extract current role from raw_profile_text ROLES line
                 const rawText = data.raw_profile_text || ''
                 const rolesLine = rawText.split('\n').find((l: string) => l.startsWith('ROLES:'))
                 if (rolesLine) {
