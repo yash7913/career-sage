@@ -74,7 +74,7 @@ export default function Sidebar({
   const tierLabel = TIER_LABELS[tier] ?? 'Free'
   const currentStatus = STATUS_OPTIONS.find(s => s.key === searchStatus) || STATUS_OPTIONS[0]
 
-  const fullySetUp = hasProfile && hasTracks
+  const fullySetUp = hasProfile
 
   const navItems = fullySetUp
   ? [
