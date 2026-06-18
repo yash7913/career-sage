@@ -529,47 +529,49 @@ const res = await fetch(
       )}
 
       {doneCount > 0 && !extractionDone && (
-        <button
-          onClick={handleExtract}
-          disabled={extracting}
-          style={{
-            width: '100%',
-            padding: '12px',
-            borderRadius: '10px',
-            background: extracting ? 'rgba(16,185,129,0.4)' : TEAL,
-            color: '#fff',
-            border: 'none',
-            fontSize: '14px',
-            fontWeight: 600,
-            cursor: extracting ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            transition: 'background 0.2s',
-          }}
-        >
-          {extracting ? (
-            <>⟳ {extractProgress || 'Building your profile...'}</>
-          ) : (
-            <>
-              ⚡ Build my profile from {doneCount} document{doneCount > 1 ? 's' : ''}
-              {pendingLinkedinFiles.length > 0 && ` + LinkedIn import`}
-            </>
-          )}
-        </button>
-        {extracting && (
-          <div style={{
-            height: '3px', background: 'rgba(255,255,255,0.06)',
-            borderRadius: '2px', overflow: 'hidden', marginTop: '8px',
-          }}>
+        <div>
+          <button
+            onClick={handleExtract}
+            disabled={extracting}
+            style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: '10px',
+              background: extracting ? 'rgba(16,185,129,0.4)' : TEAL,
+              color: '#fff',
+              border: 'none',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: extracting ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'background 0.2s',
+            }}
+          >
+            {extracting ? (
+              <>⟳ {extractProgress || 'Building your profile...'}</>
+            ) : (
+              <>
+                ⚡ Build my profile from {doneCount} document{doneCount > 1 ? 's' : ''}
+                {pendingLinkedinFiles.length > 0 && ` + LinkedIn import`}
+              </>
+            )}
+          </button>
+          {extracting && (
             <div style={{
-              height: '100%', background: TEAL, borderRadius: '2px',
-              animation: 'progress-pulse 2s ease-in-out infinite',
-              width: '40%',
-            }} />
-          </div>
-        )}
+              height: '3px', background: 'rgba(255,255,255,0.06)',
+              borderRadius: '2px', overflow: 'hidden', marginTop: '8px',
+            }}>
+              <div style={{
+                height: '100%', background: TEAL, borderRadius: '2px',
+                animation: 'progress-pulse 2s ease-in-out infinite',
+                width: '40%',
+              }} />
+            </div>
+          )}
+        </div>
       )}
 
       {/* Success state */}
