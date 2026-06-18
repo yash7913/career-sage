@@ -2456,7 +2456,7 @@ Guidelines:
 
 # ── Career Decision Engine ───────────────────────────────────
 
-DECISION_TYPES = ["mba", "startup_vs_enterprise", "management_path", "ic_path", "move_abroad", "job_change"]
+DECISION_TYPES = ["mba", "startup_vs_enterprise", "management_path", "ic_path", "move_abroad", "job_change", "ai_replacement"]
 
 class CareerDecisionRequest(BaseModel):
     user_id: str
@@ -2641,6 +2641,32 @@ Return ONLY valid JSON:
   "expected_salary_jump": "% increase on job change",
   "best_target_companies": ["company1", "company2", "company3"],
   "best_timing": "Optimal timing for move"
+}}""",
+
+"ai_replacement": f"""You are a senior career advisor for tech professionals in 2026.
+
+Analyse how vulnerable this professional is to AI replacing their role, and what they should do about it.
+
+Profile:
+- Cohort: {cohort}
+- Impact Pattern: {impact_pattern}
+- Seniority: {seniority}
+- Years of experience: {years_exp}
+- Work history: {raw_text[:800]}
+
+Consider: which parts of their current role are automatable, what skills make them AI-resilient, and what they should do in the next 12 months.
+
+Return ONLY valid JSON:
+{{
+  "vulnerability": "Low" | "Medium" | "High",
+  "confidence": 0-100,
+  "summary": "2 sentence honest assessment",
+  "automatable_parts": ["part1", "part2"],
+  "resilient_parts": ["part1", "part2"],
+  "ai_resilient_skills": ["skill1", "skill2", "skill3"],
+  "recommended_pivot": "Specific direction to stay ahead of AI",
+  "timeline": "How long before significant disruption at current trajectory",
+  "opportunity": "How AI could amplify rather than replace this person"
 }}""",
         }
 

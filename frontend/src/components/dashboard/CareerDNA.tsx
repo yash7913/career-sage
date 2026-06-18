@@ -49,12 +49,13 @@ const EFFORT_COLOR: Record<string, string> = {
 }
 
 const DECISION_OPTIONS = [
-  { key: 'mba',                  label: 'MBA',                   icon: '🎓' },
+  { key: 'mba',                   label: 'MBA',                   icon: '🎓' },
   { key: 'startup_vs_enterprise', label: 'Startup vs Enterprise', icon: '🏢' },
-  { key: 'management_path',      label: 'Management Path',       icon: '👥' },
-  { key: 'ic_path',              label: 'IC Path',               icon: '⚡' },
-  { key: 'move_abroad',          label: 'Move Abroad',           icon: '✈️' },
-  { key: 'job_change',           label: 'Job Change',            icon: '🔄' },
+  { key: 'management_path',       label: 'Management Path',       icon: '👥' },
+  { key: 'ic_path',               label: 'IC Path',               icon: '⚡' },
+  { key: 'move_abroad',           label: 'Move Abroad',           icon: '✈️' },
+  { key: 'job_change',            label: 'Job Change',            icon: '🔄' },
+  { key: 'ai_replacement',        label: 'AI & My Role',          icon: '🤖' },
 ]
 
 function SectionHeader({ label }: { label: string }) {

@@ -56,8 +56,10 @@ function formatSize(bytes: number) {
 
 export default function VaultUpload({
   onExtractionComplete,
+  isOnboarding = false,
 }: {
   onExtractionComplete?: () => void
+  isOnboarding?: boolean
 }) {
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [extracting, setExtracting] = useState(false)
@@ -330,8 +332,8 @@ const res = await fetch(
         </button>
       </div>
 
-      {/* LinkedIn PDF import */}
-      <div style={{
+      {/* LinkedIn PDF import — hidden during onboarding, handled automatically */}
+      {!isOnboarding && <div style={{
         border: `1px solid ${BORDER}`,
         borderRadius: '12px',
         padding: '1rem 1.25rem',
@@ -377,6 +379,7 @@ const res = await fetch(
           </label>
         </div>
       </div>
+    }
 
       {/* File list */}
       {files.length > 0 && (
@@ -492,7 +495,7 @@ const res = await fetch(
       )}
 
       {/* Extract button */}
-      {files.some(f => f.status === 'done' && f.tag === 'LINKEDIN_EXPORT') && (
+      {!isOnboarding && files.some(f => f.status === 'done' && f.tag === 'LINKEDIN_EXPORT') && (
         <div style={{
           padding: '10px 14px', borderRadius: '8px', marginBottom: '8px',
           background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
