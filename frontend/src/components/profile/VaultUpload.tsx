@@ -64,6 +64,7 @@ export default function VaultUpload({
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [extracting, setExtracting] = useState(false)
   const [extractionDone, setExtractionDone] = useState(false)
+  const [extractProgress, setExtractProgress] = useState('')
   const [linkedinImporting, setLinkedinImporting] = useState(false)
   const [linkedinResult, setLinkedinResult] = useState<string | null>(null)
   const [pendingLinkedinFiles, setPendingLinkedinFiles] = useState<File[]>([])
@@ -257,8 +258,13 @@ const res = await fetch(
     if (!user || files.filter(f => f.status === 'done').length === 0) return
 
     setExtracting(true)
+    setExtractProgress('Uploading documents...')
     try {
-      // Run resume extraction and LinkedIn imports in parallel
+      setTimeout(() => setExtractProgress('Reading your resume...'), 2000)
+      setTimeout(() => setExtractProgress('Extracting skills and experience...'), 5000)
+      setTimeout(() => setExtractProgress('Building your profile...'), 9000)
+      setTimeout(() => setExtractProgress('Almost done...'), 13000)
+
       const tasks: Promise<unknown>[] = [
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/extract`, {
           method: 'POST',
@@ -544,7 +550,7 @@ const res = await fetch(
           }}
         >
           {extracting ? (
-            <>⟳ Building your profile — this takes about 10 seconds...</>
+            <>⟳ {extractProgress || 'Building your profile...'}</>
           ) : (
             <>
               ⚡ Build my profile from {doneCount} document{doneCount > 1 ? 's' : ''}
@@ -552,6 +558,18 @@ const res = await fetch(
             </>
           )}
         </button>
+        {extracting && (
+          <div style={{
+            height: '3px', background: 'rgba(255,255,255,0.06)',
+            borderRadius: '2px', overflow: 'hidden', marginTop: '8px',
+          }}>
+            <div style={{
+              height: '100%', background: TEAL, borderRadius: '2px',
+              animation: 'progress-pulse 2s ease-in-out infinite',
+              width: '40%',
+            }} />
+          </div>
+        )}
       )}
 
       {/* Success state */}

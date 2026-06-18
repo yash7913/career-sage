@@ -84,16 +84,27 @@ async def extract_and_save_profile(user_id: str) -> dict:
     if not docs.data:
         raise ValueError("No documents found for this user")
 
+    # Prioritise: best resume first, then other resumes, skip projects/slides
+    # This keeps the prompt focused and fast
+    priority_order = {"RESUME": 0, "LINKEDIN_EXPORT": 1, "OTHER": 2, "CERTIFICATION": 3}
+    relevant_docs = [
+        d for d in docs.data
+        if d.get("doc_tag") in ("RESUME", "LINKEDIN_EXPORT", "OTHER", "CERTIFICATION")
+    ]
+    relevant_docs.sort(key=lambda d: priority_order.get(d.get("doc_tag"), 99))
+
+    # Only process up to 3 documents — beyond that adds noise not signal
+    relevant_docs = relevant_docs[:3]
+
     all_text = ""
-    for doc in docs.data:
+    for doc in relevant_docs:
         try:
             file_bytes = supabase.storage.from_("user-documents").download(doc["storage_path"])
             text = extract_text_from_bytes(file_bytes, doc["file_name"])
             if text:
-                all_text += f"\n\n--- {doc['file_name']} ({doc['doc_tag']}) ---\n{text}"
-                print(f"Extracted {len(text)} chars from {doc['file_name']}")
+                # Cap each doc at 4000 chars to keep total under 12000
+                all_text += f"\n\n--- {doc['file_name']} ({doc['doc_tag']}) ---\n{text[:4000]}"
         except Exception as e:
-            print(f"Failed to process {doc['file_name']}: {e}")
             continue
 
     if not all_text.strip():
@@ -109,7 +120,6 @@ async def extract_and_save_profile(user_id: str) -> dict:
     )
 
     raw = message.content[0].text.strip()
-    print(f"Claude response preview: {raw[:200]}")
 
     raw = re.sub(r'^```(?:json)?\s*', '', raw, flags=re.MULTILINE)
     raw = re.sub(r'\s*```$', '', raw, flags=re.MULTILINE)
@@ -121,14 +131,11 @@ async def extract_and_save_profile(user_id: str) -> dict:
 
     try:
         extracted = json.loads(raw)
-        print(f"Parsed JSON keys: {list(extracted.keys())}")
     except json.JSONDecodeError as e:
-        print(f"JSON error: {e} | Raw: {raw[:300]}")
         raise ValueError(f"Claude returned invalid JSON: {e}")
 
     flat_skills = flatten_skills(extracted.get("extracted_skills", {}))
     completeness = calculate_completeness(extracted, len(docs.data))
-    print(f"Skills found: {len(flat_skills)} | Completeness: {completeness}%")
 
     from services.cohort_classifier import classify_cohort
     cohort = classify_cohort(
@@ -137,7 +144,7 @@ async def extract_and_save_profile(user_id: str) -> dict:
         work_history=extracted.get("work_history", []),
         years_of_experience=extracted.get("years_of_experience", 0),
     )
-    print(f"Cohort classified as: {cohort}")
+    
 
     import datetime
     current_year = datetime.datetime.now().year
@@ -201,8 +208,7 @@ async def extract_and_save_profile(user_id: str) -> dict:
             )
             years_of_experience = max(0, current_year - earliest_grad)
 
-    print(f"Most recent role: {current_role_title} at {current_company_name}")
-    print(f"Years of experience: {years_of_experience}")
+    
 
     # Derive seniority from years of experience + extracted title signals
     raw_seniority = extracted.get("seniority_level", "mid")
@@ -248,7 +254,6 @@ async def extract_and_save_profile(user_id: str) -> dict:
     linkedin_url = extracted.get("linkedin_url")
     if linkedin_url and "linkedin.com/in/" in linkedin_url:
         update_data["linkedin_url"] = linkedin_url
-        print(f"LinkedIn URL extracted: {linkedin_url}")
 
     supabase.table("user_profiles").update(update_data).eq("user_id", user_id).execute()
 
