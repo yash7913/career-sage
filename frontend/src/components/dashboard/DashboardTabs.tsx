@@ -254,6 +254,16 @@ export default function DashboardTabs({
               tier={tier}
             />
           )}
+
+          {/* Settings tab */}
+          {activeTab === 'settings' && (
+            <SettingsTab
+              userId={userId}
+              tracks={tracks}
+              onTrackCreated={() => setActiveTab('discover')}
+              tier={tier}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -275,15 +285,13 @@ function ProfileTab({
       {/* Upload section */}
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
         <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 4px' }}>
-          {hasProfile ? 'YOUR VAULT' : 'STEP 01 — UPLOAD DOCUMENTS'}
+          YOUR VAULT
         </p>
-        {!hasProfile && (
-          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1rem', lineHeight: 1.6 }}>
-            Add your resume and career documents. Career Sage extracts your skills, education, and professional summary automatically.
-          </p>
-        )}
+        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1rem', lineHeight: 1.6 }}>
+          Add resumes, LinkedIn exports, certifications and project docs. Career Sage extracts your profile automatically.
+        </p>
         <VaultUpload onExtractionComplete={() => setTimeout(() => window.location.reload(), 2000)} />
-          <div style={{ marginTop: '1.5rem' }}>
+        <div style={{ marginTop: '1.5rem' }}>
           <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: '0 0 10px' }}>
             YOUR UPLOADED FILES
           </p>
@@ -291,10 +299,38 @@ function ProfileTab({
         </div>
       </div>
 
+      {/* Contact details */}
+      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 4px' }}>CONTACT DETAILS</p>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1rem', lineHeight: 1.5 }}>
+          These appear in your generated resume automatically.
+        </p>
+        <ContactDetailsForm userId={userId} />
+      </div>
+
+    </div>
+  )
+}
+
+
+function SettingsTab({
+  userId, tracks, onTrackCreated, tier,
+}: {
+  userId: string
+  tracks: Track[]
+  onTrackCreated: () => void
+  tier?: string
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
       {/* Career tracks */}
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
-        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 1rem' }}>
-          {tracks.length > 0 ? 'YOUR CAREER TRACKS' : 'STEP 02 — SET UP CAREER TRACK'}
+        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 4px' }}>
+          CAREER TRACKS
+        </p>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1rem', lineHeight: 1.5 }}>
+          Each track targets a specific function and level. Your job feed, resume generation, and match scores are built around your active track.
         </p>
         {tracks.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '1rem' }}>
@@ -315,37 +351,17 @@ function ProfileTab({
             })}
           </div>
         )}
-        {tracks.length > 0 && (
-          <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: '0 0 10px' }}>
-            ADD ANOTHER TRACK
-          </p>
-        )}
+        <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+          {tracks.length > 0 ? 'ADD ANOTHER TRACK' : 'CREATE YOUR FIRST TRACK'}
+        </p>
         <TrackSetup userId={userId} onComplete={onTrackCreated} />
-      </div>
-
-      {/* Contact details */}
-      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
-        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 4px' }}>CONTACT DETAILS</p>
-        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1rem', lineHeight: 1.5 }}>
-          These appear in your generated resume automatically. Your LinkedIn URL helps Career Sage enrich your profile.
-        </p>
-        <ContactDetailsForm userId={userId} />
-      </div>
-
-      {/* Projects */}
-      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
-        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 4px' }}>YOUR PROJECTS</p>
-        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1rem', lineHeight: 1.5 }}>
-          Case studies, PRDs, and portfolio pieces. Used to tailor your resume for each application.
-        </p>
-        <ProjectManager userId={userId} />
       </div>
 
       {/* Job preferences */}
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
         <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 6px' }}>JOB PREFERENCES</p>
         <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1rem', lineHeight: 1.5 }}>
-          Salary target, company stage, work mode, and location. Career Sage weights your match scores accordingly.
+          Salary target, company stage, work mode, and compensation. Career Sage weights your match scores accordingly.
         </p>
         <PreferencesPanel userId={userId} />
       </div>
