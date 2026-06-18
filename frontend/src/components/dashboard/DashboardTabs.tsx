@@ -13,6 +13,7 @@ import ToolsTab from '@/components/dashboard/ToolsTab'
 import CareerDNA from '@/components/dashboard/CareerDNA'
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow'
 import DocumentManager from '@/components/profile/DocumentManager'
+import ProjectManager from '@/components/profile/ProjectManager'
 
 function ExpandableSkills({ skills }: { skills: string[] }) {
   const [expanded, setExpanded] = useState(false)
@@ -330,6 +331,15 @@ function ProfileTab({
           These appear in your generated resume automatically. Your LinkedIn URL helps Career Sage enrich your profile.
         </p>
         <ContactDetailsForm userId={userId} />
+      </div>
+
+      {/* Projects */}
+      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 4px' }}>YOUR PROJECTS</p>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1rem', lineHeight: 1.5 }}>
+          Case studies, PRDs, and portfolio pieces. Used to tailor your resume for each application.
+        </p>
+        <ProjectManager userId={userId} />
       </div>
 
       {/* Job preferences */}

@@ -880,6 +880,70 @@ async def delete_document(req: DeleteDocumentRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ── User Projects ────────────────────────────────────────────
+
+class ProjectCreateRequest(BaseModel):
+    user_id: str
+    title: str
+    description: Optional[str] = None
+    outcomes: Optional[str] = None
+    tech_stack: Optional[list] = []
+    doc_id: Optional[str] = None
+
+class ProjectUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    outcomes: Optional[str] = None
+    tech_stack: Optional[list] = None
+
+@router.post("/projects")
+async def create_project(req: ProjectCreateRequest):
+    try:
+        result = supabase.table("user_projects").insert({
+            "user_id":     req.user_id,
+            "title":       req.title,
+            "description": req.description,
+            "outcomes":    req.outcomes,
+            "tech_stack":  req.tech_stack or [],
+            "doc_id":      req.doc_id,
+        }).execute()
+        return {"status": "created", "project": result.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/projects/{user_id}")
+async def get_projects(user_id: str):
+    try:
+        result = supabase.table("user_projects").select("*").eq(
+            "user_id", user_id
+        ).order("created_at", desc=True).execute()
+        return {"projects": result.data or []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.patch("/projects/{project_id}")
+async def update_project(project_id: str, req: ProjectUpdateRequest):
+    try:
+        updates = {k: v for k, v in req.dict().items() if v is not None}
+        if not updates:
+            raise HTTPException(status_code=400, detail="No fields to update")
+        result = supabase.table("user_projects").update(updates).eq(
+            "project_id", project_id
+        ).execute()
+        return {"status": "updated", "project": result.data[0]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/projects/{project_id}")
+async def delete_project(project_id: str):
+    try:
+        supabase.table("user_projects").delete().eq("project_id", project_id).execute()
+        return {"status": "deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 class LinkedInImportRequest(BaseModel):
     user_id: str
     linkedin_url: str
