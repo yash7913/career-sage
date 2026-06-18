@@ -188,12 +188,7 @@ class PreferencesUpdateRequest(BaseModel):
 @router.patch("/preferences")
 async def update_preferences(req: PreferencesUpdateRequest):
     try:
-        from services.company_stage import get_impact_pattern
-        profile = supabase.table("user_profiles").select("raw_profile_text").eq("user_id", req.user_id).execute()
-        raw_text = profile.data[0].get("raw_profile_text", "") if profile.data else ""
-        impact_pattern = get_impact_pattern(raw_text)
-
-        updates = {"impact_pattern": impact_pattern}
+        updates = {}
         if req.salary_target_lpa is not None:
             updates["salary_target_lpa"] = req.salary_target_lpa
         if req.preferred_company_stage is not None:
@@ -2616,7 +2611,7 @@ Return ONLY valid JSON:
   "years_to_ceiling": "Estimated years",
   "key_skills_needed": ["skill1", "skill2", "skill3"],
   "biggest_risk": "Main risk on IC path",
-  "compensation_ceiling": "Max realistic comp as IC in India (LPA)"
+  "compensation_ceiling": "Max realistic total compensation as IC in India e.g. 120 LPA or 95 LPA — return only the number range, not a decimal like 2.8"
 }}""",
 
             "job_change": f"""You are a senior career advisor for tech professionals in India.
