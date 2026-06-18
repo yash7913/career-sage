@@ -259,6 +259,57 @@ async def extract_and_save_profile(user_id: str) -> dict:
 
     print("Profile saved to Supabase successfully")
 
+    # Auto-extract projects mentioned in resume
+    try:
+        project_prompt = f"""Extract distinct projects or major initiatives mentioned in this resume text.
+For each project return a JSON array:
+[
+  {{
+    "title": "Short project name",
+    "description": "What was built or done",
+    "outcomes": "Measurable impact or result if mentioned",
+    "tech_stack": ["tech1", "tech2"]
+  }}
+]
+Only include substantial projects — not routine tasks. Max 5 projects.
+Return ONLY valid JSON array, nothing else.
+
+Resume text:
+{all_text[:6000]}"""
+
+        proj_message = claude.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=800,
+            messages=[{"role": "user", "content": project_prompt}]
+        )
+
+        proj_raw = proj_message.content[0].text.strip()
+        proj_raw = proj_raw.replace('```json', '').replace('```', '').strip()
+        projects = json.loads(proj_raw)
+
+        if isinstance(projects, list):
+            # Get existing project titles to avoid duplicates
+            existing = supabase.table("user_projects").select("title").eq(
+                "user_id", user_id
+            ).execute()
+            existing_titles = {p["title"].lower() for p in (existing.data or [])}
+
+            for proj in projects[:5]:
+                title = proj.get("title", "").strip()
+                if not title or title.lower() in existing_titles:
+                    continue
+                supabase.table("user_projects").insert({
+                    "user_id":     user_id,
+                    "title":       title,
+                    "description": proj.get("description"),
+                    "outcomes":    proj.get("outcomes"),
+                    "tech_stack":  proj.get("tech_stack") or [],
+                    "include_in_resume": True,
+                }).execute()
+                existing_titles.add(title.lower())
+    except Exception as proj_err:
+        pass  # Never block profile extraction due to project extraction failure
+
     return {
         "extracted_skills": flat_skills,
         "education_data": extracted.get("education_data", []),
@@ -267,3 +318,4 @@ async def extract_and_save_profile(user_id: str) -> dict:
         "raw_profile_text": extracted.get("raw_profile_text", ""),
         "profile_completeness_score": completeness,
     }
+

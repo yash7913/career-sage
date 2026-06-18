@@ -211,7 +211,7 @@ async def update_preferences(req: PreferencesUpdateRequest):
             updates["target_market"] = req.target_market
 
         supabase.table("user_profiles").update(updates).eq("user_id", req.user_id).execute()
-        return {"status": "ok", "impact_pattern": impact_pattern}
+        return {"status": "ok"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -888,7 +888,8 @@ class ProjectCreateRequest(BaseModel):
     description: Optional[str] = None
     outcomes: Optional[str] = None
     tech_stack: Optional[list] = []
-    doc_id: Optional[str] = None
+    doc_ids: Optional[list] = []
+    links: Optional[list] = []
 
 class ProjectUpdateRequest(BaseModel):
     title: Optional[str] = None
@@ -905,7 +906,8 @@ async def create_project(req: ProjectCreateRequest):
             "description": req.description,
             "outcomes":    req.outcomes,
             "tech_stack":  req.tech_stack or [],
-            "doc_id":      req.doc_id,
+            "doc_ids":     req.doc_ids or [],
+            "links":       req.links or [],
         }).execute()
         return {"status": "created", "project": result.data[0]}
     except Exception as e:

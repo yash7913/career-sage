@@ -333,8 +333,27 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
         {step === 3 && (
           <div>
             <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 8px' }}>YOUR PROFILE</p>
-            <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#fff', margin: '0 0 6px' }}>Tell us about yourself</h2>
-            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1.5rem' }}>This appears in your generated resumes automatically.</p>
+            <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#fff', margin: '0 0 6px' }}>We found this — does it look right?</h2>
+            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1.5rem' }}>Extracted from your documents. Edit anything that's wrong.</p>
+
+            {/* Parsed confirmation banner */}
+            {(currentRole || currentCompany) && (
+              <div style={{
+                padding: '10px 14px', borderRadius: '10px', marginBottom: '14px',
+                background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)',
+                display: 'flex', alignItems: 'center', gap: '10px',
+              }}>
+                <span style={{ fontSize: '16px' }}>✓</span>
+                <div>
+                  <p style={{ fontSize: '12px', fontWeight: 600, color: TEAL, margin: '0 0 2px' }}>
+                    Profile extracted successfully
+                  </p>
+                  <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                    {currentRole && `${currentRole}`}{currentCompany && ` at ${currentCompany}`}
+                  </p>
+                </div>
+              </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>FULL NAME</label>
