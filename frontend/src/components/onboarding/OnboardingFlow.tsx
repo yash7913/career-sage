@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import VaultUpload from '@/components/profile/VaultUpload'
+import TrackSetup from '@/components/profile/TrackSetup'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -554,99 +555,28 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
             <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 8px' }}>CAREER TRACK</p>
             <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#fff', margin: '0 0 6px' }}>Set up your first career track</h2>
             <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1.5rem', lineHeight: 1.6 }}>
-              A career track defines what you are targeting. Your job feed, resume generation, and match scores are all built around this.
+              A career track defines what you are targeting. Your job feed and match scores are built around this.
             </p>
-
-            {trackCreated ? (
-              <div style={{
-                padding: '1.25rem', borderRadius: '12px',
-                background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)',
-                textAlign: 'center',
-              }}>
-                <p style={{ fontSize: '20px', margin: '0 0 8px' }}>✓</p>
-                <p style={{ fontSize: '14px', fontWeight: 600, color: TEAL, margin: '0 0 4px' }}>
-                  {trackName} track created
-                </p>
-                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
-                  Your job feed is being personalised.
-                </p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>
-                    TRACK NAME
-                  </label>
-                  <input
-                    value={trackName}
-                    onChange={e => setTrackName(e.target.value)}
-                    placeholder="e.g. Senior PM at a Series B startup"
-                    style={inputStyle}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>
-                    TARGET ROLES (comma separated)
-                  </label>
-                  <input
-                    value={trackRoles}
-                    onChange={e => setTrackRoles(e.target.value)}
-                    placeholder="e.g. Senior PM, Group PM, Head of Product"
-                    style={inputStyle}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em', display: 'block', marginBottom: '8px' }}>
-                    TRACK COLOUR
-                  </label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {[
-                      { value: 'teal',   color: '#10B981' },
-                      { value: 'purple', color: '#7F77DD' },
-                      { value: 'blue',   color: '#3B82F6' },
-                      { value: 'amber',  color: '#F59E0B' },
-                      { value: 'coral',  color: '#F97316' },
-                    ].map(c => (
-                      <div
-                        key={c.value}
-                        onClick={() => setTrackColor(c.value)}
-                        style={{
-                          width: '28px', height: '28px', borderRadius: '50%',
-                          background: c.color, cursor: 'pointer',
-                          border: trackColor === c.value ? '3px solid #fff' : '3px solid transparent',
-                          transition: 'border 0.15s',
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-                <button
-                  onClick={createTrack}
-                  disabled={!trackName.trim() || trackCreating}
-                  style={{
-                    padding: '12px', borderRadius: '10px',
-                    background: trackName.trim() ? TEAL : 'rgba(255,255,255,0.06)',
-                    color: trackName.trim() ? '#fff' : 'rgba(255,255,255,0.3)',
-                    border: 'none', fontSize: '14px', fontWeight: 600,
-                    cursor: trackName.trim() ? 'pointer' : 'not-allowed',
-                  }}
-                >
-                  {trackCreating ? 'Creating...' : 'Create track →'}
-                </button>
-              </div>
-            )}
-
-            <button
-              onClick={() => setStep(9)}
-              style={{
-                marginTop: '12px', width: '100%', padding: '10px',
-                background: 'transparent', border: `1px solid ${BORDER}`,
-                borderRadius: '10px', color: 'rgba(255,255,255,0.3)',
-                fontSize: '13px', cursor: 'pointer',
+            <TrackSetup
+              userId={userId}
+              onComplete={() => {
+                setTrackCreated(true)
+                setStep(9)
               }}
-            >
-              Skip for now →
-            </button>
+            />
+            {!trackCreated && (
+              <button
+                onClick={() => setStep(9)}
+                style={{
+                  marginTop: '12px', width: '100%', padding: '10px',
+                  background: 'transparent', border: `1px solid ${BORDER}`,
+                  borderRadius: '10px', color: 'rgba(255,255,255,0.3)',
+                  fontSize: '13px', cursor: 'pointer',
+                }}
+              >
+                Skip for now →
+              </button>
+            )}
           </div>
         )}
 
@@ -691,7 +621,7 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
               ← Back
             </button>
           )}
-          {step !== 2 && (
+          {step !== 2 && step !== 8 && (
             <button
               onClick={handleNext}
               disabled={saving || !canProceed()}
