@@ -116,7 +116,7 @@ export default function VaultUpload({
           { name: file.name, size: file.size, tag: initialTag, status: 'uploading' },
         ])
 
-        // Content-based classification runs in background
+        // Content-based classification + LinkedIn import run silently in background
         const classifyFile = async () => {
           try {
             const textPreview = await extractTextPreview(file)
@@ -137,9 +137,31 @@ export default function VaultUpload({
               setFiles(prev => prev.map(f =>
                 f.name === file.name ? { ...f, tag } : f
               ))
-              // Auto-trigger LinkedIn import if classified as LinkedIn export
+              // Auto-trigger LinkedIn import silently — no UI blocking
               if (tag === 'LINKEDIN_EXPORT') {
-                handleLinkedinPdf(file)
+                const formData = new FormData()
+                formData.append('file', file)
+                formData.append('user_id', user.id)
+                // Fire and forget — don't await, don't block UI
+                fetch(
+                  `${process.env.NEXT_PUBLIC_API_URL}/api/profile/import-linkedin-pdf`,
+                  { method: 'POST', body: formData }
+                ).then(r => r.json()).then(data => {
+                  if (data.status === 'ok') {
+                    // Mark onboarding complete silently
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/contact`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ user_id: user.id, onboarding_complete: true }),
+                    }).catch(() => {})
+                    // Update file status silently
+                    setFiles(prev => prev.map(f =>
+                      f.name === file.name
+                        ? { ...f, error: `LinkedIn imported — ${data.skills_added} skills added` }
+                        : f
+                    ))
+                  }
+                }).catch(() => {})
               }
             }
           } catch {}
