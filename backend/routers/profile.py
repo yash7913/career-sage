@@ -2194,6 +2194,73 @@ RATES_TO_USD_APPROX = {
     "EUR": 1.08/1000,
 }
 
+def _get_cross_market_comparison(
+    cohort: str,
+    seniority: str,
+    current_base: float = None,
+    current_equity_usd: float = None,
+    current_variable_pct: float = None,
+    current_comp_currency: str = "INR",
+    target_markets: list = None,
+) -> list[dict]:
+    """Show how the user's actual comp compares across all their target markets."""
+    from services.currency import (
+        get_market_comp, compute_actual_comp_usd, CURRENCY_SYMBOLS
+    )
+
+    if not target_markets or current_base is None:
+        return []
+
+    comp_data = compute_actual_comp_usd(
+        base=current_base,
+        currency=current_comp_currency,
+        equity_usd=current_equity_usd or 0,
+        variable_pct=current_variable_pct or 0,
+    )
+    actual_total_usd = comp_data["total_usd"]
+
+    comparisons = []
+    for market in target_markets[:4]:  # cap at 4 markets to keep response light
+        market_comp = get_market_comp(cohort, seniority, market)
+        if not market_comp:
+            continue
+
+        comp_currency = market_comp["currency"]
+        symbol = CURRENCY_SYMBOLS.get(comp_currency, "$")
+        unit_divisor = 100000 if comp_currency == "INR" else 1000
+
+        # Convert market range to USD for percentile comparison
+        rate_to_usd = RATES_TO_USD_APPROX.get(comp_currency, 1/1000)
+        range_low_usd = market_comp["current_range"]["low"] / unit_divisor * unit_divisor * rate_to_usd if False else market_comp["current_range"]["low"] * unit_divisor * rate_to_usd
+        range_high_usd = market_comp["current_range"]["high"] * unit_divisor * rate_to_usd
+        mid_usd = market_comp["current_mid"] * unit_divisor * rate_to_usd
+
+        if actual_total_usd >= range_high_usd:
+            percentile_label = "Top 20%"
+            position_color = "#10B981"
+        elif actual_total_usd >= mid_usd:
+            percentile_label = "Above average"
+            position_color = "#3B82F6"
+        elif actual_total_usd >= range_low_usd:
+            percentile_label = "Below average"
+            position_color = "#F59E0B"
+        else:
+            percentile_label = "Bottom 20%"
+            position_color = "#EF4444"
+
+        comparisons.append({
+            "market": market,
+            "currency": comp_currency,
+            "symbol": symbol,
+            "market_range": market_comp["current_range"],
+            "market_mid": market_comp["current_mid"],
+            "your_comp_in_market_currency": round(actual_total_usd / rate_to_usd / unit_divisor, 1) if rate_to_usd else None,
+            "position_label": percentile_label,
+            "position_color": position_color,
+        })
+
+    return comparisons
+
 
 AXIS_CONTEXT: dict[str, dict[str, str]] = {
     "technical_depth": {
@@ -2443,6 +2510,15 @@ async def get_career_dna(user_id: str):
             market=primary_market,
         )
 
+        cross_market_comparison = _get_cross_market_comparison(
+            cohort, seniority,
+            current_base=current_base,
+            current_equity_usd=current_equity,
+            current_variable_pct=current_variable,
+            current_comp_currency=current_comp_currency,
+            target_markets=target_markets,
+        )
+
         # Next role — based on current seniority, boosted by trajectory
         cohort_roles = NEXT_ROLE_MAP.get(cohort, {})
         next_seniority = _next_seniority(seniority)
@@ -2497,7 +2573,8 @@ async def get_career_dna(user_id: str):
             "market_position":      market,
             "market_benchmarks":    benchmarks,
             "career_paths":         paths,
-            "compensation":         compensation,
+            "compensation":           compensation,
+            "cross_market_comparison": cross_market_comparison,
             "next_role":            next_role,
             "top_strengths":        strengths,
             "share_text":           share_text,
