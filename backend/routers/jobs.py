@@ -56,12 +56,27 @@ async def get_feed(
             if profile.data and profile.data[0].get("target_market"):
                 target_markets = profile.data[0]["target_market"]
 
-        rankings = supabase.table("user_job_rankings")\
-            .select("*, aggregated_jobs(*)")\
-            .eq("user_id", user_id)\
-            .eq("track_id", track_id)\
-            .order("match_percentage_score", desc=True)\
-            .execute()
+        # Supabase/PostgREST caps results at 1000 rows by default — paginate
+        # through all rankings explicitly so totals aren't silently truncated.
+        all_rankings = []
+        page = 0
+        page_size = 1000
+        while True:
+            batch = supabase.table("user_job_rankings")\
+                .select("*, aggregated_jobs(*)")\
+                .eq("user_id", user_id)\
+                .eq("track_id", track_id)\
+                .order("match_percentage_score", desc=True)\
+                .range(page * page_size, (page + 1) * page_size - 1)\
+                .execute()
+            if not batch.data:
+                break
+            all_rankings.extend(batch.data)
+            if len(batch.data) < page_size:
+                break
+            page += 1
+
+        rankings = type('obj', (object,), {'data': all_rankings})()
 
         if not rankings.data:
             return {"jobs": [], "total": 0}
