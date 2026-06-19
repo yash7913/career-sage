@@ -154,11 +154,29 @@ def classify_cohort(
     profile_text = (raw_profile_text or "").lower()
     all_text = profile_text + " " + " ".join(flat_skills)
 
-    title_text = ""
+    # Extract current/most recent title specifically — heavily weighted
+    current_title = ""
+    older_titles = ""
     if work_history and isinstance(work_history, list):
-        for role in work_history[:3]:
+        for i, role in enumerate(work_history[:3]):
             if isinstance(role, dict):
-                title_text += " " + (role.get("title") or "").lower()
+                t = (role.get("title") or "").lower()
+                if i == 0:
+                    current_title += " " + t
+                else:
+                    older_titles += " " + t
+    else:
+        # Fallback: parse current title from raw_profile_text ROLES line (first role listed = most recent)
+        for line in profile_text.split("\n"):
+            if line.strip().startswith("roles:"):
+                roles_part = line.split(":", 1)[1] if ":" in line else ""
+                roles = [r.strip() for r in roles_part.split(",") if r.strip()]
+                if roles:
+                    first_role = roles[0].split(" at ")[0].strip()
+                    current_title = " " + first_role
+                    for r in roles[1:3]:
+                        older_titles += " " + r.split(" at ")[0].strip()
+                break
 
     scores: dict[str, float] = {}
 
@@ -176,9 +194,12 @@ def classify_cohort(
             if bonus in all_text:
                 score += 1.0
 
+        # Current title match is the strongest signal — heavily weighted
         for signal in definition["title_signals"]:
-            if signal in title_text:
-                score += 3.0
+            if signal in current_title:
+                score += 8.0
+            elif signal in older_titles:
+                score += 1.5  # older roles count, but far less
 
         if score >= definition["min_score"]:
             scores[cohort_name] = score
