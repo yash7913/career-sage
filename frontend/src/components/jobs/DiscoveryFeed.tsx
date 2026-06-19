@@ -38,6 +38,12 @@ const COLOR_MAP: Record<string, string> = {
   blue: '#3B82F6', amber: '#F59E0B', coral: '#F97316',
 }
 
+// Module-level cache — survives component unmount/remount when switching tabs,
+// since DiscoveryFeed gets fully unmounted by the parent's conditional render.
+// Cleared automatically after 2 minutes so stale data doesn't linger forever.
+const FEED_CACHE: Record<string, { jobs: Job[]; offset: number; hasMore: boolean; timestamp: number }> = {}
+const CACHE_TTL_MS = 2 * 60 * 1000
+
 export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkills = [], tier }: { userId: string; tracks: Track[]; onDownload?: () => void; profileSkills?: string[]; tier?: string }) {
   const [activeTrack, setActiveTrack] = useState<Track | null>(tracks[0] || null)
   const [jobs, setJobs] = useState<Job[]>([])
@@ -51,7 +57,20 @@ export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkill
   const LIMIT = 20
 
   useEffect(() => {
-    if (activeTrack) fetchFeed(activeTrack.track_id)
+    if (!activeTrack) return
+
+    const cached = FEED_CACHE[activeTrack.track_id]
+    const isFresh = cached && (Date.now() - cached.timestamp) < CACHE_TTL_MS
+
+    if (isFresh) {
+      // Serve from cache instantly — no loading flash, no network call
+      setJobs(cached.jobs)
+      setOffset(cached.offset)
+      setHasMore(cached.hasMore)
+      setLoading(false)
+    } else {
+      fetchFeed(activeTrack.track_id)
+    }
   }, [activeTrack])
 
   const fetchFeed = async (trackId: string, reset = true) => {
@@ -71,15 +90,26 @@ export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkill
       if (res.ok) {
         const data = await res.json()
         const newJobs = data.jobs || []
+        const updatedJobs = reset ? newJobs : [...jobs, ...newJobs]
+        const newOffset = currentOffset + newJobs.length
+        const maxJobs = isPro ? 999 : 13
+        const updatedHasMore = newJobs.length === LIMIT && newOffset < maxJobs
+
         if (reset) {
           setJobs(newJobs)
         } else {
           setJobs(prev => [...prev, ...newJobs])
         }
-        setOffset(currentOffset + newJobs.length)
-        const isPro = tier === 'PREMIUM_PRO' || tier === 'STUDENT_VERIFIED'
-        const maxJobs = isPro ? 999 : 13
-        setHasMore(newJobs.length === LIMIT && (currentOffset + newJobs.length) < maxJobs)
+        setOffset(newOffset)
+        setHasMore(updatedHasMore)
+
+        // Update cache so the next tab switch serves instantly
+        FEED_CACHE[trackId] = {
+          jobs: updatedJobs,
+          offset: newOffset,
+          hasMore: updatedHasMore,
+          timestamp: Date.now(),
+        }
       }
     } finally {
       setLoading(false)
@@ -97,6 +127,7 @@ export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkill
     if (!activeTrack) return
     setMatching(true)
     try {
+      delete FEED_CACHE[activeTrack.track_id]  // force fresh fetch after explicit re-match
       fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/match?user_id=${userId}&track_id=${activeTrack.track_id}`,
         { method: 'POST' }
