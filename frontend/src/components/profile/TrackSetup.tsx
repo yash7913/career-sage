@@ -115,6 +115,9 @@ export default function TrackSetup({ userId, onComplete }: TrackSetupProps) {
         throw new Error(err.detail || 'Failed to create track')
       }
 
+      const trackData = await res.json()
+      const newTrackId = trackData?.track?.track_id
+
       // Save target markets to user preferences
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/preferences`, {
         method: 'PATCH',
@@ -127,6 +130,15 @@ export default function TrackSetup({ userId, onComplete }: TrackSetupProps) {
           salary_target_lpa:     salaryTarget ? parseInt(salaryTarget) : null,
         }),
       })
+
+      // Pre-warm job matching in the background — don't await, don't block the UI.
+      // By the time the user reads the onboarding "You're all set" screen,
+      // matching will likely have finished, so Discover loads with results ready.
+      if (newTrackId) {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/jobs/match?user_id=${userId}&track_id=${newTrackId}`, {
+          method: 'POST',
+        }).catch(() => {})
+      }
 
       setDone(true)
       onComplete?.()
