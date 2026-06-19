@@ -21,7 +21,7 @@ def make_job_id(company: str, title: str, source_link: str) -> str:
     return hashlib.md5(raw.encode()).hexdigest()[:16]
 
 
-def dedup_and_save(jobs: list[dict]) -> dict:
+def dedup_and_save(jobs: list[dict], job_market: str = "India") -> dict:
     saved = 0
     skipped = 0
 
@@ -61,6 +61,7 @@ def dedup_and_save(jobs: list[dict]) -> dict:
                 "job_title": (job.get("job_title") or "")[:150],
                 "job_id": job_id,
                 "location": (job.get("location") or "")[:150],
+                "job_market": job.get("job_market") or job_market,
                 "skills_needed": clean_skills,
                 "source_link": job.get("source_link", ""),
                 "job_description": job.get("job_description", ""),
@@ -508,41 +509,53 @@ def extract_skills_from_text(text: str) -> list[str]:
 
     return list(dict.fromkeys(found))[:30]
 
+DEFAULT_KEYWORDS = [
+    # Product
+    "Product Manager", "Senior Product Manager", "Lead Product Manager",
+    "Group Product Manager", "Director of Product", "VP Product",
+    "Product Owner", "Associate Product Manager",
+    # Program and TPM
+    "Program Manager", "Technical Program Manager", "TPM",
+    "Engineering Program Manager", "Senior Program Manager",
+    "Release Manager", "Delivery Manager",
+    # Data
+    "Data Analyst", "Senior Data Analyst", "Business Analyst",
+    "Data Scientist", "Senior Data Scientist", "ML Engineer",
+    "Analytics Engineer", "Data Engineer", "Senior Data Engineer",
+    "BI Developer", "Business Intelligence",
+    # Engineering
+    "Software Engineer", "Senior Software Engineer", "Staff Engineer",
+    "Backend Engineer", "Frontend Engineer", "Full Stack Engineer",
+    "Platform Engineer", "Site Reliability Engineer", "DevOps Engineer",
+    # Design
+    "Product Designer", "UX Designer", "Senior Designer",
+    # Growth and GTM
+    "Growth Manager", "Growth Product Manager", "Product Marketing Manager",
+]
+
+# Per-market location strings used for scraper queries (LinkedIn/Indeed location field)
+MARKET_LOCATIONS = {
+    "India": ["India"],
+    "US": ["San Francisco, CA", "New York, NY", "Seattle, WA", "Austin, TX"],
+    "UK": ["London, UK"],
+    "SG": ["Singapore"],
+}
+
+# Senior tech roles only for UK/SG — keeps signal high, volume manageable
+SENIOR_KEYWORDS = [
+    "Senior Product Manager", "Lead Product Manager", "Group Product Manager",
+    "Senior Data Scientist", "Staff Data Engineer", "Senior Software Engineer",
+    "Staff Engineer", "Engineering Manager", "Senior Program Manager",
+    "Technical Program Manager", "Senior Analytics Engineer",
+]
+
+
 async def run_full_scrape(keywords: list[str] = None, location: str = "India") -> dict:
+    """Original India-focused scrape — Greenhouse/Lever company boards + LinkedIn + Indeed."""
     if keywords is None:
-        keywords = [
-            # Product
-            "Product Manager", "Senior Product Manager", "Lead Product Manager",
-            "Group Product Manager", "Director of Product", "VP Product",
-            "Product Owner", "Associate Product Manager",
-            # Program and TPM
-            "Program Manager", "Technical Program Manager", "TPM",
-            "Engineering Program Manager", "Senior Program Manager",
-            "Release Manager", "Delivery Manager",
-            # Data
-            "Data Analyst", "Senior Data Analyst", "Business Analyst",
-            "Data Scientist", "Senior Data Scientist", "ML Engineer",
-            "Analytics Engineer", "Data Engineer", "Senior Data Engineer",
-            "BI Developer", "Business Intelligence",
-            # Engineering
-            "Software Engineer", "Senior Software Engineer", "Staff Engineer",
-            "Backend Engineer", "Frontend Engineer", "Full Stack Engineer",
-            "Platform Engineer", "Site Reliability Engineer", "DevOps Engineer",
-            # Design
-            "Product Designer", "UX Designer", "Senior Designer",
-            # Growth and GTM
-            "Growth Manager", "Growth Product Manager", "Product Marketing Manager",
-        ]
+        keywords = DEFAULT_KEYWORDS
 
     all_jobs = []
-
-    greenhouse_jobs = await scrape_greenhouse(keywords, location)
-    print(f"Greenhouse scraped: {len(greenhouse_jobs)} jobs")
-    all_jobs.extend(greenhouse_jobs)
-
-    lever_jobs = await scrape_lever(keywords, location)
-    print(f"Lever scraped: {len(lever_jobs)} jobs")
-    all_jobs.extend(lever_jobs)
 
     linkedin_jobs = await scrape_linkedin(keywords[:5], location)
     print(f"LinkedIn scraped: {len(linkedin_jobs)} jobs")
@@ -575,9 +588,49 @@ async def run_full_scrape(keywords: list[str] = None, location: str = "India") -
         await asyncio.sleep(0.5)
 
     print(f"Total jobs collected: {len(all_jobs)}")
-    result = dedup_and_save(all_jobs)
+    result = dedup_and_save(all_jobs, job_market="India")
     print(f"Saved: {result['saved']} | Skipped (existing): {result['skipped']}")
     return result
+
+
+async def run_market_scrape(market: str) -> dict:
+    """Scrape a single global market (US, UK, SG) using LinkedIn + Indeed across that market's key cities."""
+    locations = MARKET_LOCATIONS.get(market)
+    if not locations:
+        return {"saved": 0, "skipped": 0, "error": f"Unknown market: {market}"}
+
+    # UK and SG use senior-only keywords to keep volume manageable and signal high
+    keywords = SENIOR_KEYWORDS if market in ("UK", "SG") else DEFAULT_KEYWORDS[:20]
+
+    all_jobs = []
+    for loc in locations:
+        print(f"[{market}] Scraping LinkedIn for {loc}")
+        linkedin_jobs = await scrape_linkedin(keywords[:5], loc)
+        for j in linkedin_jobs:
+            j["job_market"] = market
+        all_jobs.extend(linkedin_jobs)
+        await asyncio.sleep(1)
+
+        print(f"[{market}] Scraping Indeed for {loc}")
+        indeed_jobs = await scrape_indeed(keywords[:5], loc)
+        for j in indeed_jobs:
+            j["job_market"] = market
+        all_jobs.extend(indeed_jobs)
+        await asyncio.sleep(1)
+
+    print(f"[{market}] Total jobs collected: {len(all_jobs)}")
+    result = dedup_and_save(all_jobs, job_market=market)
+    print(f"[{market}] Saved: {result['saved']} | Skipped: {result['skipped']}")
+    return result
+
+
+async def run_all_markets_scrape() -> dict:
+    """Run India (full scrape) + US + UK + SG market scrapes sequentially."""
+    results = {}
+    results["India"] = await run_full_scrape()
+    for market in ["US", "UK", "SG"]:
+        results[market] = await run_market_scrape(market)
+    return results
 
 
 async def soft_delete_stale_jobs():

@@ -29,6 +29,30 @@ async def trigger_scrape_sync(req: ScrapeRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class MarketScrapeRequest(BaseModel):
+    market: str  # "US" | "UK" | "SG"
+
+@router.post("/trigger-market")
+async def trigger_market_scrape(req: MarketScrapeRequest, background_tasks: BackgroundTasks):
+    from services.scraper_service import run_market_scrape
+    if req.market not in ("US", "UK", "SG"):
+        raise HTTPException(status_code=400, detail="market must be one of US, UK, SG")
+    background_tasks.add_task(run_market_scrape, req.market)
+    return {
+        "status": "started",
+        "message": f"{req.market} scraping started in background. Check aggregated_jobs in a few minutes.",
+        "market": req.market,
+    }
+
+@router.post("/trigger-all-markets")
+async def trigger_all_markets(background_tasks: BackgroundTasks):
+    from services.scraper_service import run_all_markets_scrape
+    background_tasks.add_task(run_all_markets_scrape)
+    return {
+        "status": "started",
+        "message": "Scraping all markets (India, US, UK, SG) in background. This takes several minutes.",
+    }
+
 @router.get("/status")
 async def scraper_status():
     from supabase import create_client
