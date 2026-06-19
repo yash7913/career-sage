@@ -34,6 +34,8 @@ async def match_jobs(user_id: str, track_id: str, background: bool = False):
             result = await match_jobs_for_track(user_id, track_id)
             return result
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/feed")
@@ -127,6 +129,8 @@ async def get_feed(
         return {"jobs": paged, "total": total}
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.patch("/rankings/{ranking_id}/star")
