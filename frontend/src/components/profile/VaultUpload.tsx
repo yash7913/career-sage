@@ -243,12 +243,14 @@ const res = await fetch(
     if (!user || files.filter(f => f.status === 'done').length === 0) return
 
     setExtracting(true)
-    setExtractProgress('Uploading documents...')
+    setExtractProgress('Reading your documents...')
     try {
-      setTimeout(() => setExtractProgress('Reading your resume...'), 2000)
-      setTimeout(() => setExtractProgress('Extracting skills and experience...'), 5000)
-      setTimeout(() => setExtractProgress('Building your profile...'), 9000)
-      setTimeout(() => setExtractProgress('Almost done...'), 13000)
+      setTimeout(() => setExtractProgress('Extracting skills and experience...'), 3000)
+      setTimeout(() => setExtractProgress('Identifying your work history...'), 7000)
+      setTimeout(() => setExtractProgress('Evaluating your projects...'), 11000)
+      setTimeout(() => setExtractProgress('Personalising your Career DNA...'), 16000)
+      setTimeout(() => setExtractProgress('Almost there...'), 22000)
+      setTimeout(() => setExtractProgress('Just a little longer...'), 28000)
 
       const tasks: Promise<unknown>[] = [
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/extract`, {
