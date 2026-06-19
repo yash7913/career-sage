@@ -262,9 +262,13 @@ async def extract_and_save_profile(user_id: str) -> dict:
     # Run staged project extraction pipeline (candidates → resolution → enrichment)
     try:
         from services.project_pipeline import run_project_pipeline
+        print(f"[Pipeline] Starting with {len(docs.data)} documents")
         await run_project_pipeline(user_id, docs.data)
+        print(f"[Pipeline] Completed")
     except Exception as proj_err:
-        pass  # Never block profile extraction due to project extraction failure
+        import traceback
+        print(f"[Pipeline] FAILED: {proj_err}")
+        traceback.print_exc()
 
     return {
         "extracted_skills": flat_skills,
