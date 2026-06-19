@@ -145,23 +145,8 @@ export default function VaultUpload({
               if (tag === 'LINKEDIN_EXPORT') {
                 setPendingLinkedinFiles(prev => [...prev, file])
               }
-              // Auto-create project record for project docs
-              if (tag === 'PROJECT_DETAIL') {
-                const title = file.name
-                  .replace(/\.[^/.]+$/, '')  // remove extension
-                  .replace(/[-_]/g, ' ')      // replace dashes/underscores
-                  .replace(/\s+/g, ' ')       // clean spaces
-                  .trim()
-                fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/projects`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    user_id: user.id,
-                    title,
-                    description: `Uploaded from ${file.name}`,
-                  }),
-                }).catch(() => {})
-              }
+              // Project extraction now happens in the staged pipeline during
+              // "Build my profile" — no per-file trigger needed here.
             }
           } catch {}
         }
