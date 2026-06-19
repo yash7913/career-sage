@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import VaultUpload from '@/components/profile/VaultUpload'
 import TrackSetup from '@/components/profile/TrackSetup'
 
@@ -59,6 +59,9 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
 
   // Step 7 — Track
   const [trackCreated, setTrackCreated] = useState(false)
+  // Step 8 — progress messages while finishing up
+  const [finishingUp, setFinishingUp] = useState(false)
+  const [finishMessage, setFinishMessage] = useState('')
 
   const selectedCurrency = CURRENCIES.find(c => c.value === compCurrency) || CURRENCIES[0]
   const currencySymbol   = selectedCurrency.label.split(' ')[0]
@@ -112,10 +115,6 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
           current_comp_currency: compCurrency,
           preferred_currency:    compCurrency,
         })
-      } else if (step === 8) {
-        await saveStep({ onboarding_complete: true })
-        onComplete()
-        return
       }
       setStep(s => s + 1)
     } catch (e) {
@@ -444,32 +443,7 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
 
         {/* ── Step 8: Done ── */}
         {step === 8 && (
-          <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-            <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🎉</p>
-            <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', margin: '0 0 10px' }}>You&apos;re all set!</h2>
-            <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.5)', margin: '0 0 6px', lineHeight: 1.6 }}>
-              Career Sage is building your Career DNA.
-            </p>
-            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.3)', margin: '0 0 2rem', lineHeight: 1.6 }}>
-              Your personalised job feed, promotion readiness score, and market position are ready.
-            </p>
-            <div style={{
-              padding: '14px', borderRadius: '12px', marginBottom: '1.5rem',
-              background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)',
-            }}>
-              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: '0 0 8px' }}>What&apos;s waiting for you</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {[
-                  '🧬 Career DNA — your professional identity',
-                  '📊 Promotion Readiness score',
-                  '💰 Market compensation positioning',
-                  '⚡ Matched job feed',
-                ].map(item => (
-                  <p key={item} style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: 0 }}>{item}</p>
-                ))}
-              </div>
-            </div>
-          </div>
+          <Step8Done userId={userId} onComplete={onComplete} />
         )}
 
         {/* Navigation */}
@@ -483,7 +457,7 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
               ← Back
             </button>
           )}
-          {step !== 2 && step !== 7 && (
+          {step !== 2 && step !== 7 && step !== 8 && (
             <button
               onClick={handleNext}
               disabled={saving || !canProceed()}
@@ -517,6 +491,85 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
           Skip setup and go straight to Career Sage →
         </button>
       )}
+    </div>
+  )
+}
+
+function Step8Done({ userId, onComplete }: { userId: string; onComplete: () => void }) {
+  const [message, setMessage] = useState('Finishing up your profile...')
+  const [statusText, setStatusText] = useState('')
+
+  useEffect(() => {
+    const messages = [
+      'Finishing up your profile...',
+      'Evaluating your projects...',
+      'Personalising your job feed...',
+      'Calculating your market position...',
+      'Almost there...',
+    ]
+    let idx = 0
+    const interval = setInterval(() => {
+      idx = (idx + 1) % messages.length
+      setMessage(messages[idx])
+    }, 2200)
+
+    const finish = async () => {
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/contact`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: userId, onboarding_complete: true }),
+        })
+        setStatusText('Ready!')
+      } catch {
+        // Even if this fails, still proceed — onboarding_complete will be retried
+        // naturally next time hasProfile is checked via completeness score
+      } finally {
+        clearInterval(interval)
+        onComplete()
+      }
+    }
+
+    finish()
+    return () => clearInterval(interval)
+  }, [userId, onComplete])
+
+  return (
+    <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+      <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🎉</p>
+      <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', margin: '0 0 10px' }}>You&apos;re all set!</h2>
+      <p style={{ fontSize: '15px', color: TEAL, margin: '0 0 6px', lineHeight: 1.6, fontWeight: 600 }}>
+        {statusText || message}
+      </p>
+      <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)', margin: '0 0 2rem', lineHeight: 1.6 }}>
+        This usually takes a few seconds.
+      </p>
+      <div style={{
+        padding: '14px', borderRadius: '12px', marginBottom: '1.5rem',
+        background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)',
+      }}>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: '0 0 8px' }}>What&apos;s waiting for you</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {[
+            '🧬 Career DNA — your professional identity',
+            '📊 Promotion Readiness score',
+            '💰 Market compensation positioning',
+            '⚡ Matched job feed',
+          ].map(item => (
+            <p key={item} style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: 0 }}>{item}</p>
+          ))}
+        </div>
+      </div>
+      <div style={{
+        height: '3px', background: 'rgba(255,255,255,0.06)',
+        borderRadius: '2px', overflow: 'hidden',
+      }}>
+        <div style={{
+          height: '100%', background: TEAL, borderRadius: '2px',
+          animation: 'progress-pulse 1.6s ease-in-out infinite',
+          width: '40%',
+        }} />
+      </div>
     </div>
   )
 }
