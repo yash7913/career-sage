@@ -109,23 +109,6 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
     elif years_exp_filter >= 3:
         SENIORITY_EXCLUDE = ["intern", "internship", "entry level", "fresher", "graduate trainee"]
 
-    all_jobs_data = []
-    page = 0
-    batch_size = 1000
-    while True:
-        batch_result = supabase.table("aggregated_jobs")\
-            .select("id, job_title, company_name, location, skills_needed, job_description, source_link, estimated_salary_min, estimated_salary_max, estimated_interview_rounds, description_embedding, target_cohorts")\
-            .eq("is_active", True)\
-            .range(page * batch_size, (page + 1) * batch_size - 1)\
-            .execute()
-        if not batch_result.data:
-            break
-        all_jobs_data.extend(batch_result.data)
-        if len(batch_result.data) < batch_size:
-            break
-        page += 1
-    print(f"Fetched {len(all_jobs_data)} total jobs")
-
     HARD_EXCLUDE_TITLES = [
         "account executive", "sales", "recruiter", "talent acquisition",
         "customer success", "support engineer", "solutions engineer",
@@ -136,21 +119,36 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
         "hr manager", "office manager", "executive assistant",
     ]
 
+    # Push cohort filtering into the DB query — only fetch jobs whose
+    # target_cohorts overlaps relevant_cohorts, instead of pulling everything
+    # and filtering in Python. Postgres' jsonb overlap operator (?|) does this
+    # in one query instead of a full table scan client-side.
     filtered_jobs = []
-    for j in all_jobs_data:
-        job_cohorts = j.get("target_cohorts") or []
-        title_lower = (j.get("job_title") or "").lower()
+    page = 0
+    batch_size = 1000
+    while True:
+        batch_result = supabase.table("aggregated_jobs")\
+            .select("id, job_title, company_name, location, skills_needed, job_description, source_link, estimated_salary_min, estimated_salary_max, estimated_interview_rounds, description_embedding, target_cohorts")\
+            .eq("is_active", True)\
+            .overlaps("target_cohorts", relevant_cohorts)\
+            .range(page * batch_size, (page + 1) * batch_size - 1)\
+            .execute()
+        if not batch_result.data:
+            break
 
-        if not any(rc in job_cohorts for rc in relevant_cohorts):
-            continue
-        if any(excl in title_lower for excl in SENIORITY_EXCLUDE):
-            continue
-        if any(excl in title_lower for excl in HARD_EXCLUDE_TITLES):
-            continue
+        for j in batch_result.data:
+            title_lower = (j.get("job_title") or "").lower()
+            if any(excl in title_lower for excl in SENIORITY_EXCLUDE):
+                continue
+            if any(excl in title_lower for excl in HARD_EXCLUDE_TITLES):
+                continue
+            filtered_jobs.append(j)
 
-        filtered_jobs.append(j)
+        if len(batch_result.data) < batch_size:
+            break
+        page += 1
 
-    print(f"Pre-filtered {len(all_jobs_data)} jobs to {len(filtered_jobs)} relevant jobs for {user_cohort}")
+    print(f"Pre-filtered directly via DB query to {len(filtered_jobs)} relevant jobs for {user_cohort}")
 
     if not filtered_jobs:
         return {"matched": 0}
