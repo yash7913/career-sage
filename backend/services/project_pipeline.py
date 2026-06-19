@@ -62,15 +62,23 @@ async def _stage1_extract_candidates(documents: list[dict]) -> list[dict]:
         try:
             file_bytes = supabase.storage.from_("user-documents").download(doc["storage_path"])
             text = extract_text_from_bytes(file_bytes, doc["file_name"])
+            print(f"[Pipeline:S1] {doc['file_name']} — extracted {len(text) if text else 0} chars")
             if text:
-                # Generous budget per doc — this stage needs real content to find brief mentions
+                # Scale per-doc budget down as document count grows, so total
+                # input stays bounded regardless of how many files are uploaded.
+                # 19 docs at flat 6000 chars = up to 114K chars before any cap —
+                # this keeps the combined prompt sane.
+                per_doc_budget = max(1500, 18000 // len(documents))
                 doc_excerpts.append({
                     "doc_id": doc["doc_id"],
                     "file_name": doc["file_name"],
-                    "text": text[:6000],
+                    "text": text[:per_doc_budget],
                 })
-        except Exception:
+        except Exception as e:
+            print(f"[Pipeline:S1] {doc.get('file_name')} FAILED: {e}")
             continue
+
+    print(f"[Pipeline:S1] {len(doc_excerpts)}/{len(documents)} docs yielded usable text")
 
     if not doc_excerpts:
         return []
@@ -103,19 +111,38 @@ Rules:
 
     message = claude.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=2000,
+        max_tokens=4000,
         messages=[{"role": "user", "content": prompt}]
     )
 
     raw = _strip_json_fences(message.content[0].text)
-    match = re.search(r'\[.*\]', raw, re.DOTALL)
-    if not match:
-        return []
+    print(f"[Pipeline:S1] Claude response length: {len(raw)} chars, stop_reason: {message.stop_reason}")
+
     try:
-        candidates = json.loads(match.group())
+        candidates = json.loads(raw)
         return candidates if isinstance(candidates, list) else []
     except json.JSONDecodeError:
-        return []
+        # Response may be truncated mid-array (hit max_tokens) — recover whatever
+        # complete objects exist rather than discarding everything.
+        match = re.search(r'\[.*\]', raw, re.DOTALL)
+        if match:
+            try:
+                candidates = json.loads(match.group())
+                return candidates if isinstance(candidates, list) else []
+            except json.JSONDecodeError:
+                pass
+
+        # Last resort: extract individual complete {...} objects even without
+        # a closing bracket, in case the array itself got cut off.
+        recovered = []
+        for obj_match in re.finditer(r'\{[^{}]*\}', raw):
+            try:
+                obj = json.loads(obj_match.group())
+                recovered.append(obj)
+            except json.JSONDecodeError:
+                continue
+        print(f"[Pipeline:S1] Recovered {len(recovered)} complete objects from truncated response")
+        return recovered
 
 
 async def _stage2_resolve_duplicates(candidates: list[dict]) -> list[dict]:
@@ -300,17 +327,25 @@ Return ONLY valid JSON:
 
 
 async def run_project_pipeline(user_id: str, documents: list[dict]):
-    """Entry point — runs all three stages. Never raises; failures are silent
-    so they never block the main profile extraction flow."""
+    """Entry point — runs all three stages."""
     if not documents:
+        print("[Pipeline] No documents provided")
         return
 
+    print(f"[Pipeline] Stage 1 — extracting candidates from {len(documents)} docs")
     candidates = await _stage1_extract_candidates(documents)
+    print(f"[Pipeline] Stage 1 found {len(candidates)} candidates: {[c.get('title') for c in candidates]}")
     if not candidates:
+        print("[Pipeline] No candidates found, stopping")
         return
 
+    print(f"[Pipeline] Stage 2 — resolving duplicates")
     resolved = await _stage2_resolve_duplicates(candidates)
+    print(f"[Pipeline] Stage 2 resolved to {len(resolved)} projects: {[r.get('title') for r in resolved]}")
     if not resolved:
+        print("[Pipeline] No resolved projects, stopping")
         return
 
+    print(f"[Pipeline] Stage 3 — enriching and saving")
     await _stage3_enrich_and_save(user_id, resolved, documents)
+    print(f"[Pipeline] Stage 3 complete")
