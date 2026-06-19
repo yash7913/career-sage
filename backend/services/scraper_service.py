@@ -56,12 +56,19 @@ def dedup_and_save(jobs: list[dict], job_market: str = "India") -> dict:
                 and s[0].isalpha()
             ][:25]
 
+            from services.job_cohort_classifier import classify_job_cohorts
+            target_cohorts = classify_job_cohorts(
+                job.get("job_title", ""),
+                job.get("job_description", "")
+            )
+
             supabase.table("aggregated_jobs").insert({
                 "company_name": (job.get("company_name") or "")[:100],
                 "job_title": (job.get("job_title") or "")[:150],
                 "job_id": job_id,
                 "location": (job.get("location") or "")[:150],
                 "job_market": job.get("job_market") or job_market,
+                "target_cohorts": target_cohorts,
                 "skills_needed": clean_skills,
                 "source_link": job.get("source_link", ""),
                 "job_description": job.get("job_description", ""),
