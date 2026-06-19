@@ -225,14 +225,23 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
             continue
 
     if batch:
-        upsert_batch_size = 100
-        for i in range(0, len(batch), upsert_batch_size):
-            chunk = batch[i:i + upsert_batch_size]
-            supabase.table("user_job_rankings").upsert(
-                chunk,
-                on_conflict="user_id,track_id,job_id"
-            ).execute()
-            print(f"Saved batch {i//upsert_batch_size + 1}/{(len(batch)-1)//upsert_batch_size + 1}")
+        import asyncio
+        upsert_batch_size = 200  # larger batches = fewer round trips
+        chunks = [batch[i:i + upsert_batch_size] for i in range(0, len(batch), upsert_batch_size)]
+
+        async def upsert_chunk(chunk, idx, total):
+            await asyncio.to_thread(
+                lambda: supabase.table("user_job_rankings").upsert(
+                    chunk, on_conflict="user_id,track_id,job_id"
+                ).execute()
+            )
+            print(f"Saved batch {idx + 1}/{total}")
+
+        # Run upserts concurrently instead of sequentially — Supabase/Postgres
+        # handles concurrent writes fine for independent batches
+        await asyncio.gather(*[
+            upsert_chunk(chunk, i, len(chunks)) for i, chunk in enumerate(chunks)
+        ])
 
     print(f"Matched {matched} jobs for track {track_data['track_name']}")
     return {"matched": matched, "track": track_data["track_name"]}
