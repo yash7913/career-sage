@@ -5,6 +5,9 @@ load_dotenv()
 
 from supabase import create_client
 from services.embedding import generate_track_embedding, generate_embedding
+from logger import get_logger
+
+log = get_logger(__name__)
 
 supabase = create_client(
     os.getenv("SUPABASE_URL"),
@@ -85,7 +88,7 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
 
     track_data = track.data[0]
 
-    print(f"Generating track embedding for: {track_data['track_name']}")
+    log.info(f"Generating track embedding for: {track_data['track_name']}")
     track_embedding = generate_track_embedding(raw_profile, track_data, profile_data)
 
     if not track_embedding:
@@ -156,7 +159,7 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
             break
         page += 1
 
-    print(f"Pre-filtered directly via DB query to {len(filtered_jobs)} relevant jobs for {user_cohort}")
+    log.info(f"Pre-filtered to {len(filtered_jobs)} relevant jobs for cohort '{user_cohort}'")
 
     if not filtered_jobs:
         return {"matched": 0}
@@ -227,7 +230,7 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
             matched += 1
 
         except Exception as e:
-            print(f"Matching error for {job.get('job_title')}: {e}")
+            log.warning(f"Matching error for job '{job.get('job_title')}': {e}")
             continue
 
     if batch:
@@ -241,7 +244,7 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
                     chunk, on_conflict="user_id,track_id,job_id"
                 ).execute()
             )
-            print(f"Saved batch {idx + 1}/{total}")
+            log.info(f"Saved ranking batch {idx + 1}/{total}")
 
         # Run upserts concurrently instead of sequentially — Supabase/Postgres
         # handles concurrent writes fine for independent batches
@@ -249,7 +252,7 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
             upsert_chunk(chunk, i, len(chunks)) for i, chunk in enumerate(chunks)
         ])
 
-    print(f"Matched {matched} jobs for track {track_data['track_name']}")
+    log.info(f"Matched {matched} jobs for track '{track_data['track_name']}'")
     return {"matched": matched, "track": track_data["track_name"]}
 
 
@@ -259,13 +262,13 @@ async def run_matching_for_user(user_id: str):
             .select("*").eq("user_id", user_id).execute()
 
         if not tracks.data:
-            print(f"No tracks for user {user_id}")
+            log.info(f"No tracks for user {user_id}")
             return
 
         for track in tracks.data:
-            print(f"Running matching for track {track['track_name']}")
+            log.info(f"Running matching for track '{track['track_name']}'")
             await match_jobs_for_track(user_id, track["track_id"])
 
-        print(f"Background matching complete for user {user_id}")
+        log.info(f"Background matching complete for user {user_id}")
     except Exception as e:
-        print(f"Background matching error: {e}")
+        log.error(f"Background matching error: {e}", exc_info=True)
