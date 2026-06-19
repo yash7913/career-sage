@@ -896,6 +896,8 @@ class ProjectUpdateRequest(BaseModel):
     description: Optional[str] = None
     outcomes: Optional[str] = None
     tech_stack: Optional[list] = None
+    doc_ids: Optional[list] = None
+    links: Optional[list] = None
 
 @router.post("/projects")
 async def create_project(req: ProjectCreateRequest):
@@ -1028,27 +1030,6 @@ Return ONLY valid JSON."""}]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@router.patch("/projects/{project_id}/toggle-resume")
-async def toggle_project_resume(project_id: str, req: SynthesizeProjectRequest):
-    try:
-        project = supabase.table("user_projects").select("include_in_resume").eq(
-            "project_id", project_id
-        ).eq("user_id", req.user_id).execute()
-
-        if not project.data:
-            raise HTTPException(status_code=404, detail="Project not found")
-
-        current = project.data[0].get("include_in_resume", True)
-        supabase.table("user_projects").update({
-            "include_in_resume": not current
-        }).eq("project_id", project_id).execute()
-
-        return {"status": "ok", "include_in_resume": not current}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 class LinkedInImportRequest(BaseModel):
     user_id: str
@@ -2808,9 +2789,11 @@ Return ONLY valid JSON:
   "best_timing": "Optimal timing for move"
 }}""",
 
-"ai_replacement": f"""You are a senior career advisor for tech professionals in 2026.
+"ai_replacement": f"""You are a senior career advisor for tech professionals in 2026, specialising in AI's impact on careers.
 
-Analyse how vulnerable this professional is to AI replacing their role, and what they should do about it.
+This professional's actual skills: {', '.join((p.get('extracted_skills') or [])[:25])}
+
+Analyse which of their SPECIFIC listed skills are AI-resistant versus at-risk, and give a concrete development plan.
 
 Profile:
 - Cohort: {cohort}
@@ -2819,19 +2802,26 @@ Profile:
 - Years of experience: {years_exp}
 - Work history: {raw_text[:800]}
 
-Consider: which parts of their current role are automatable, what skills make them AI-resilient, and what they should do in the next 12 months.
+AI-resistant skills typically involve: judgment under ambiguity, cross-functional trust-building, navigating organisational politics, taking accountability for outcomes, synthesising conflicting stakeholder needs, and original strategic framing.
+At-risk skills typically involve: routine data synthesis, templated documentation, status reporting, and well-defined analytical tasks with clear inputs/outputs.
+
+From their ACTUAL skill list above, classify each relevant skill into resistant or at-risk — do not invent skills they don't have.
 
 Return ONLY valid JSON:
 {{
   "vulnerability": "Low" | "Medium" | "High",
   "confidence": 0-100,
-  "summary": "2 sentence honest assessment",
-  "automatable_parts": ["part1", "part2"],
-  "resilient_parts": ["part1", "part2"],
-  "ai_resilient_skills": ["skill1", "skill2", "skill3"],
-  "recommended_pivot": "Specific direction to stay ahead of AI",
-  "timeline": "How long before significant disruption at current trajectory",
-  "opportunity": "How AI could amplify rather than replace this person"
+  "summary": "2 sentence honest assessment referencing their specific role and skills",
+  "at_risk_skills": ["skill from their list", "skill from their list"],
+  "resistant_skills": ["skill from their list", "skill from their list"],
+  "why_resistant": "1-2 sentences on why these specific skills are hard to automate for this person",
+  "development_plan": [
+    "Specific action 1 to deepen an AI-resistant skill in next 90 days",
+    "Specific action 2",
+    "Specific action 3"
+  ],
+  "timeline": "How long before significant disruption at current trajectory if no action taken",
+  "opportunity": "How this person can use AI tools to amplify their AI-resistant strengths rather than compete with AI on the at-risk parts"
 }}""",
         }
 

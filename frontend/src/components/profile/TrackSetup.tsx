@@ -155,7 +155,7 @@ export default function TrackSetup({ userId, onComplete }: TrackSetupProps) {
 
   const inputStyle = {
     width: '100%', padding: '10px 12px', borderRadius: '8px',
-    background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`,
+    background: '#1c2128', border: `1px solid ${BORDER}`,
     color: '#fff', fontSize: '13px', boxSizing: 'border-box' as const,
     outline: 'none', fontFamily: 'system-ui', colorScheme: 'dark' as const,
   }
