@@ -286,13 +286,23 @@ function DecisionResult({ result, onClose }: { result: Record<string, unknown>; 
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem',
     }}>
-      <div style={{
-        background: '#1a2030', border: `1px solid ${BORDER}`, borderRadius: '16px',
-        padding: '2rem', maxWidth: '720px', width: '100%', maxHeight: '85vh', overflowY: 'auto',
-      }}>
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-          <div>
+      <div style={{ position: 'relative', maxWidth: '720px', width: '100%', maxHeight: '85vh' }}>
+        {/* Close button — fixed outside the scrollable card, always visible */}
+        <button onClick={onClose} style={{
+          position: 'absolute', top: '-14px', right: '-14px', zIndex: 10,
+          width: '32px', height: '32px', borderRadius: '50%',
+          background: '#1a2030', border: `1px solid ${BORDER}`,
+          color: 'rgba(255,255,255,0.6)', fontSize: '16px', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+        }}>✕</button>
+
+        <div style={{
+          background: '#1a2030', border: `1px solid ${BORDER}`, borderRadius: '16px',
+          padding: '2rem', width: '100%', maxHeight: '85vh', overflowY: 'auto',
+        }}>
+          {/* Header */}
+          <div style={{ marginBottom: '16px' }}>
             <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', margin: '0 0 6px' }}>
               CAREER DECISION ANALYSIS
             </p>
@@ -304,11 +314,6 @@ function DecisionResult({ result, onClose }: { result: Record<string, unknown>; 
               }}>{conf}% confidence</span>
             </div>
           </div>
-          <button onClick={onClose} style={{
-            background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)',
-            fontSize: '18px', cursor: 'pointer', padding: '4px',
-          }}>✕</button>
-        </div>
 
         {/* Summary */}
         <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, margin: '0 0 20px' }}>
@@ -359,6 +364,7 @@ function DecisionResult({ result, onClose }: { result: Record<string, unknown>; 
 
             return null
           })}
+        </div>
         </div>
       </div>
     </div>
