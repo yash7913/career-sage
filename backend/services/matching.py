@@ -123,16 +123,24 @@ async def match_jobs_for_track(user_id: str, track_id: str) -> dict:
     # target_cohorts overlaps relevant_cohorts, instead of pulling everything
     # and filtering in Python. Postgres' jsonb overlap operator (?|) does this
     # in one query instead of a full table scan client-side.
+    # target_cohorts is jsonb (not a native postgres array), so jsonb overlap
+    # via OR'd contains checks — one per relevant cohort. Still pushes the
+    # filtering into the DB instead of pulling all 4000+ rows into Python.
     filtered_jobs = []
     page = 0
     batch_size = 1000
     while True:
-        batch_result = supabase.table("aggregated_jobs")\
+        query = supabase.table("aggregated_jobs")\
             .select("id, job_title, company_name, location, skills_needed, job_description, source_link, estimated_salary_min, estimated_salary_max, estimated_interview_rounds, description_embedding, target_cohorts")\
-            .eq("is_active", True)\
-            .overlaps("target_cohorts", relevant_cohorts)\
-            .range(page * batch_size, (page + 1) * batch_size - 1)\
-            .execute()
+            .eq("is_active", True)
+
+        # Build an OR filter: target_cohorts contains "Technical PM" OR contains "Data-Oriented PM" OR ...
+        or_conditions = ",".join(
+            f'target_cohorts.cs.["{c}"]' for c in relevant_cohorts
+        )
+        query = query.or_(or_conditions)
+
+        batch_result = query.range(page * batch_size, (page + 1) * batch_size - 1).execute()
         if not batch_result.data:
             break
 
