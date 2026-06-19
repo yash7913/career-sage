@@ -186,7 +186,7 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
         {/* ── Step 1: Opportunity status ── */}
         {step === 1 && (
           <div>
-            <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 8px' }}>LET'S GET STARTED</p>
+            <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 8px' }}>LET&apos;S GET STARTED</p>
             <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#fff', margin: '0 0 6px' }}>Are you open to new opportunities?</h2>
             <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1.5rem' }}>This helps Career Sage prioritise what to show you.</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
@@ -260,7 +260,7 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
           <div>
             <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 8px' }}>YOUR PROFILE</p>
             <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#fff', margin: '0 0 6px' }}>We found this — does it look right?</h2>
-            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1.5rem' }}>Extracted from your documents. Edit anything that's wrong.</p>
+            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1.5rem' }}>Extracted from your documents. Edit anything that&apos;s wrong.</p>
             {(currentRole || currentCompany) && (
               <div style={{
                 padding: '10px 14px', borderRadius: '10px', marginBottom: '14px',
@@ -446,7 +446,7 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
         {step === 8 && (
           <div style={{ textAlign: 'center', padding: '1rem 0' }}>
             <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🎉</p>
-            <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', margin: '0 0 10px' }}>You're all set!</h2>
+            <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', margin: '0 0 10px' }}>You&apos;re all set!</h2>
             <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.5)', margin: '0 0 6px', lineHeight: 1.6 }}>
               Career Sage is building your Career DNA.
             </p>
@@ -457,7 +457,7 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
               padding: '14px', borderRadius: '12px', marginBottom: '1.5rem',
               background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)',
             }}>
-              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: '0 0 8px' }}>What's waiting for you</p>
+              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: '0 0 8px' }}>What&apos;s waiting for you</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {[
                   '🧬 Career DNA — your professional identity',
