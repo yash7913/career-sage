@@ -125,6 +125,8 @@ async def get_profile(user_id: str):
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 class StatusUpdateRequest(BaseModel):
@@ -958,6 +960,7 @@ class SynthesizeProjectRequest(BaseModel):
 async def synthesize_project(project_id: str, req: SynthesizeProjectRequest):
     try:
         import anthropic
+        import json
 
         # Get project
         project = supabase.table("user_projects").select("*").eq(
@@ -1030,6 +1033,8 @@ Return ONLY valid JSON."""}]
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 
