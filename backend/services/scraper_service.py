@@ -104,6 +104,8 @@ async def scrape_linkedin(keywords: list[str], location: str = "India") -> list[
                 )
                 if not run_res.is_success:
                     print(f"LinkedIn scraper start failed: {run_res.status_code} {run_res.text}")
+                    if "Monthly usage hard limit exceeded" in run_res.text:
+                        raise RuntimeError("APIFY_LIMIT_EXCEEDED")
                     continue
 
                 run_data = run_res.json()
@@ -201,6 +203,8 @@ async def scrape_indeed(keywords: list[str], location: str = "India") -> list[di
             )
             if not run_res.is_success:
                 print(f"Indeed scraper start failed: {run_res.status_code} {run_res.text}")
+                if "Monthly usage hard limit exceeded" in run_res.text:
+                    raise RuntimeError("APIFY_LIMIT_EXCEEDED")
                 return []
 
             run_id = run_res.json().get("data", {}).get("id")
@@ -593,34 +597,87 @@ async def run_full_scrape(keywords: list[str] = None, location: str = "India") -
     return result
 
 
+# Companies with public Greenhouse/Lever boards that hire in UK/SG — no Apify credits needed
+MARKET_COMPANY_BOARDS = {
+    "UK": {
+        "greenhouse": [("Revolut", "revolut"), ("Wise", "wise"), ("Monzo", "monzo")],
+        "lever": [("Deliveroo", "deliveroo")],
+    },
+    "SG": {
+        "greenhouse": [("Grab", "grab"), ("Sea", "sea-group")],
+        "lever": [],
+    },
+    "US": {
+        "greenhouse": [("Stripe", "stripe"), ("Airbnb", "airbnb"), ("Coinbase", "coinbase")],
+        "lever": [("Netflix", "netflix")],
+    },
+}
+
+
 async def run_market_scrape(market: str) -> dict:
-    """Scrape a single global market (US, UK, SG) using LinkedIn + Indeed across that market's key cities."""
+    """Scrape a single global market (US, UK, SG).
+    Tries LinkedIn + Indeed via Apify first, falls back to direct Greenhouse/Lever
+    company board scraping (no Apify credits needed) if Apify limit is hit or always
+    supplements with company boards regardless."""
     locations = MARKET_LOCATIONS.get(market)
     if not locations:
         return {"saved": 0, "skipped": 0, "error": f"Unknown market: {market}"}
 
-    # UK and SG use senior-only keywords to keep volume manageable and signal high
     keywords = SENIOR_KEYWORDS if market in ("UK", "SG") else DEFAULT_KEYWORDS[:20]
-
     all_jobs = []
+    apify_blocked = False
+
     for loc in locations:
+        if apify_blocked:
+            break
+
         print(f"[{market}] Scraping LinkedIn for {loc}")
-        linkedin_jobs = await scrape_linkedin(keywords[:5], loc)
-        for j in linkedin_jobs:
-            j["job_market"] = market
-        all_jobs.extend(linkedin_jobs)
+        try:
+            linkedin_jobs = await scrape_linkedin(keywords[:5], loc)
+            for j in linkedin_jobs:
+                j["job_market"] = market
+            all_jobs.extend(linkedin_jobs)
+        except RuntimeError as e:
+            if "APIFY_LIMIT_EXCEEDED" in str(e):
+                print(f"[{market}] Apify limit hit — skipping remaining Apify calls, using company boards only")
+                apify_blocked = True
+                break
         await asyncio.sleep(1)
 
         print(f"[{market}] Scraping Indeed for {loc}")
-        indeed_jobs = await scrape_indeed(keywords[:5], loc)
-        for j in indeed_jobs:
-            j["job_market"] = market
-        all_jobs.extend(indeed_jobs)
+        try:
+            indeed_jobs = await scrape_indeed(keywords[:5], loc)
+            for j in indeed_jobs:
+                j["job_market"] = market
+            all_jobs.extend(indeed_jobs)
+        except RuntimeError as e:
+            if "APIFY_LIMIT_EXCEEDED" in str(e):
+                apify_blocked = True
+                break
         await asyncio.sleep(1)
+
+    # Always run direct company board scraping — free, no Apify dependency
+    boards = MARKET_COMPANY_BOARDS.get(market, {})
+    print(f"[{market}] Scraping {len(boards.get('greenhouse', []))} Greenhouse + {len(boards.get('lever', []))} Lever company boards")
+
+    for company_name, board_token in boards.get("greenhouse", []):
+        jobs = await scrape_greenhouse(company_name, board_token)
+        for j in jobs:
+            j["job_market"] = market
+        all_jobs.extend(jobs)
+        await asyncio.sleep(0.5)
+
+    for company_name, lever_slug in boards.get("lever", []):
+        jobs = await scrape_lever(company_name, lever_slug)
+        for j in jobs:
+            j["job_market"] = market
+        all_jobs.extend(jobs)
+        await asyncio.sleep(0.5)
 
     print(f"[{market}] Total jobs collected: {len(all_jobs)}")
     result = dedup_and_save(all_jobs, job_market=market)
-    print(f"[{market}] Saved: {result['saved']} | Skipped: {result['skipped']}")
+    print(f"[{market}] Saved: {result['saved']} | Skipped: {result['skipped']} | Apify blocked: {apify_blocked}")
+    result["apify_blocked"] = apify_blocked
     return result
 
 
