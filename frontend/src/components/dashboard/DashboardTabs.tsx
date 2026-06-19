@@ -321,6 +321,9 @@ function SettingsTab({
   onTrackCreated: () => void
   tier?: string
 }) {
+  const [showAddTrack, setShowAddTrack] = useState(false)
+  const isPro = tier === 'PREMIUM_PRO' || tier === 'STUDENT_VERIFIED'
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
@@ -332,6 +335,7 @@ function SettingsTab({
         <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1rem', lineHeight: 1.5 }}>
           Each track targets a specific function and level. Your job feed, resume generation, and match scores are built around your active track.
         </p>
+
         {tracks.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '1rem' }}>
             {tracks.map(track => {
@@ -351,10 +355,54 @@ function SettingsTab({
             })}
           </div>
         )}
-        <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: '0 0 10px' }}>
-          {tracks.length > 0 ? 'ADD ANOTHER TRACK' : 'CREATE YOUR FIRST TRACK'}
-        </p>
-        <TrackSetup userId={userId} onComplete={onTrackCreated} />
+
+        {/* No tracks yet — show creation form directly */}
+        {tracks.length === 0 && (
+          <>
+            <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+              CREATE YOUR FIRST TRACK
+            </p>
+            <TrackSetup userId={userId} onComplete={onTrackCreated} />
+          </>
+        )}
+
+        {/* Has tracks — show add button, gated by Pro */}
+        {tracks.length > 0 && !showAddTrack && (
+          <button
+            onClick={() => {
+              if (!isPro && tracks.length >= 1) {
+                alert('Upgrade to Pro for unlimited career tracks.')
+                return
+              }
+              setShowAddTrack(true)
+            }}
+            style={{
+              padding: '10px 16px', borderRadius: '8px',
+              background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`,
+              color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontWeight: 600,
+              cursor: 'pointer', width: '100%', textAlign: 'left',
+            }}
+          >
+            + Add another track {!isPro && '(Pro only)'}
+          </button>
+        )}
+
+        {tracks.length > 0 && showAddTrack && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: 0 }}>
+                ADD ANOTHER TRACK
+              </p>
+              <button
+                onClick={() => setShowAddTrack(false)}
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: '12px', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            </div>
+            <TrackSetup userId={userId} onComplete={() => { setShowAddTrack(false); onTrackCreated() }} />
+          </div>
+        )}
       </div>
 
       {/* Job preferences */}

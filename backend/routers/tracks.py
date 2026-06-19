@@ -47,7 +47,8 @@ async def create_track(req: TrackCreateRequest):
         if not profile.data:
             raise HTTPException(status_code=404, detail="Profile not found")
 
-        max_tracks = profile.data[0]["max_tracks"]
+        tier = profile.data[0].get("tier_status", "GENERAL_FREE")
+        max_tracks = 999 if tier in ("STUDENT_VERIFIED", "PREMIUM_PRO") else profile.data[0].get("max_tracks", 1)
 
         existing = supabase.table("career_track_profiles")\
             .select("track_id")\
