@@ -41,23 +41,63 @@ async def get_feed(
     user_id: str,
     track_id: str,
     limit: int = Query(default=20, le=50),
-    offset: int = Query(default=0)
+    offset: int = Query(default=0),
+    markets: Optional[str] = Query(default=None, description="Comma-separated markets e.g. India,US,UK"),
 ):
     try:
+        # Determine target markets — explicit param wins, else user's preferences, else all
+        target_markets = None
+        if markets:
+            target_markets = [m.strip() for m in markets.split(",") if m.strip()]
+        else:
+            profile = supabase.table("user_profiles").select("target_market, preferred_currency").eq("user_id", user_id).execute()
+            if profile.data and profile.data[0].get("target_market"):
+                target_markets = profile.data[0]["target_market"]
+
         rankings = supabase.table("user_job_rankings")\
             .select("*, aggregated_jobs(*)")\
             .eq("user_id", user_id)\
             .eq("track_id", track_id)\
             .order("match_percentage_score", desc=True)\
-            .range(offset, offset + limit - 1)\
             .execute()
 
         if not rankings.data:
             return {"jobs": [], "total": 0}
 
+        # Get user's preferred currency for salary conversion
+        from services.currency import convert, CURRENCY_SYMBOLS
+        profile_curr = supabase.table("user_profiles").select("preferred_currency").eq("user_id", user_id).execute()
+        user_currency = (profile_curr.data[0].get("preferred_currency") if profile_curr.data else None) or "INR"
+
         jobs = []
         for r in rankings.data:
             job = r.get("aggregated_jobs") or {}
+            job_market = job.get("job_market") or "India"
+
+            # Filter by target markets if specified
+            if target_markets and job_market not in target_markets:
+                continue
+
+            sal_min = job.get("estimated_salary_min")
+            sal_max = job.get("estimated_salary_max")
+            job_currency = "INR" if job_market == "India" else (
+                "GBP" if job_market == "UK" else "SGD" if job_market == "SG" else "USD"
+            )
+
+            # Convert salary to user's preferred currency for display
+            display_sal_min = None
+            display_sal_max = None
+            if sal_min is not None:
+                try:
+                    display_sal_min = round(convert(sal_min, job_currency, user_currency), 1)
+                except Exception:
+                    display_sal_min = sal_min
+            if sal_max is not None:
+                try:
+                    display_sal_max = round(convert(sal_max, job_currency, user_currency), 1)
+                except Exception:
+                    display_sal_max = sal_max
+
             jobs.append({
                 "ranking_id": r["ranking_id"],
                 "match_percentage_score": r["match_percentage_score"],
@@ -67,16 +107,24 @@ async def get_feed(
                 "company_name": job.get("company_name"),
                 "job_title": job.get("job_title"),
                 "location": job.get("location"),
+                "job_market": job_market,
                 "skills_needed": job.get("skills_needed") or [],
                 "source_link": job.get("source_link"),
                 "job_description": (job.get("job_description") or "")[:500],
-                "estimated_salary_min": job.get("estimated_salary_min"),
-                "estimated_salary_max": job.get("estimated_salary_max"),
+                "estimated_salary_min": sal_min,
+                "estimated_salary_max": sal_max,
+                "display_salary_min": display_sal_min,
+                "display_salary_max": display_sal_max,
+                "display_currency": user_currency,
+                "display_currency_symbol": CURRENCY_SYMBOLS.get(user_currency, "$"),
                 "estimated_interview_rounds": job.get("estimated_interview_rounds"),
                 "interview_breakdown_notes": job.get("interview_breakdown_notes"),
             })
 
-        return {"jobs": jobs, "total": len(jobs)}
+        total = len(jobs)
+        paged = jobs[offset:offset + limit]
+
+        return {"jobs": paged, "total": total}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
