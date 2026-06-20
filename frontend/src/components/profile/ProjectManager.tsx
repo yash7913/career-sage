@@ -42,6 +42,7 @@ export default function ProjectManager({ userId }: { userId: string }) {
   const [editingId, setEditingId]   = useState<string | null>(null)
   const [saving, setSaving]         = useState(false)
   const [synthesizing, setSynthesizing] = useState<string | null>(null)
+  const [actionError, setActionError]   = useState<string | null>(null)
 
   // Add / edit form state
   const [formTitle,     setFormTitle]     = useState('')
@@ -263,6 +264,22 @@ export default function ProjectManager({ userId }: { userId: string }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+      {actionError && (
+        <div style={{
+          padding: '10px 14px', borderRadius: '8px',
+          background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+        }}>
+          <p style={{ fontSize: '12px', color: '#EF4444', margin: 0 }}>⚠ {actionError}</p>
+          <button
+            onClick={() => setActionError(null)}
+            style={{ background: 'none', border: 'none', color: 'rgba(239,68,68,0.6)', cursor: 'pointer', fontSize: '12px', padding: 0 }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {projects.length === 0 && !adding && (
         <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>
