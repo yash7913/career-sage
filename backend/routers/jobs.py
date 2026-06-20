@@ -4,6 +4,8 @@ from typing import Optional
 import os
 from supabase import create_client
 from dotenv import load_dotenv
+from logger import get_logger
+log = get_logger(__name__)
 load_dotenv()
 
 router = APIRouter()
@@ -201,7 +203,7 @@ async def add_manual_job(req: ManualJobRequest):
         }
 
         result = dedup_and_save([job])
-        print(f"Manual job saved: {result}")
+        log.info(f"Manual job saved: {result}")
 
         saved_job = supabase.table("aggregated_jobs")\
             .select("id")\

@@ -37,6 +37,9 @@ import anthropic
 from dotenv import load_dotenv
 load_dotenv()
 
+from logger import get_logger
+log = get_logger(__name__)
+
 supabase = create_client(
     os.getenv("SUPABASE_URL"),
     os.getenv("SUPABASE_SERVICE_KEY")
@@ -62,7 +65,7 @@ async def _stage1_extract_candidates(documents: list[dict]) -> list[dict]:
         try:
             file_bytes = supabase.storage.from_("user-documents").download(doc["storage_path"])
             text = extract_text_from_bytes(file_bytes, doc["file_name"])
-            print(f"[Pipeline:S1] {doc['file_name']} — extracted {len(text) if text else 0} chars")
+            log.info(f"[Pipeline:S1] {doc['file_name']} — extracted {len(text) if text else 0} chars")
             if text:
                 # Scale per-doc budget down as document count grows, so total
                 # input stays bounded regardless of how many files are uploaded.
@@ -75,10 +78,10 @@ async def _stage1_extract_candidates(documents: list[dict]) -> list[dict]:
                     "text": text[:per_doc_budget],
                 })
         except Exception as e:
-            print(f"[Pipeline:S1] {doc.get('file_name')} FAILED: {e}")
+            log.info(f"[Pipeline:S1] {doc.get('file_name')} FAILED: {e}")
             continue
 
-    print(f"[Pipeline:S1] {len(doc_excerpts)}/{len(documents)} docs yielded usable text")
+    log.info(f"[Pipeline:S1] {len(doc_excerpts)}/{len(documents)} docs yielded usable text")
 
     if not doc_excerpts:
         return []
@@ -116,7 +119,7 @@ Rules:
     )
 
     raw = _strip_json_fences(message.content[0].text)
-    print(f"[Pipeline:S1] Claude response length: {len(raw)} chars, stop_reason: {message.stop_reason}")
+    log.info(f"[Pipeline:S1] Claude response length: {len(raw)} chars, stop_reason: {message.stop_reason}")
 
     try:
         candidates = json.loads(raw)
@@ -141,7 +144,7 @@ Rules:
                 recovered.append(obj)
             except json.JSONDecodeError:
                 continue
-        print(f"[Pipeline:S1] Recovered {len(recovered)} complete objects from truncated response")
+        log.info(f"[Pipeline:S1] Recovered {len(recovered)} complete objects from truncated response")
         return recovered
 
 
@@ -329,23 +332,23 @@ Return ONLY valid JSON:
 async def run_project_pipeline(user_id: str, documents: list[dict]):
     """Entry point — runs all three stages."""
     if not documents:
-        print("[Pipeline] No documents provided")
+        log.info("[Pipeline] No documents provided")
         return
 
-    print(f"[Pipeline] Stage 1 — extracting candidates from {len(documents)} docs")
+    log.info(f"[Pipeline] Stage 1 — extracting candidates from {len(documents)} docs")
     candidates = await _stage1_extract_candidates(documents)
-    print(f"[Pipeline] Stage 1 found {len(candidates)} candidates: {[c.get('title') for c in candidates]}")
+    log.info(f"[Pipeline] Stage 1 found {len(candidates)} candidates: {[c.get('title') for c in candidates]}")
     if not candidates:
-        print("[Pipeline] No candidates found, stopping")
+        log.info("[Pipeline] No candidates found, stopping")
         return
 
-    print(f"[Pipeline] Stage 2 — resolving duplicates")
+    log.info(f"[Pipeline] Stage 2 — resolving duplicates")
     resolved = await _stage2_resolve_duplicates(candidates)
-    print(f"[Pipeline] Stage 2 resolved to {len(resolved)} projects: {[r.get('title') for r in resolved]}")
+    log.info(f"[Pipeline] Stage 2 resolved to {len(resolved)} projects: {[r.get('title') for r in resolved]}")
     if not resolved:
-        print("[Pipeline] No resolved projects, stopping")
+        log.info("[Pipeline] No resolved projects, stopping")
         return
 
-    print(f"[Pipeline] Stage 3 — enriching and saving")
+    log.info(f"[Pipeline] Stage 3 — enriching and saving")
     await _stage3_enrich_and_save(user_id, resolved, documents)
-    print(f"[Pipeline] Stage 3 complete")
+    log.info(f"[Pipeline] Stage 3 complete")
