@@ -2858,7 +2858,7 @@ Return ONLY valid JSON:
   "years_to_ceiling": "Estimated years",
   "key_skills_needed": ["skill1", "skill2", "skill3"],
   "biggest_risk": "Main risk on IC path",
-  "compensation_ceiling": "Max realistic total compensation as IC in India e.g. 120 LPA or 95 LPA — return only the number range, not a decimal like 2.8"
+  "compensation_ceiling": "Max realistic ANNUAL total compensation as IC in India, expressed in LPA (Lakhs Per Annum). Format MUST be exactly: '<low>-<high> LPA' using whole numbers between 15 and 300. Correct examples: '85-120 LPA', '150-200 LPA', '40-55 LPA'. INCORRECT examples to avoid: '2.0-2.8 LPA' (too small, looks like a decimal fraction not lakhs), '2.8 LPA' (single number), '85 lakhs' (wrong unit format). Double-check your number is realistic — Staff/Principal-level IC compensation in India typically ranges 60-250 LPA depending on company tier."
 }}""",
 
             "job_change": f"""You are a senior career advisor for tech professionals in India.
