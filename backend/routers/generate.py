@@ -112,6 +112,66 @@ def save_version(user_id: str, track_id: str, job_id: str,
     return result.data[0]["version_id"] if result.data else ""
 
 
+def _rank_projects_for_job(user_id: str, job_title: str, job_description: str, skills_needed: list) -> str:
+    """Fuzzy-rank the user's saved projects by relevance to this specific
+    job, using simple keyword overlap (no extra Claude call needed — this
+    keeps resume generation fast). Returns a formatted text block ready to
+    drop into a prompt, or empty string if the user has no projects."""
+    try:
+        projects = supabase.table("user_projects")\
+            .select("title, description, synthesized_summary, outcomes, tech_stack")\
+            .eq("user_id", user_id)\
+            .execute()
+
+        if not projects.data:
+            return ""
+
+        jd_lower = (job_description or "").lower()
+        title_lower = (job_title or "").lower()
+        needed_skills_lower = {s.lower() for s in (skills_needed or [])}
+
+        scored = []
+        for proj in projects.data:
+            score = 0
+            proj_tech = [t.lower() for t in (proj.get("tech_stack") or [])]
+
+            # Tech stack overlap with job's required skills — strongest signal
+            score += sum(2 for t in proj_tech if t in needed_skills_lower)
+
+            # Project title/summary words appearing in the JD — secondary signal
+            summary_text = f"{proj.get('title', '')} {proj.get('synthesized_summary') or proj.get('description') or ''}".lower()
+            summary_words = set(w for w in summary_text.split() if len(w) > 4)
+            score += sum(1 for w in summary_words if w in jd_lower)
+
+            # Has real content (substantial, not just a one-liner) — small bonus
+            if proj.get("synthesized_summary"):
+                score += 1
+
+            scored.append((score, proj))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        top_projects = [p for score, p in scored[:3] if score > 0] or [p for _, p in scored[:2]]
+
+        if not top_projects:
+            return ""
+
+        blocks = []
+        for proj in top_projects:
+            summary = proj.get("synthesized_summary") or proj.get("description") or ""
+            outcomes = proj.get("outcomes") or ""
+            tech = ", ".join(proj.get("tech_stack") or [])
+            block = f"- {proj['title']}: {summary}"
+            if outcomes:
+                block += f" Outcomes: {outcomes}."
+            if tech:
+                block += f" Tech: {tech}."
+            blocks.append(block)
+
+        return "\n".join(blocks)
+    except Exception:
+        return ""  # Never block resume generation if project ranking fails
+
+
 def build_context(user_id: str, track_id: str, job_id: str) -> dict:
     profile = supabase.table("user_profiles")\
         .select("*")\
@@ -142,6 +202,13 @@ def build_context(user_id: str, track_id: str, job_id: str) -> dict:
     t = track.data[0]
     j = job.data[0]
     gaps = ranking.data[0].get("identified_skill_gaps", []) if ranking.data else []
+
+    ranked_projects = _rank_projects_for_job(
+        user_id,
+        j.get("job_title") or "",
+        j.get("job_description") or "",
+        j.get("skills_needed") or [],
+    )
 
     skills = p.get("extracted_skills") or []
     skill_list = ", ".join(skills) if isinstance(skills, list) else str(skills)
@@ -179,6 +246,7 @@ def build_context(user_id: str, track_id: str, job_id: str) -> dict:
         "job_title": j.get("job_title") or "",
         "job_description": (j.get("job_description") or "")[:4000],
         "skill_gaps": ", ".join(gaps),
+        "ranked_projects": ranked_projects,
     }
 
 

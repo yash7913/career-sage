@@ -38,12 +38,15 @@ Rules:
 
 
 def build_experience_prompt(ctx: dict) -> str:
+    relevant_projects = ctx.get('ranked_projects') or ''
+    projects_section = f"\nRELEVANT PROJECTS (rank these higher in the narrative when they fit naturally — these are the candidate's most relevant work for THIS specific job):\n{relevant_projects}\n" if relevant_projects else ""
+
     return f"""You are an expert resume writer. Write ONLY the experience section for this candidate.
 
 CANDIDATE PROFILE:
 Full experience: {ctx['raw_profile_text']}
 Education: {ctx['education_data']}
-
+{projects_section}
 TARGET JOB:
 Company: {ctx['company_name']}
 Title: {ctx['job_title']}
