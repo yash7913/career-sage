@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { createClient } from '@/lib/supabase/client'
 
@@ -69,7 +69,23 @@ export default function VaultUpload({
   const [linkedinResult, setLinkedinResult] = useState<string | null>(null)
   const [pendingLinkedinFiles, setPendingLinkedinFiles] = useState<File[]>([])
   const [uploadLimitMessage, setUploadLimitMessage] = useState<string | null>(null)
+  const [existingDocCount, setExistingDocCount] = useState(0)
   const supabase = createClient()
+
+  useEffect(() => {
+    const fetchExistingCount = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/documents/${user.id}`)
+        if (res.ok) {
+          const data = await res.json()
+          setExistingDocCount((data.documents || []).length)
+        }
+      } catch {}
+    }
+    fetchExistingCount()
+  }, [])
 
   const handleLinkedinPdf = async (file: File) => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -112,7 +128,7 @@ export default function VaultUpload({
       } = await supabase.auth.getUser()
       if (!user) return
 
-      const currentCount = files.length
+      const currentCount = existingDocCount + files.length
       const remainingSlots = MAX_DOCS - currentCount
 
       if (remainingSlots <= 0) {
