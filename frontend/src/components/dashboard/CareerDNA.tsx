@@ -409,6 +409,7 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
   const [copied, setCopied]         = useState(false)
   const [decisionLoading, setDecisionLoading] = useState<string | null>(null)
   const [decisionResult, setDecisionResult]   = useState<Record<string, unknown> | null>(null)
+  const [decisionError, setDecisionError]     = useState<string | null>(null)
   const [askQuestion, setAskQuestion]   = useState('')
   const [askLoading, setAskLoading]     = useState(false)
   const [askResult, setAskResult]       = useState<string | null>(null)
@@ -449,15 +450,21 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
 
   const handleDecision = async (key: string) => {
     setDecisionLoading(key)
+    setDecisionError(null)
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/career-decision`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId, decision_type: key }),
       })
+      if (!res.ok) {
+        throw new Error(`Analysis failed (${res.status}). Please try again.`)
+      }
       const result = await res.json()
       setDecisionResult(result)
-    } catch {}
+    } catch (e) {
+      setDecisionError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
+    }
     setDecisionLoading(null)
   }
 
@@ -876,9 +883,25 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
                 <span>{decisionLoading === opt.key ? 'Analysing...' : opt.label}</span>
               </button>
             ))}
-
-
           </div>
+
+          {decisionError && (
+            <div style={{
+              marginTop: '12px', padding: '12px 14px', borderRadius: '10px',
+              background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+            }}>
+              <p style={{ fontSize: '12px', color: '#EF4444', margin: 0 }}>
+                ⚠ {decisionError}
+              </p>
+              <button
+                onClick={() => setDecisionError(null)}
+                style={{ background: 'none', border: 'none', color: 'rgba(239,68,68,0.6)', cursor: 'pointer', fontSize: '12px', padding: 0 }}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── Ask Career Sage ── */}
