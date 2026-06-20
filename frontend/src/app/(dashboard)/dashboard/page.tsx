@@ -35,19 +35,16 @@ export default async function DashboardPage() {
 
   let matchedJobs = 0
   let topMatchScore = 0
-
   if (hasTracks && tracks.length > 0) {
     try {
-      const feedRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/feed?user_id=${user.id}&track_id=${tracks[0].track_id}&limit=50`,
+      const statsRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/feed-stats?user_id=${user.id}&track_id=${tracks[0].track_id}`,
         { cache: 'no-store' }
       )
-      if (feedRes.ok) {
-        const feedData = await feedRes.json()
-        matchedJobs = feedData.total || feedData.jobs?.length || 0
-        topMatchScore = feedData.jobs?.length > 0
-          ? Math.max(...feedData.jobs.map((j: { match_percentage_score: number }) => j.match_percentage_score))
-          : 0
+      if (statsRes.ok) {
+        const statsData = await statsRes.json()
+        matchedJobs = statsData.total || 0
+        topMatchScore = statsData.top_match_score || 0
       }
     } catch {}
   }

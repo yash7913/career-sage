@@ -40,6 +40,34 @@ async def match_jobs(user_id: str, track_id: str, background: bool = False):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/feed-stats")
+async def get_feed_stats(user_id: str, track_id: str):
+    """Lightweight count + top match score, without fetching full job objects.
+    Used by the dashboard stats cards — avoids the 50s+ cost of fetching
+    1900+ full ranked jobs with joins just to read a count."""
+    try:
+        count_result = supabase.table("user_job_rankings")\
+            .select("ranking_id", count="exact")\
+            .eq("user_id", user_id)\
+            .eq("track_id", track_id)\
+            .execute()
+
+        top_result = supabase.table("user_job_rankings")\
+            .select("match_percentage_score")\
+            .eq("user_id", user_id)\
+            .eq("track_id", track_id)\
+            .order("match_percentage_score", desc=True)\
+            .limit(1)\
+            .execute()
+
+        total = count_result.count or 0
+        top_score = top_result.data[0]["match_percentage_score"] if top_result.data else 0
+
+        return {"total": total, "top_match_score": top_score}
+    except Exception as e:
+        log.error(f"feed-stats failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/feed")
 async def get_feed(
     user_id: str,
