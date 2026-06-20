@@ -100,6 +100,7 @@ export default function TrackSetup({ userId, onComplete, existingTrack }: TrackS
   const [saving,        setSaving]       = useState(false)
   const [done,          setDone]         = useState(false)
   const [error,         setError]        = useState('')
+  const [matchingMessage, setMatchingMessage] = useState('Updating your job matches...')
 
   const isEditing = !!existingTrack
 
@@ -177,16 +178,36 @@ export default function TrackSetup({ userId, onComplete, existingTrack }: TrackS
         }),
       })
 
-      // Re-run matching in the background — needed both for new tracks (first
-      // match) and edits (preferences changed, rankings should reflect that)
+      setDone(true)
+
+      // Show rotating progress messages while matching runs, then redirect
+      // to Discover automatically once it's done — same pattern as
+      // onboarding Step 8, so the wait feels intentional, not broken.
+      const messages = [
+        'Updating your job matches...',
+        'Re-ranking roles against your new preferences...',
+        'Almost there...',
+      ]
+      let msgIdx = 0
+      setMatchingMessage(messages[0])
+      const msgInterval = setInterval(() => {
+        msgIdx = (msgIdx + 1) % messages.length
+        setMatchingMessage(messages[msgIdx])
+      }, 2000)
+
       if (newTrackId) {
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/jobs/match?user_id=${userId}&track_id=${newTrackId}`, {
-          method: 'POST',
-        }).catch(() => {})
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/jobs/match?user_id=${userId}&track_id=${newTrackId}`, {
+            method: 'POST',
+          })
+        } catch {
+          // Even if matching fails, still proceed — user can manually refresh on Discover
+        }
       }
 
-      setDone(true)
+      clearInterval(msgInterval)
       onComplete?.()
+      window.location.href = '/dashboard?tab=discover'
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Something went wrong')
     } finally {
@@ -202,13 +223,18 @@ export default function TrackSetup({ userId, onComplete, existingTrack }: TrackS
       <p style={{ fontSize: '15px', fontWeight: 600, color: TEAL, margin: '0 0 4px' }}>
         ✓ Track {isEditing ? 'updated' : 'created'}
       </p>
-      <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: '0 0 16px' }}>{trackName} is ready.</p>
-      <button onClick={() => window.location.reload()} style={{
-        padding: '10px 28px', borderRadius: '8px', background: TEAL,
-        color: '#fff', border: 'none', fontSize: '14px', fontWeight: 600, cursor: 'pointer',
+      <p style={{ fontSize: '13px', color: TEAL, margin: '0 0 16px', fontWeight: 500 }}>
+        {matchingMessage}
+      </p>
+      <div style={{
+        height: '3px', background: 'rgba(255,255,255,0.06)',
+        borderRadius: '2px', overflow: 'hidden', maxWidth: '240px', margin: '0 auto',
       }}>
-        Go to Discovery →
-      </button>
+        <div style={{
+          height: '100%', background: TEAL, borderRadius: '2px',
+          animation: 'progress-pulse 1.6s ease-in-out infinite', width: '40%',
+        }} />
+      </div>
     </div>
   )
 
