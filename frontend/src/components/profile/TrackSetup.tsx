@@ -58,13 +58,13 @@ interface ExistingTrack {
   track_id: string
   track_name: string
   track_color: string
-  target_roles: string[]
-  target_seniority: string | null
-  salary_min_lpa: number | null
-  salary_target_lpa: number | null
-  work_mode_preference: string[]
-  aspiration_skills: string[]
-  personal_notes: string | null
+  target_roles?: string[]
+  target_seniority?: string | null
+  salary_min_lpa?: number | null
+  salary_target_lpa?: number | null
+  work_mode_preference?: string[]
+  aspiration_skills?: string[]
+  personal_notes?: string | null
 }
 
 interface TrackSetupProps {
@@ -73,7 +73,7 @@ interface TrackSetupProps {
   existingTrack?: ExistingTrack
 }
 
-function parseExistingFn(targetRoles: string[]): { fn: string; level: string; path: 'IC' | 'Management' } {
+function parseExistingFn(targetRoles: string[] | undefined): { fn: string; level: string; path: 'IC' | 'Management' } {
   // target_roles[1] is the bare function name (e.g. "Product Management"),
   // target_roles[0] is "<level> <fn>" — see handleSave's track_name construction
   const fnGuess = targetRoles?.[1] || 'Product Management'

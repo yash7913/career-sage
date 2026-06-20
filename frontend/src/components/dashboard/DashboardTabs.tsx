@@ -56,6 +56,13 @@ interface Track {
   track_id: string
   track_name: string
   track_color: string
+  target_roles?: string[]
+  target_seniority?: string | null
+  salary_min_lpa?: number | null
+  salary_target_lpa?: number | null
+  work_mode_preference?: string[]
+  aspiration_skills?: string[]
+  personal_notes?: string | null
 }
 
 interface DashboardTabsProps {
