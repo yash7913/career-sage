@@ -275,10 +275,10 @@ const res = await fetch(
     [supabase]
   )
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
     onDrop,
     accept: ACCEPTED_TYPES,
-    maxSize: 20 * 1024 * 1024,
+    maxSize: 10 * 1024 * 1024,
     maxFiles: MAX_DOCS,
   })
 
@@ -406,6 +406,19 @@ const res = await fetch(
           <p style={{ fontSize: '12px', color: 'rgba(245,158,11,0.9)', margin: 0 }}>
             ⚠ {uploadLimitMessage}
           </p>
+        </div>
+      )}
+
+      {fileRejections.length > 0 && (
+        <div style={{
+          padding: '10px 14px', borderRadius: '8px', marginBottom: '1rem',
+          background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
+        }}>
+          {fileRejections.map(({ file, errors }) => (
+            <p key={file.name} style={{ fontSize: '12px', color: '#EF4444', margin: '2px 0' }}>
+              ⚠ {file.name}: {errors[0]?.code === 'file-too-large' ? 'File is over 10MB' : errors[0]?.message}
+            </p>
+          ))}
         </div>
       )}
 
