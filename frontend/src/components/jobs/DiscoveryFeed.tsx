@@ -242,7 +242,7 @@ export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkill
           </p>
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', margin: '0 0 20px', maxWidth: '420px', marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6 }}>
             This can happen if your target markets or function are still thinly covered in our job database,
-            or if matching hasn't run yet for this track. A few things that might help:
+            or if matching hasn&apos;t run yet for this track. A few things that might help:
           </p>
           <div style={{
             display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: '380px',
