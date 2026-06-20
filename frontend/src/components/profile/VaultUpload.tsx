@@ -70,19 +70,26 @@ export default function VaultUpload({
   const [pendingLinkedinFiles, setPendingLinkedinFiles] = useState<File[]>([])
   const [uploadLimitMessage, setUploadLimitMessage] = useState<string | null>(null)
   const [existingDocCount, setExistingDocCount] = useState(0)
+  const [docCountLoaded, setDocCountLoaded] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
     const fetchExistingCount = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        setDocCountLoaded(true)
+        return
+      }
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/documents/${user.id}`)
         if (res.ok) {
           const data = await res.json()
           setExistingDocCount((data.documents || []).length)
         }
-      } catch {}
+      } catch {
+      } finally {
+        setDocCountLoaded(true)
+      }
     }
     fetchExistingCount()
   }, [])
@@ -127,6 +134,14 @@ export default function VaultUpload({
         data: { user },
       } = await supabase.auth.getUser()
       if (!user) return
+
+      // Guard against the race where a file is dropped before the existing
+      // document count has finished loading — without this, the cap check
+      // below would compare against 0 instead of the real count.
+      if (!docCountLoaded) {
+        setUploadLimitMessage('Still checking your current document count — please try again in a moment.')
+        return
+      }
 
       const currentCount = existingDocCount + files.length
       const remainingSlots = MAX_DOCS - currentCount
