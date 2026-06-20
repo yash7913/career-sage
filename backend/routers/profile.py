@@ -160,6 +160,7 @@ class ContactUpdateRequest(BaseModel):
     current_level: Optional[str] = None
     career_status: Optional[str] = None
     onboarding_complete: Optional[bool] = None
+    work_email: Optional[str] = None
 
 @router.patch("/contact")
 async def update_contact(req: ContactUpdateRequest):
@@ -173,6 +174,7 @@ async def update_contact(req: ContactUpdateRequest):
         if req.current_level is not None: updates["current_level"] = req.current_level
         if req.career_status is not None: updates["career_status"] = req.career_status
         if req.onboarding_complete is not None: updates["onboarding_complete"] = req.onboarding_complete
+        if req.work_email is not None: updates["work_email"] = req.work_email
         if updates:
             supabase.table("user_profiles").update(updates).eq("user_id", req.user_id).execute()
         return {"status": "ok"}

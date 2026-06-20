@@ -43,6 +43,7 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
   const [location, setLocation] = useState('')
   const [phone, setPhone] = useState('')
   const [currentRole, setCurrentRole] = useState('')
+  const [workEmail, setWorkEmail] = useState('')
 
   // Step 4
   const [careerStatus, setCareerStatus] = useState('')
@@ -102,7 +103,7 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
       if (step === 1) {
         await saveStep({ search_status: searchStatus })
       } else if (step === 3) {
-        await saveStep({ full_name: fullName, location, phone: phone || undefined })
+        await saveStep({ full_name: fullName, location, phone: phone || undefined, work_email: workEmail || undefined })
       } else if (step === 4) {
         await saveStep({ career_status: careerStatus })
       } else if (step === 5) {
@@ -291,6 +292,15 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>CURRENT OR MOST RECENT ROLE</label>
                 <input value={currentRole} onChange={e => setCurrentRole(e.target.value)} placeholder="Senior Product Manager" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em', display: 'block', marginBottom: '6px' }}>
+                  WORK EMAIL <span style={{ color: 'rgba(255,255,255,0.25)', fontWeight: 400, textTransform: 'none' }}>(optional)</span>
+                </label>
+                <input value={workEmail} onChange={e => setWorkEmail(e.target.value)} placeholder="you@company.com" type="email" style={inputStyle} />
+                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', margin: '6px 0 0' }}>
+                  Used for company-specific insights. Never shared or visible to your employer.
+                </p>
               </div>
             </div>
           </div>
