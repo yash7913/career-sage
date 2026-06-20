@@ -331,6 +331,9 @@ class GenerateAssetRequest(BaseModel):
 async def generate_profile_asset(req: GenerateAssetRequest):
     try:
         import anthropic
+
+        await check_generation_limit(req.user_id, "generate_asset")
+
         profile = supabase.table("user_profiles").select("*").eq("user_id", req.user_id).execute()
         if not profile.data:
             raise HTTPException(status_code=404, detail="Profile not found")
@@ -964,6 +967,8 @@ async def synthesize_project(project_id: str, req: SynthesizeProjectRequest):
     try:
         import anthropic
         import json
+
+        await check_generation_limit(req.user_id, "synthesize_project")
 
         # Get project
         project = supabase.table("user_projects").select("*").eq(
@@ -2609,6 +2614,8 @@ async def ask_career_sage(req: AskCareerSageRequest):
         import json
         import hashlib
 
+        await check_generation_limit(req.user_id, "ask_career_sage")
+
         if not req.question or len(req.question.strip()) < 5:
             raise HTTPException(status_code=400, detail="Question too short")
 
@@ -2705,6 +2712,8 @@ async def career_decision(req: CareerDecisionRequest):
 
         if req.decision_type not in DECISION_TYPES:
             raise HTTPException(status_code=400, detail=f"decision_type must be one of {DECISION_TYPES}")
+
+        await check_generation_limit(req.user_id, "career_decision")
 
         profile = supabase.table("user_profiles").select("*").eq("user_id", req.user_id).execute()
         if not profile.data:

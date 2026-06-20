@@ -1,24 +1,56 @@
 from fastapi import HTTPException
 from supabase import create_client
 import os
-
+import time
 supabase = create_client(
     os.getenv("SUPABASE_URL"),
     os.getenv("SUPABASE_SERVICE_KEY")
 )
-
 FREE_TIER_LIMITS = {
     "resume_generation": 3,
     "star_stories": 2,
     "offer_analysis": 3,
     "career_decision": 6,
+    "ask_career_sage": 15,
+    "synthesize_project": 10,
+    "generate_asset": 10,
 }
+
+# In-memory spam guard — caps rapid-fire calls within a short window,
+# independent of tier or monthly quota. Resets on backend restart, which
+# is acceptable since this guards against burst abuse, not long-term quota.
+_recent_calls: dict[str, list[float]] = {}
+SPAM_WINDOW_SECONDS = 60
+SPAM_MAX_CALLS_PER_WINDOW = 8
+
+
+def check_spam_guard(user_id: str, action: str):
+    """Blocks rapid-fire calls regardless of tier — even Pro users shouldn't
+    be able to hammer an AI endpoint 50 times in a minute."""
+    key = f"{user_id}:{action}"
+    now = time.time()
+    calls = _recent_calls.get(key, [])
+    calls = [t for t in calls if now - t < SPAM_WINDOW_SECONDS]
+
+    if len(calls) >= SPAM_MAX_CALLS_PER_WINDOW:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": "rate_limited",
+                "message": "You're sending requests too quickly. Please wait a moment and try again.",
+            }
+        )
+
+    calls.append(now)
+    _recent_calls[key] = calls
 
 async def check_generation_limit(user_id: str, action: str = "resume_generation"):
     """
     Check if a free tier user has exceeded their monthly generation limit.
-    Pro and Academic users are unlimited.
+    Pro and Academic users are unlimited on quota, but everyone is subject
+    to the spam guard regardless of tier.
     """
+    check_spam_guard(user_id, action)
     try:
         profile = supabase.table("user_profiles").select(
             "tier_status, generation_count"
