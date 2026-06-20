@@ -368,7 +368,7 @@ function SettingsTab({
                       <TrackSetup
                         userId={userId}
                         existingTrack={track}
-                        onComplete={() => { setEditingTrackId(null); onTrackCreated() }}
+                        onComplete={() => { setEditingTrackId(null); window.location.reload() }}
                       />
                     </div>
                   )}
