@@ -37,6 +37,12 @@ def _configure_root():
     root = logging.getLogger()
     root.setLevel(logging.INFO)
 
+    # Quiet noisy third-party libraries — httpx logs every single HTTP
+    # request at INFO level, which would drown out our own application logs
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("supabase").setLevel(logging.WARNING)
+
     formatter = logging.Formatter(_FORMAT, datefmt=_DATE_FORMAT)
 
     # Console handler — same place print() used to show up
