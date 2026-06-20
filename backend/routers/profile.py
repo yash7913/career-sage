@@ -7,6 +7,9 @@ from supabase import create_client
 from dotenv import load_dotenv
 load_dotenv()
 
+from logger import get_logger
+log = get_logger(__name__)
+
 router = APIRouter()
 supabase = create_client(
     os.getenv("SUPABASE_URL"),
@@ -873,7 +876,7 @@ async def delete_document(req: DeleteDocumentRequest):
         try:
             supabase.storage.from_("user-documents").remove([storage_path])
         except Exception as storage_err:
-            print(f"Storage delete failed: {storage_err}")
+            log.info(f"Storage delete failed: {storage_err}")
 
         # Delete from user_documents table
         supabase.table("user_documents").delete().eq("doc_id", req.doc_id).execute()
@@ -1527,7 +1530,7 @@ Rules:
             updates["pentagram_scores"] = None
 
         except Exception as enrich_err:
-            print(f"Post-import enrichment failed: {enrich_err}")
+            log.info(f"Post-import enrichment failed: {enrich_err}")
 
         # Rebuild raw_profile_text
         roles_text  = ", ".join([f"{w.get('title')} at {w.get('company')}" for w in (data.get("work_history") or [])[:5]])
@@ -1607,7 +1610,7 @@ Rules:
             }).eq("user_id", user_id).execute()
 
         except Exception as enrich_err:
-            print(f"Post-import enrichment failed: {enrich_err}")
+            log.info(f"Post-import enrichment failed: {enrich_err}")
 
         return {
             "status": "ok",
