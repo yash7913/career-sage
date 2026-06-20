@@ -90,6 +90,37 @@ async def save_document(req: DocumentSaveRequest):
         if existing.data:
             return {"status": "exists", "doc_id": existing.data[0]["doc_id"]}
 
+        # For resumes specifically — multiple uploaded versions of "the same
+        # resume" are common (re-exports, minor edits) and create noisy
+        # duplicate active documents that all get sent to extraction. Flag
+        # likely-duplicate resumes by filename similarity so the frontend can
+        # offer to replace the old one rather than silently stacking up.
+        likely_duplicate_of = None
+        if req.doc_tag in ("RESUME", "LINKEDIN_EXPORT"):
+            import difflib
+            import re as _re
+
+            def _normalize(name: str) -> str:
+                name = _re.sub(r'\.[^/.]+$', '', name)  # strip extension
+                name = _re.sub(r'\s*\(\d+\)\s*$', '', name)  # strip "(2)" suffix
+                name = _re.sub(r'[-_\s]+', ' ', name).strip().lower()
+                return name
+
+            same_tag_docs = supabase.table("user_documents")\
+                .select("doc_id, file_name")\
+                .eq("user_id", req.user_id)\
+                .eq("doc_tag", req.doc_tag)\
+                .eq("is_active", True)\
+                .execute()
+
+            new_norm = _normalize(req.file_name)
+            for doc in (same_tag_docs.data or []):
+                existing_norm = _normalize(doc["file_name"])
+                similarity = difflib.SequenceMatcher(None, new_norm, existing_norm).ratio()
+                if similarity > 0.7:
+                    likely_duplicate_of = {"doc_id": doc["doc_id"], "file_name": doc["file_name"]}
+                    break
+
         result = supabase.table("user_documents").insert({
             "user_id": req.user_id,
             "file_name": req.file_name,
@@ -98,7 +129,10 @@ async def save_document(req: DocumentSaveRequest):
             "doc_tag": req.doc_tag,
         }).execute()
 
-        return {"status": "saved", "doc_id": result.data[0]["doc_id"]}
+        response = {"status": "saved", "doc_id": result.data[0]["doc_id"]}
+        if likely_duplicate_of:
+            response["likely_duplicate_of"] = likely_duplicate_of
+        return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

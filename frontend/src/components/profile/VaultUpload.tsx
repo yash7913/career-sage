@@ -211,6 +211,7 @@ const res = await fetch(
 
           const docResult = await res.json()
           const isDuplicate = docResult.status === 'exists'
+          const likelyDup = docResult.likely_duplicate_of
 
           setFiles(prev =>
             prev.map(f =>
@@ -220,6 +221,8 @@ const res = await fetch(
                     status: 'done',
                     error: isDuplicate
                       ? 'Already in your vault — no changes detected'
+                      : likelyDup
+                      ? `Looks similar to "${likelyDup.file_name}" already in your vault — consider removing the old one`
                       : undefined,
                   }
                 : f
