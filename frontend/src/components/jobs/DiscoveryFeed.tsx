@@ -236,9 +236,31 @@ export default function DiscoveryFeed({ userId, tracks, onDownload, profileSkill
           background: CARD, border: `1px solid ${BORDER}`,
           borderRadius: '14px',
         }}>
-          <p style={{ color: 'rgba(255,255,255,0.4)', margin: '0 0 12px' }}>
-            No matches yet for this track.
+          <p style={{ fontSize: '32px', margin: '0 0 12px' }}>🔍</p>
+          <p style={{ color: '#fff', fontSize: '15px', fontWeight: 600, margin: '0 0 8px' }}>
+            No matches yet for this track
           </p>
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', margin: '0 0 20px', maxWidth: '420px', marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6 }}>
+            This can happen if your target markets or function are still thinly covered in our job database,
+            or if matching hasn't run yet for this track. A few things that might help:
+          </p>
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: '380px',
+            margin: '0 auto 20px', textAlign: 'left',
+          }}>
+            <div style={{ display: 'flex', gap: '8px', fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+              <span style={{ color: TEAL, flexShrink: 0 }}>→</span>
+              <span>Try adding India or US as a target market in Settings — these have the deepest job coverage right now</span>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+              <span style={{ color: TEAL, flexShrink: 0 }}>→</span>
+              <span>Click &quot;Refresh matches&quot; below — new roles are scraped daily and this re-checks against the latest set</span>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+              <span style={{ color: TEAL, flexShrink: 0 }}>→</span>
+              <span>Found a role elsewhere? Use &quot;+ Manual URL&quot; above to add it directly to your pipeline</span>
+            </div>
+          </div>
           <button
             onClick={handleMatch}
             style={{
