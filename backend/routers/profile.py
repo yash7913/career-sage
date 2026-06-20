@@ -2661,7 +2661,7 @@ async def ask_career_sage(req: AskCareerSageRequest):
 
         p = profile.data[0]
 
-        # Check cache — hash of question + user_id
+        # Check cache — hash of question + user_id, with staleness check
         q_hash = hashlib.md5(f"{req.user_id}:{req.question.strip().lower()}".encode()).hexdigest()
         cached_answers = p.get("career_decisions") or {}
         if isinstance(cached_answers, str):
@@ -2669,7 +2669,16 @@ async def ask_career_sage(req: AskCareerSageRequest):
 
         cache_key = f"ask_{q_hash}"
         if cache_key in cached_answers:
-            return {"answer": cached_answers[cache_key], "cached": True}
+            cached_entry = cached_answers[cache_key]
+            # Older cache entries are plain strings (pre-staleness-check) —
+            # treat those as always stale so they regenerate once, then
+            # adopt the new dict format going forward
+            if isinstance(cached_entry, dict):
+                cached_at = cached_entry.get("_cached_at")
+                profile_updated_at = p.get("updated_at")
+                is_stale = cached_at and profile_updated_at and profile_updated_at > cached_at
+                if not is_stale:
+                    return {"answer": cached_entry["answer"], "cached": True}
 
         # Build profile context
         cohort         = p.get("cohort") or "Tech Professional"
@@ -2717,8 +2726,12 @@ Guidelines:
 
         answer = message.content[0].text.strip()
 
-        # Cache the answer
-        cached_answers[cache_key] = answer
+        # Cache the answer with timestamp for staleness checking
+        from datetime import datetime, timezone
+        cached_answers[cache_key] = {
+            "answer": answer,
+            "_cached_at": datetime.now(timezone.utc).isoformat(),
+        }
         supabase.table("user_profiles").update({
             "career_decisions": json.dumps(cached_answers)
         }).eq("user_id", req.user_id).execute()
@@ -2757,11 +2770,25 @@ async def career_decision(req: CareerDecisionRequest):
 
         p = profile.data[0]
 
-        # Check cache
-        cache_key = f"decision_{req.decision_type}"
-        cached = p.get(cache_key)
+        # Check cache — was reading the wrong field entirely (a column that's
+        # never written to), so cache never hit before this fix. Also adds
+        # staleness check: if the profile was updated more recently than the
+        # cached answer, the cache is invalid since the underlying facts
+        # (skills, role, comp) may have changed.
+        existing_decisions = p.get("career_decisions") or {}
+        if isinstance(existing_decisions, str):
+            existing_decisions = json.loads(existing_decisions)
+
+        cached = existing_decisions.get(req.decision_type)
         if cached and not req.force_regenerate:
-            return json.loads(cached) if isinstance(cached, str) else cached
+            cached_at = cached.get("_cached_at")
+            profile_updated_at = p.get("updated_at")
+            is_stale = (
+                cached_at and profile_updated_at and
+                profile_updated_at > cached_at
+            )
+            if not is_stale:
+                return cached
 
         cohort         = p.get("cohort") or "Career Explorer"
         impact_pattern = p.get("impact_pattern") or ""
@@ -2977,12 +3004,13 @@ Return ONLY valid JSON:
         result = json.loads(match.group())
         result["decision_type"] = req.decision_type
 
-        # Cache in user_profiles — store up to 6 decision types
-        # Using a jsonb column approach: store all decisions in one field
-        existing_decisions = p.get("career_decisions") or {}
-        if isinstance(existing_decisions, str):
-            existing_decisions = json.loads(existing_decisions)
-        existing_decisions[req.decision_type] = result
+        # Cache in user_profiles — store up to 6 decision types, with a
+        # timestamp so future calls can detect staleness if the profile
+        # changes meaningfully after this was generated.
+        from datetime import datetime, timezone
+        cache_entry = dict(result)
+        cache_entry["_cached_at"] = datetime.now(timezone.utc).isoformat()
+        existing_decisions[req.decision_type] = cache_entry
 
         supabase.table("user_profiles").update({
             "career_decisions": json.dumps(existing_decisions)
