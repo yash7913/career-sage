@@ -13,6 +13,9 @@ supabase = create_client(
     os.getenv("SUPABASE_URL"),
     os.getenv("SUPABASE_SERVICE_KEY")
 )
+from logger import get_logger
+log = get_logger(__name__)
+
 apify = ApifyClient(os.getenv("APIFY_API_TOKEN"))
 APIFY_TOKEN = os.getenv("APIFY_API_TOKEN") or os.getenv("APIFY_TOKEN") or ""
 
@@ -81,7 +84,7 @@ def dedup_and_save(jobs: list[dict], job_market: str = "India") -> dict:
             saved += 1
 
         except Exception as e:
-            print(f"Error saving job {job.get('job_title')}: {e}")
+            log.info(f"Error saving job {job.get('job_title')}: {e}")
             continue
 
     return {"saved": saved, "skipped": skipped}
@@ -89,13 +92,13 @@ def dedup_and_save(jobs: list[dict], job_market: str = "India") -> dict:
 
 async def scrape_linkedin(keywords: list[str], location: str = "India") -> list[dict]:
     if not APIFY_TOKEN:
-        print("No Apify token configured")
+        log.info("No Apify token configured")
         return []
 
     jobs = []
     try:
         for keyword in keywords[:5]:
-            print(f"Scraping LinkedIn for: {keyword}")
+            log.info(f"Scraping LinkedIn for: {keyword}")
             run_url = f"https://api.apify.com/v2/acts/cheap_scraper~linkedin-job-scraper/runs"
             payload = {
                 "keyword": [keyword],
@@ -110,7 +113,7 @@ async def scrape_linkedin(keywords: list[str], location: str = "India") -> list[
                     headers={"Authorization": f"Bearer {APIFY_TOKEN}"},
                 )
                 if not run_res.is_success:
-                    print(f"LinkedIn scraper start failed: {run_res.status_code} {run_res.text}")
+                    log.info(f"LinkedIn scraper start failed: {run_res.status_code} {run_res.text}")
                     if "Monthly usage hard limit exceeded" in run_res.text:
                         raise RuntimeError("APIFY_LIMIT_EXCEEDED")
                     continue
@@ -118,10 +121,10 @@ async def scrape_linkedin(keywords: list[str], location: str = "India") -> list[
                 run_data = run_res.json()
                 run_id = run_data.get("data", {}).get("id")
                 if not run_id:
-                    print("No run ID returned")
+                    log.info("No run ID returned")
                     continue
 
-                print(f"LinkedIn run started: {run_id}")
+                log.info(f"LinkedIn run started: {run_id}")
 
                 for attempt in range(24):
                     await asyncio.sleep(10)
@@ -130,11 +133,11 @@ async def scrape_linkedin(keywords: list[str], location: str = "India") -> list[
                         headers={"Authorization": f"Bearer {APIFY_TOKEN}"},
                     )
                     status = status_res.json().get("data", {}).get("status")
-                    print(f"LinkedIn run status: {status} (attempt {attempt + 1})")
+                    log.info(f"LinkedIn run status: {status} (attempt {attempt + 1})")
                     if status == "SUCCEEDED":
                         break
                     if status in ("FAILED", "ABORTED", "TIMED-OUT"):
-                        print(f"LinkedIn run failed with status: {status}")
+                        log.info(f"LinkedIn run failed with status: {status}")
                         break
 
                 dataset_res = await client.get(
@@ -142,11 +145,11 @@ async def scrape_linkedin(keywords: list[str], location: str = "India") -> list[
                     headers={"Authorization": f"Bearer {APIFY_TOKEN}"},
                 )
                 items = dataset_res.json() if dataset_res.is_success else []
-                print(f"LinkedIn returned {len(items)} items for {keyword}")
+                log.info(f"LinkedIn returned {len(items)} items for {keyword}")
 
                 if items:
-                    print(f"LinkedIn item sample keys: {list(items[0].keys())}")
-                    print(f"LinkedIn item sample: {items[0]}")
+                    log.info(f"LinkedIn item sample keys: {list(items[0].keys())}")
+                    log.info(f"LinkedIn item sample: {items[0]}")
 
                 for item in items:
                     title = (item.get("jobTitle") or "")[:150]
@@ -180,7 +183,7 @@ async def scrape_linkedin(keywords: list[str], location: str = "India") -> list[
                     })
 
     except Exception as e:
-        print(f"LinkedIn scraper error: {e}")
+        log.info(f"LinkedIn scraper error: {e}")
 
     return jobs
 
@@ -190,7 +193,7 @@ async def scrape_indeed(keywords: list[str], location: str = "India") -> list[di
 
     jobs = []
     try:
-        print(f"Scraping Indeed for: {keywords} in {location}")
+        log.info(f"Scraping Indeed for: {keywords} in {location}")
         run_url = "https://api.apify.com/v2/acts/nlZZi3lZre4fM9IET/runs"
         payload = {
                 "country": "India",
@@ -209,17 +212,17 @@ async def scrape_indeed(keywords: list[str], location: str = "India") -> list[di
                 headers={"Authorization": f"Bearer {APIFY_TOKEN}"},
             )
             if not run_res.is_success:
-                print(f"Indeed scraper start failed: {run_res.status_code} {run_res.text}")
+                log.info(f"Indeed scraper start failed: {run_res.status_code} {run_res.text}")
                 if "Monthly usage hard limit exceeded" in run_res.text:
                     raise RuntimeError("APIFY_LIMIT_EXCEEDED")
                 return []
 
             run_id = run_res.json().get("data", {}).get("id")
             if not run_id:
-                print("Indeed: No run ID returned")
+                log.info("Indeed: No run ID returned")
                 return []
 
-            print(f"Indeed run started: {run_id}")
+            log.info(f"Indeed run started: {run_id}")
 
             for attempt in range(30):
                 await asyncio.sleep(10)
@@ -228,11 +231,11 @@ async def scrape_indeed(keywords: list[str], location: str = "India") -> list[di
                     headers={"Authorization": f"Bearer {APIFY_TOKEN}"},
                 )
                 status = status_res.json().get("data", {}).get("status")
-                print(f"Indeed run status: {status} (attempt {attempt + 1})")
+                log.info(f"Indeed run status: {status} (attempt {attempt + 1})")
                 if status == "SUCCEEDED":
                     break
                 if status in ("FAILED", "ABORTED", "TIMED-OUT"):
-                    print(f"Indeed run ended with status: {status}")
+                    log.info(f"Indeed run ended with status: {status}")
                     break
 
             dataset_res = await client.get(
@@ -240,7 +243,7 @@ async def scrape_indeed(keywords: list[str], location: str = "India") -> list[di
                 headers={"Authorization": f"Bearer {APIFY_TOKEN}"},
             )
             items = dataset_res.json() if dataset_res.is_success else []
-            print(f"Indeed returned {len(items)} items")
+            log.info(f"Indeed returned {len(items)} items")
 
             for item in items:
                 title = (item.get("title") or "")[:150]
@@ -285,13 +288,13 @@ async def scrape_indeed(keywords: list[str], location: str = "India") -> list[di
                 })
 
     except Exception as e:
-        print(f"Indeed scraper error: {e}")
+        log.info(f"Indeed scraper error: {e}")
 
     return jobs
 
 
 def scrape_naukri(keywords: list[str], location: str = "India") -> list[dict]:
-    print(f"Scraping Naukri for: {keywords} in {location}")
+    log.info(f"Scraping Naukri for: {keywords} in {location}")
     jobs = []
     try:
         run_input = {
@@ -315,9 +318,9 @@ def scrape_naukri(keywords: list[str], location: str = "India") -> list[dict]:
                     item.get("jdURL", "")
                 ),
             })
-        print(f"Naukri: scraped {len(jobs)} jobs")
+        log.info(f"Naukri: scraped {len(jobs)} jobs")
     except Exception as e:
-        print(f"Naukri scraper error: {e}")
+        log.info(f"Naukri scraper error: {e}")
     return jobs
 
 
@@ -340,9 +343,9 @@ async def scrape_greenhouse(company_name: str, board_token: str) -> list[dict]:
                     "skills_needed": extract_skills_from_text(job.get("content", "")),
                     "job_id": str(job.get("id", "")),
                 })
-        print(f"Greenhouse {company_name}: {len(jobs)} jobs")
+        log.info(f"Greenhouse {company_name}: {len(jobs)} jobs")
     except Exception as e:
-        print(f"Greenhouse error for {company_name}: {e}")
+        log.info(f"Greenhouse error for {company_name}: {e}")
     return jobs
 
 
@@ -368,9 +371,9 @@ async def scrape_lever(company_name: str, lever_slug: str) -> list[dict]:
                     "skills_needed": extract_skills_from_text(description),
                     "job_id": job.get("id", ""),
                 })
-        print(f"Lever {company_name}: {len(jobs)} jobs")
+        log.info(f"Lever {company_name}: {len(jobs)} jobs")
     except Exception as e:
-        print(f"Lever error for {company_name}: {e}")
+        log.info(f"Lever error for {company_name}: {e}")
     return jobs
 
 def clean_html(text: str) -> str:
@@ -569,11 +572,11 @@ async def run_full_scrape(keywords: list[str] = None, location: str = "India") -
     all_jobs = []
 
     linkedin_jobs = await scrape_linkedin(keywords[:5], location)
-    print(f"LinkedIn scraped: {len(linkedin_jobs)} jobs")
+    log.info(f"LinkedIn scraped: {len(linkedin_jobs)} jobs")
     all_jobs.extend(linkedin_jobs)
 
     indeed_jobs = await scrape_indeed(keywords[:5], location)
-    print(f"Indeed scraped: {len(indeed_jobs)} jobs")
+    log.info(f"Indeed scraped: {len(indeed_jobs)} jobs")
     all_jobs.extend(indeed_jobs)
 
     greenhouse_companies = [
@@ -598,9 +601,9 @@ async def run_full_scrape(keywords: list[str] = None, location: str = "India") -
         all_jobs.extend(jobs)
         await asyncio.sleep(0.5)
 
-    print(f"Total jobs collected: {len(all_jobs)}")
+    log.info(f"Total jobs collected: {len(all_jobs)}")
     result = dedup_and_save(all_jobs, job_market="India")
-    print(f"Saved: {result['saved']} | Skipped (existing): {result['skipped']}")
+    log.info(f"Saved: {result['saved']} | Skipped (existing): {result['skipped']}")
     return result
 
 
@@ -638,7 +641,7 @@ async def run_market_scrape(market: str) -> dict:
         if apify_blocked:
             break
 
-        print(f"[{market}] Scraping LinkedIn for {loc}")
+        log.info(f"[{market}] Scraping LinkedIn for {loc}")
         try:
             linkedin_jobs = await scrape_linkedin(keywords[:5], loc)
             for j in linkedin_jobs:
@@ -646,12 +649,12 @@ async def run_market_scrape(market: str) -> dict:
             all_jobs.extend(linkedin_jobs)
         except RuntimeError as e:
             if "APIFY_LIMIT_EXCEEDED" in str(e):
-                print(f"[{market}] Apify limit hit — skipping remaining Apify calls, using company boards only")
+                log.info(f"[{market}] Apify limit hit — skipping remaining Apify calls, using company boards only")
                 apify_blocked = True
                 break
         await asyncio.sleep(1)
 
-        print(f"[{market}] Scraping Indeed for {loc}")
+        log.info(f"[{market}] Scraping Indeed for {loc}")
         try:
             indeed_jobs = await scrape_indeed(keywords[:5], loc)
             for j in indeed_jobs:
@@ -665,7 +668,7 @@ async def run_market_scrape(market: str) -> dict:
 
     # Always run direct company board scraping — free, no Apify dependency
     boards = MARKET_COMPANY_BOARDS.get(market, {})
-    print(f"[{market}] Scraping {len(boards.get('greenhouse', []))} Greenhouse + {len(boards.get('lever', []))} Lever company boards")
+    log.info(f"[{market}] Scraping {len(boards.get('greenhouse', []))} Greenhouse + {len(boards.get('lever', []))} Lever company boards")
 
     for company_name, board_token in boards.get("greenhouse", []):
         jobs = await scrape_greenhouse(company_name, board_token)
@@ -681,9 +684,9 @@ async def run_market_scrape(market: str) -> dict:
         all_jobs.extend(jobs)
         await asyncio.sleep(0.5)
 
-    print(f"[{market}] Total jobs collected: {len(all_jobs)}")
+    log.info(f"[{market}] Total jobs collected: {len(all_jobs)}")
     result = dedup_and_save(all_jobs, job_market=market)
-    print(f"[{market}] Saved: {result['saved']} | Skipped: {result['skipped']} | Apify blocked: {apify_blocked}")
+    log.info(f"[{market}] Saved: {result['saved']} | Skipped: {result['skipped']} | Apify blocked: {apify_blocked}")
     result["apify_blocked"] = apify_blocked
     return result
 
@@ -706,7 +709,7 @@ async def soft_delete_stale_jobs():
             .lt("last_verified_at", cutoff)\
             .eq("is_active", True)\
             .execute()
-        print(f"Soft deleted stale jobs")
+        log.info(f"Soft deleted stale jobs")
         return result
     except Exception as e:
-        print(f"Stale job cleanup error: {e}")
+        log.info(f"Stale job cleanup error: {e}")
