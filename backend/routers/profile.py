@@ -2672,8 +2672,8 @@ Guidelines:
 - Use a warm, coach-like tone
 - If you need information they haven't provided, say what would change your answer"""
 
-        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-        message = client.messages.create(
+        from services.claude_client import create_message
+        message = create_message(
             model="claude-haiku-4-5-20251001",
             max_tokens=400,
             messages=[{"role": "user", "content": prompt}]
@@ -2922,8 +2922,8 @@ Return ONLY valid JSON:
         }
 
         prompt = DECISION_PROMPTS[req.decision_type]
-        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-        message = client.messages.create(
+        from services.claude_client import create_message
+        message = create_message(
             model="claude-haiku-4-5-20251001",
             max_tokens=1000,
             messages=[{"role": "user", "content": prompt}]
