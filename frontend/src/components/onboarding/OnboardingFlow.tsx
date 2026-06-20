@@ -109,7 +109,7 @@ export default function OnboardingFlow({ userId, userName, onComplete }: Onboard
         await saveStep({ current_company: currentCompany, current_level: currentLevel })
       } else if (step === 6) {
         await savePreferences({
-          current_base_lpa:      currentBase ? parseFloat(currentBase) : null,
+          current_base:          currentBase ? parseFloat(currentBase) : null,
           current_equity_usd:    currentEquityUsd ? parseFloat(currentEquityUsd) : null,
           current_variable_pct:  currentVariablePct ? parseFloat(currentVariablePct) : null,
           current_comp_currency: compCurrency,

@@ -185,7 +185,7 @@ class PreferencesUpdateRequest(BaseModel):
     preferred_company_stage: Optional[str] = None
     preferred_work_mode: Optional[str] = None
     location: Optional[str] = None
-    current_base_lpa: Optional[float] = None
+    current_base: Optional[float] = None
     current_equity_usd: Optional[float] = None
     current_variable_pct: Optional[float] = None
     preferred_currency: Optional[str] = None
@@ -204,8 +204,8 @@ async def update_preferences(req: PreferencesUpdateRequest):
             updates["preferred_work_mode"] = req.preferred_work_mode
         if req.location is not None:
             updates["location"] = req.location
-        if req.current_base_lpa is not None:
-            updates["current_base_lpa"] = req.current_base_lpa
+        if req.current_base is not None:
+            updates["current_base"] = req.current_base
         if req.current_equity_usd is not None:
             updates["current_equity_usd"] = req.current_equity_usd
         if req.current_variable_pct is not None:
@@ -2507,7 +2507,7 @@ async def get_career_dna(user_id: str):
         paths = _get_career_paths(cohort, impact_pattern, trajectory)
 
         # Compensation estimate — use actual comp if provided
-        current_base          = p.get("current_base_lpa")
+        current_base          = p.get("current_base")
         current_equity        = p.get("current_equity_usd")
         current_variable      = p.get("current_variable_pct")
         preferred_currency    = p.get("preferred_currency") or "INR"
@@ -2642,7 +2642,7 @@ async def ask_career_sage(req: AskCareerSageRequest):
         impact_pattern = p.get("impact_pattern") or ""
         raw_text       = p.get("raw_profile_text") or ""
         location       = p.get("location") or "India"
-        current_base   = p.get("current_base_lpa")
+        current_base   = p.get("current_base")
         work_history   = p.get("work_history") or []
 
         # Build work history summary

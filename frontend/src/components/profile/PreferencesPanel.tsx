@@ -97,7 +97,7 @@ export default function PreferencesPanel({ userId }: { userId: string }) {
         setCompanyStage(data.preferred_company_stage || 'any')
         setWorkMode(data.preferred_work_mode || 'any')
         setLocation(data.location || '')
-        setCurrentBase(data.current_base_lpa?.toString() || '')
+        setCurrentBase(data.current_base?.toString() || '')
         setCurrentEquityUsd(data.current_equity_usd?.toString() || '')
         setCurrentVariablePct(data.current_variable_pct?.toString() || '')
         setCompCurrency(data.current_comp_currency || 'INR')
@@ -119,7 +119,7 @@ export default function PreferencesPanel({ userId }: { userId: string }) {
           preferred_company_stage: companyStage === 'any' ? null : companyStage,
           preferred_work_mode:    workMode === 'any' ? null : workMode,
           location:               location || null,
-          current_base_lpa:       currentBase ? parseFloat(currentBase) : null,
+          current_base:           currentBase ? parseFloat(currentBase) : null,
           current_equity_usd:     currentEquityUsd ? parseFloat(currentEquityUsd) : null,
           current_variable_pct:   currentVariablePct ? parseFloat(currentVariablePct) : null,
           preferred_currency:     prefCurrency,
