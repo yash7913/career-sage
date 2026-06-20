@@ -68,6 +68,7 @@ export default function VaultUpload({
   const [linkedinImporting, setLinkedinImporting] = useState(false)
   const [linkedinResult, setLinkedinResult] = useState<string | null>(null)
   const [pendingLinkedinFiles, setPendingLinkedinFiles] = useState<File[]>([])
+  const [uploadLimitMessage, setUploadLimitMessage] = useState<string | null>(null)
   const supabase = createClient()
 
   const handleLinkedinPdf = async (file: File) => {
@@ -102,6 +103,8 @@ export default function VaultUpload({
     }
   }
 
+  const MAX_DOCS = 10
+
   const onDrop = useCallback(
     async (accepted: File[]) => {
       const {
@@ -109,7 +112,25 @@ export default function VaultUpload({
       } = await supabase.auth.getUser()
       if (!user) return
 
-      for (const file of accepted) {
+      const currentCount = files.length
+      const remainingSlots = MAX_DOCS - currentCount
+
+      if (remainingSlots <= 0) {
+        setUploadLimitMessage(`You've reached the ${MAX_DOCS} document limit. Remove a file to add a new one.`)
+        return
+      }
+
+      let filesToProcess = accepted
+      if (accepted.length > remainingSlots) {
+        filesToProcess = accepted.slice(0, remainingSlots)
+        setUploadLimitMessage(
+          `Only ${remainingSlots} more document${remainingSlots === 1 ? '' : 's'} can be added (${MAX_DOCS} max). ${accepted.length - remainingSlots} file${accepted.length - remainingSlots === 1 ? ' was' : 's were'} skipped.`
+        )
+      } else {
+        setUploadLimitMessage(null)
+      }
+
+      for (const file of filesToProcess) {
         // Start with filename-based guess while content classification runs
         const fname = file.name.toLowerCase()
         const isSlides = fname.endsWith('.pptx') || fname.includes('slide') || fname.includes('deck')
@@ -224,6 +245,7 @@ const res = await fetch(
     onDrop,
     accept: ACCEPTED_TYPES,
     maxSize: 20 * 1024 * 1024,
+    maxFiles: MAX_DOCS,
   })
 
   const updateTag = (fileName: string, tag: DocTag) => {
@@ -341,6 +363,17 @@ const res = await fetch(
           Browse files
         </button>
       </div>
+
+      {uploadLimitMessage && (
+        <div style={{
+          padding: '10px 14px', borderRadius: '8px', marginBottom: '1rem',
+          background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
+        }}>
+          <p style={{ fontSize: '12px', color: 'rgba(245,158,11,0.9)', margin: 0 }}>
+            ⚠ {uploadLimitMessage}
+          </p>
+        </div>
+      )}
 
       {/* LinkedIn PDF import — hidden during onboarding, handled automatically */}
       {!isOnboarding && <div style={{
