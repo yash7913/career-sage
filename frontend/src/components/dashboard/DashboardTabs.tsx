@@ -322,6 +322,7 @@ function SettingsTab({
   tier?: string
 }) {
   const [showAddTrack, setShowAddTrack] = useState(false)
+  const [editingTrackId, setEditingTrackId] = useState<string | null>(null)
   const isPro = tier === 'PREMIUM_PRO' || tier === 'STUDENT_VERIFIED'
 
   return (
@@ -340,16 +341,37 @@ function SettingsTab({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '1rem' }}>
             {tracks.map(track => {
               const hex = COLOR_MAP[track.track_color] ?? TEAL
+              const isEditingThis = editingTrackId === track.track_id
               return (
-                <div key={track.track_id} style={{
-                  padding: '10px 14px', borderRadius: '10px',
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.07)',
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: hex }} />
-                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#fff' }}>{track.track_name}</span>
-                  <span style={{ marginLeft: 'auto', fontSize: '11px', padding: '2px 8px', borderRadius: '999px', background: `${hex}18`, color: hex }}>Active</span>
+                <div key={track.track_id}>
+                  <div style={{
+                    padding: '10px 14px', borderRadius: '10px',
+                    background: 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${isEditingThis ? hex : 'rgba(255,255,255,0.07)'}`,
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                  }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: hex }} />
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#fff' }}>{track.track_name}</span>
+                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', background: `${hex}18`, color: hex }}>Active</span>
+                    <button
+                      onClick={() => setEditingTrackId(isEditingThis ? null : track.track_id)}
+                      style={{
+                        marginLeft: 'auto', background: 'none', border: 'none',
+                        color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: '12px',
+                      }}
+                    >
+                      {isEditingThis ? 'Cancel' : '✎ Edit'}
+                    </button>
+                  </div>
+                  {isEditingThis && (
+                    <div style={{ marginTop: '10px', padding: '14px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: `1px solid ${BORDER}` }}>
+                      <TrackSetup
+                        userId={userId}
+                        existingTrack={track}
+                        onComplete={() => { setEditingTrackId(null); onTrackCreated() }}
+                      />
+                    </div>
+                  )}
                 </div>
               )
             })}

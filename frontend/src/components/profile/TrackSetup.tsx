@@ -54,26 +54,54 @@ const COMPANY_STAGES = [
   { value: 'enterprise',label: '🏢 Enterprise' },
 ]
 
+interface ExistingTrack {
+  track_id: string
+  track_name: string
+  track_color: string
+  target_roles: string[]
+  target_seniority: string | null
+  salary_min_lpa: number | null
+  salary_target_lpa: number | null
+  work_mode_preference: string[]
+  aspiration_skills: string[]
+  personal_notes: string | null
+}
+
 interface TrackSetupProps {
   userId: string
   onComplete?: () => void
+  existingTrack?: ExistingTrack
 }
 
-export default function TrackSetup({ userId, onComplete }: TrackSetupProps) {
-  const [fn,            setFn]           = useState('Product Management')
-  const [path,          setPath]         = useState<'IC' | 'Management'>('IC')
-  const [level,         setLevel]        = useState('Senior')
-  const [color,         setColor]        = useState('teal')
+function parseExistingFn(targetRoles: string[]): { fn: string; level: string; path: 'IC' | 'Management' } {
+  // target_roles[1] is the bare function name (e.g. "Product Management"),
+  // target_roles[0] is "<level> <fn>" — see handleSave's track_name construction
+  const fnGuess = targetRoles?.[1] || 'Product Management'
+  const fullLabel = targetRoles?.[0] || ''
+  const level = fullLabel.replace(fnGuess, '').trim() || 'Senior'
+  const isManagement = MGMT_LEVELS.includes(level)
+  return { fn: fnGuess, level, path: isManagement ? 'Management' : 'IC' }
+}
+
+export default function TrackSetup({ userId, onComplete, existingTrack }: TrackSetupProps) {
+  const parsed = existingTrack ? parseExistingFn(existingTrack.target_roles) : null
+
+  const [fn,            setFn]           = useState(parsed?.fn || 'Product Management')
+  const [path,          setPath]         = useState<'IC' | 'Management'>(parsed?.path || 'IC')
+  const [level,         setLevel]        = useState(parsed?.level || 'Senior')
+  const [color,         setColor]        = useState(existingTrack?.track_color || 'teal')
   const [targetMarkets, setTargetMarkets] = useState<string[]>(['India'])
-  const [workMode,      setWorkMode]     = useState<string[]>(['REMOTE', 'HYBRID'])
+  const [workMode,      setWorkMode]     = useState<string[]>(existingTrack?.work_mode_preference?.length ? existingTrack.work_mode_preference : ['REMOTE', 'HYBRID'])
   const [companyStage,  setCompanyStage] = useState('any')
-  const [salaryMin,     setSalaryMin]    = useState('')
-  const [salaryTarget,  setSalaryTarget] = useState('')
-  const [aspirations,   setAspirations]  = useState('')
-  const [personalNotes, setPersonalNotes] = useState('')
+  const [salaryMin,     setSalaryMin]    = useState(existingTrack?.salary_min_lpa?.toString() || '')
+  const [salaryTarget,  setSalaryTarget] = useState(existingTrack?.salary_target_lpa?.toString() || '')
+  const [aspirations,   setAspirations]  = useState(existingTrack?.aspiration_skills?.join(', ') || '')
+  const [personalNotes, setPersonalNotes] = useState(existingTrack?.personal_notes || '')
   const [saving,        setSaving]       = useState(false)
   const [done,          setDone]         = useState(false)
   const [error,         setError]        = useState('')
+
+  const isEditing = !!existingTrack
 
   // Auto-generate track name
   const trackName = `${level} ${fn}`
@@ -92,31 +120,49 @@ export default function TrackSetup({ userId, onComplete }: TrackSetupProps) {
     setSaving(true)
     setError('')
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tracks/create`, {
-        method: 'POST',
+      const url = isEditing
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/tracks/${existingTrack!.track_id}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/tracks/create`
+
+      const body = isEditing
+        ? {
+            track_name:           trackName,
+            track_color:          color,
+            target_roles:         [`${level} ${fn}`, fn],
+            target_seniority:     level,
+            salary_min_lpa:       salaryMin ? parseInt(salaryMin) : null,
+            salary_target_lpa:    salaryTarget ? parseInt(salaryTarget) : null,
+            work_mode_preference: workMode,
+            aspiration_skills:    aspirations.split(',').map(s => s.trim()).filter(Boolean),
+            personal_notes:       personalNotes || null,
+          }
+        : {
+            user_id:              userId,
+            track_name:           trackName,
+            track_color:          color,
+            target_roles:         [`${level} ${fn}`, fn],
+            target_seniority:     level,
+            salary_min_lpa:       salaryMin ? parseInt(salaryMin) : null,
+            salary_target_lpa:    salaryTarget ? parseInt(salaryTarget) : null,
+            work_mode_preference: workMode,
+            aspiration_skills:    aspirations.split(',').map(s => s.trim()).filter(Boolean),
+            personal_notes:       personalNotes || null,
+            is_default:           true,
+          }
+
+      const res = await fetch(url, {
+        method: isEditing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id:              userId,
-          track_name:           trackName,
-          track_color:          color,
-          target_roles:         [`${level} ${fn}`, fn],
-          target_seniority:     level,
-          salary_min_lpa:       salaryMin ? parseInt(salaryMin) : null,
-          salary_target_lpa:    salaryTarget ? parseInt(salaryTarget) : null,
-          work_mode_preference: workMode,
-          aspiration_skills:    aspirations.split(',').map(s => s.trim()).filter(Boolean),
-          personal_notes:       personalNotes || null,
-          is_default:           true,
-        }),
+        body: JSON.stringify(body),
       })
 
       if (!res.ok) {
         const err = await res.json()
-        throw new Error(err.detail || 'Failed to create track')
+        throw new Error(err.detail || `Failed to ${isEditing ? 'update' : 'create'} track`)
       }
 
       const trackData = await res.json()
-      const newTrackId = trackData?.track?.track_id
+      const newTrackId = isEditing ? existingTrack!.track_id : trackData?.track?.track_id
 
       // Save target markets to user preferences
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/preferences`, {
@@ -131,9 +177,8 @@ export default function TrackSetup({ userId, onComplete }: TrackSetupProps) {
         }),
       })
 
-      // Pre-warm job matching in the background — don't await, don't block the UI.
-      // By the time the user reads the onboarding "You're all set" screen,
-      // matching will likely have finished, so Discover loads with results ready.
+      // Re-run matching in the background — needed both for new tracks (first
+      // match) and edits (preferences changed, rankings should reflect that)
       if (newTrackId) {
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/jobs/match?user_id=${userId}&track_id=${newTrackId}`, {
           method: 'POST',
@@ -154,7 +199,9 @@ export default function TrackSetup({ userId, onComplete }: TrackSetupProps) {
       padding: '1.5rem', borderRadius: '12px', textAlign: 'center',
       background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)',
     }}>
-      <p style={{ fontSize: '15px', fontWeight: 600, color: TEAL, margin: '0 0 4px' }}>✓ Track created</p>
+      <p style={{ fontSize: '15px', fontWeight: 600, color: TEAL, margin: '0 0 4px' }}>
+        ✓ Track {isEditing ? 'updated' : 'created'}
+      </p>
       <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: '0 0 16px' }}>{trackName} is ready.</p>
       <button onClick={() => window.location.reload()} style={{
         padding: '10px 28px', borderRadius: '8px', background: TEAL,
@@ -317,7 +364,9 @@ export default function TrackSetup({ userId, onComplete }: TrackSetupProps) {
         color: '#fff', border: 'none', fontSize: '14px', fontWeight: 600,
         cursor: saving ? 'not-allowed' : 'pointer',
       }}>
-        {saving ? 'Creating...' : `Create "${trackName}" track →`}
+        {saving
+          ? (isEditing ? 'Saving...' : 'Creating...')
+          : isEditing ? `Save "${trackName}" →` : `Create "${trackName}" track →`}
       </button>
     </div>
   )
