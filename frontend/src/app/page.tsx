@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, ReactNode } from 'react'
 import AuthModal from '@/components/ui/auth-modal'
-import ThemeToggle from '@/components/ui/ThemeToggle'
 
 const TEAL = '#10B981'
 const TEAL_DIM = 'rgba(16,185,129,0.08)'
@@ -348,7 +347,7 @@ const [showTop, setShowTop] = useState(false)
             ))}
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <ThemeToggle />
+            
             <button onClick={() => setShowAuth(true)}
               style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', background: 'none', border: 'none', cursor: 'pointer' }}>
               Sign in

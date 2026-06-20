@@ -1,5 +1,7 @@
 'use client'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -68,6 +70,16 @@ export default function Sidebar({
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [showStatusMenu, setShowStatusMenu] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
+  const router = useRouter()
+  const supabase = createClient()
+
+  const handleSignOut = async () => {
+    setSigningOut(true)
+    await supabase.auth.signOut()
+    router.push('/')
+    router.refresh()
+  }
 
   const cohortColor = cohort ? (COHORT_COLORS[cohort] ?? TEAL) : TEAL
   const tierColor = TIER_COLORS[tier] ?? 'rgba(255,255,255,0.4)'
@@ -338,14 +350,42 @@ export default function Sidebar({
           }}>›</button>
         )}
         {!collapsed && (
-          <a href="/" style={{
-            display: 'flex', alignItems: 'center', gap: '10px',
-            padding: '8px 12px', borderRadius: '8px',
-            textDecoration: 'none', color: 'rgba(255,255,255,0.3)', fontSize: '13px',
-          }}>
-            <span style={{ fontSize: '14px' }}>←</span>
-            Home
-          </a>
+          <>
+            <a href="/" style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '8px 12px', borderRadius: '8px',
+              textDecoration: 'none', color: 'rgba(255,255,255,0.3)', fontSize: '13px',
+            }}>
+              <span style={{ fontSize: '14px' }}>←</span>
+              Home
+            </a>
+            <button
+              onClick={handleSignOut}
+              disabled={signingOut}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '8px 12px', borderRadius: '8px',
+                background: 'none', border: 'none', textAlign: 'left',
+                color: 'rgba(239,68,68,0.6)', fontSize: '13px',
+                cursor: signingOut ? 'not-allowed' : 'pointer', width: '100%',
+              }}
+            >
+              <span style={{ fontSize: '14px' }}>⏻</span>
+              {signingOut ? 'Signing out...' : 'Sign out'}
+            </button>
+          </>
+        )}
+        {collapsed && (
+          <button
+            onClick={handleSignOut}
+            disabled={signingOut}
+            title="Sign out"
+            style={{
+              background: 'none', border: 'none', color: 'rgba(239,68,68,0.6)',
+              cursor: signingOut ? 'not-allowed' : 'pointer', fontSize: '14px',
+              padding: '6px 0', textAlign: 'center', width: '100%',
+            }}
+          >⏻</button>
         )}
       </div>
     </div>
