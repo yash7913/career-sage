@@ -351,6 +351,15 @@ function ProfileTab({
   tier?: string
 }) {
   const [docCount, setDocCount] = useState<number | null>(null)
+  const [signingOut, setSigningOut] = useState(false)
+
+  const handleSignOut = async () => {
+    setSigningOut(true)
+    const { createClient } = await import('@/lib/supabase/client')
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    window.location.href = '/'
+  }
 
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/documents/${userId}`)
@@ -392,6 +401,25 @@ function ProfileTab({
           These appear in your generated resume automatically.
         </p>
         <ContactDetailsForm userId={userId} />
+      </div>
+
+      {/* Account — sign out. Sidebar already has this on desktop, but
+          mobile's bottom nav has no room for account actions, so this
+          gives every viewport a reachable sign-out path. */}
+      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+        <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 4px' }}>ACCOUNT</p>
+        <button
+          onClick={handleSignOut}
+          disabled={signingOut}
+          style={{
+            marginTop: '0.75rem', padding: '10px 18px', borderRadius: '8px',
+            background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+            color: 'rgba(239,68,68,0.85)', fontSize: '13px', fontWeight: 600,
+            cursor: signingOut ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {signingOut ? 'Signing out...' : '⏻ Sign out'}
+        </button>
       </div>
 
     </div>
