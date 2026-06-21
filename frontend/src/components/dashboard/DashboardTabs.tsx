@@ -7,6 +7,7 @@ import VaultUpload from '@/components/profile/VaultUpload'
 import TrackSetup from '@/components/profile/TrackSetup'
 import StatsRow from '@/components/dashboard/StatsRow'
 import Sidebar from '@/components/dashboard/Sidebar'
+import MobileBottomNav from '@/components/dashboard/MobileBottomNav'
 import ContactDetailsForm from '@/components/profile/ContactDetailsForm'
 import PreferencesPanel from '@/components/profile/PreferencesPanel'
 import PrepTab from '@/components/dashboard/PrepTab'
@@ -141,6 +142,14 @@ export default function DashboardTabs({
   }, [pathname, router, activeTab])
   const [searchStatus, setSearchStatus] = useState('ACTIVE')
   const [showOnboarding, setShowOnboarding] = useState(!hasProfile)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   const handleSearchStatusChange = async (status: string) => {
     setSearchStatus(status)
@@ -165,31 +174,38 @@ export default function DashboardTabs({
     )
   }
 
+  const handleTabChange = (tab: string, section?: string) => {
+    if (tab === 'pipeline') setTrackerKey(prev => prev + 1)
+    setActiveTab(tab, section)
+  }
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <Sidebar
-        userId={userId}
-        userEmail={userEmail}
-        userName={userName}
-        cohort={cohort}
-        tier={tier}
-        activeTab={activeTab}
-        activeSection={activeSection}
-        setActiveTab={(tab, section) => {
-          if (tab === 'pipeline') setTrackerKey(prev => prev + 1)
-          setActiveTab(tab, section)
-        }}
-        hasProfile={hasProfile}
-        hasTracks={hasTracks}
-        tracks={tracks}
-        impactPattern={impactPattern}
-        searchStatus={searchStatus}
-        onSearchStatusChange={handleSearchStatusChange}
-      />
+      {!isMobile && (
+        <Sidebar
+          userId={userId}
+          userEmail={userEmail}
+          userName={userName}
+          cohort={cohort}
+          tier={tier}
+          activeTab={activeTab}
+          activeSection={activeSection}
+          setActiveTab={handleTabChange}
+          hasProfile={hasProfile}
+          hasTracks={hasTracks}
+          tracks={tracks}
+          impactPattern={impactPattern}
+          searchStatus={searchStatus}
+          onSearchStatusChange={handleSearchStatusChange}
+        />
+      )}
 
       {/* Main content */}
       <div style={{ flex: 1, overflowY: 'auto', minHeight: '100vh' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2.5rem 2rem' }}>
+        <div style={{
+          maxWidth: '1100px', margin: '0 auto',
+          padding: isMobile ? '1.5rem 1rem calc(70px + 1.5rem)' : '2.5rem 2rem',
+        }}>
 
           {/* Welcome heading — hidden on Career tab */}
           {activeTab !== 'career' && (
@@ -313,6 +329,14 @@ export default function DashboardTabs({
           )}
         </div>
       </div>
+
+      {isMobile && (
+        <MobileBottomNav
+          activeTab={activeTab}
+          setActiveTab={handleTabChange}
+          hasProfile={hasProfile}
+        />
+      )}
     </div>
   )
 }
