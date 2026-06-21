@@ -610,119 +610,129 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
             </div>
 
             <div style={{
-              position: 'relative', maxHeight: '480px', overflowY: 'auto',
+              position: 'relative', maxHeight: '520px', overflowY: 'auto',
               paddingRight: '6px',
             }}>
-              {/* Vertical line */}
-              <div style={{
-                position: 'absolute', left: '7px', top: '8px',
-                bottom: '8px', width: '1px',
-                background: 'linear-gradient(to bottom, rgba(16,185,129,0.6), rgba(16,185,129,0.1))',
-              }} />
+              {(() => {
+                // Group roles by company cluster — consecutive roles (after
+                // sorting most-recent-first) at the same company become one
+                // cluster, so promotions render nested under a single
+                // company header instead of repeating the company name
+                const sorted = [...data.work_history].sort(
+                  (a, b) => (b.start_date || '').localeCompare(a.start_date || '')
+                )
+                const clusters: typeof sorted[] = []
+                for (const role of sorted) {
+                  const last = clusters[clusters.length - 1]
+                  if (last && last[0].company === role.company) {
+                    last.push(role)
+                  } else {
+                    clusters.push([role])
+                  }
+                }
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                {[...data.work_history]
-                  .sort((a, b) => (b.start_date || '').localeCompare(a.start_date || ''))
-                  .map((role, i, arr) => {
-                  const isFirst  = i === 0
-                  const isLast   = i === arr.length - 1
-                  const startYr  = role.start_date ? role.start_date.slice(0, 4) : ''
-                  const endYr    = role.is_current ? 'Present' : role.end_date ? role.end_date.slice(0, 4) : ''
-                  const duration = (() => {
-                    if (!startYr) return ''
-                    const start = parseInt(startYr)
-                    const end   = role.is_current ? new Date().getFullYear() : parseInt(endYr) || new Date().getFullYear()
-                    const yrs   = end - start
-                    if (yrs === 0) return '< 1 yr'
-                    return `${yrs} yr${yrs > 1 ? 's' : ''}`
-                  })()
-                  const companyColor = getCompanyColor(role.company)
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+                    {clusters.map((cluster, ci) => {
+                      const companyColor = getCompanyColor(cluster[0].company)
+                      const isCurrentCluster = cluster[0].is_current
+                      const isLastCluster = ci === clusters.length - 1
+                      const clusterStartYr = cluster[cluster.length - 1].start_date?.slice(0, 4) || ''
+                      const clusterEndYr = cluster[0].is_current ? 'Present' : cluster[0].end_date?.slice(0, 4) || ''
 
-                  // Array is sorted most-recent-first. A "promotion" is a
-                  // role at the same company as the NEXT entry chronologically
-                  // (i.e. the role right after it in array order, which is
-                  // the role that came right before it in time)
-                  const olderRole = i < arr.length - 1 ? arr[i + 1] : null
-                  const isPromotion = olderRole && olderRole.company === role.company
-
-                  return (
-                    <JourneyEntry key={i} delay={i * 80}>
-                      <div style={{ display: 'flex', gap: '16px', paddingBottom: isLast ? '0' : '20px' }}>
-                        {/* Timeline dot — full marker for a new company,
-                            smaller nested marker for a promotion within
-                            the same company */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: '15px' }}>
-                          {isPromotion && !role.is_current ? (
-                            <div style={{
-                              width: '8px', height: '8px', borderRadius: '50%', marginTop: '5px',
-                              background: `${companyColor}60`,
-                              border: `1.5px solid ${companyColor}`,
-                              flexShrink: 0,
-                            }} />
-                          ) : (
-                            <div style={{
-                              width: '15px', height: '15px', borderRadius: '50%', marginTop: '2px',
-                              background: role.is_current ? companyColor : `${companyColor}40`,
-                              border: `2px solid ${companyColor}`,
-                              boxShadow: role.is_current ? `0 0 10px ${companyColor}80` : 'none',
-                              flexShrink: 0,
-                            }} />
-                          )}
-                        </div>
-
-                        {/* Role content */}
-                        <div style={{
-                          flex: 1, paddingTop: '0', paddingLeft: '14px',
-                          borderLeft: `2px solid ${companyColor}25`,
-                          marginLeft: '-1px',
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
-                            <div>
-                              {isPromotion && (
-                                <p style={{ fontSize: '10px', fontWeight: 600, color: companyColor, margin: '0 0 2px', letterSpacing: '0.04em' }}>
-                                  ↑ PROMOTED
-                                </p>
-                              )}
-                              <p style={{
-                                fontSize: '13px', fontWeight: 600, margin: '0 0 2px',
-                                color: role.is_current ? '#fff' : 'rgba(255,255,255,0.7)',
-                              }}>
-                                {role.title}
-                              </p>
-                              {!isPromotion && (
-                                <p style={{ fontSize: '12px', color: companyColor, margin: 0, fontWeight: 500 }}>
-                                  {role.company}
-                                </p>
+                      return (
+                        <JourneyEntry key={ci} delay={ci * 100}>
+                          <div style={{ display: 'flex', gap: '16px' }}>
+                            {/* Company marker + connecting line */}
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: '15px' }}>
+                              <div style={{
+                                width: '15px', height: '15px', borderRadius: '50%', marginTop: '2px',
+                                background: isCurrentCluster ? companyColor : `${companyColor}40`,
+                                border: `2px solid ${companyColor}`,
+                                boxShadow: isCurrentCluster ? `0 0 10px ${companyColor}80` : 'none',
+                                flexShrink: 0,
+                              }} />
+                              {!isLastCluster && (
+                                <div style={{ flex: 1, width: '1px', background: `${companyColor}30`, marginTop: '6px' }} />
                               )}
                             </div>
-                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                              <p style={{ fontSize: '11px', color: role.is_current ? TEAL : 'rgba(255,255,255,0.3)', margin: '0 0 2px', fontWeight: role.is_current ? 600 : 400 }}>
-                                {startYr}{endYr ? ` — ${endYr}` : ''}
-                              </p>
-                              {duration && (
-                                <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)', margin: 0 }}>
-                                  {duration}
+
+                            {/* Company cluster content */}
+                            <div style={{ flex: 1, paddingBottom: isLastCluster ? '0' : '6px' }}>
+                              {/* Company header */}
+                              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                                <p style={{ fontSize: '14px', fontWeight: 700, color: companyColor, margin: 0 }}>
+                                  {cluster[0].company}
                                 </p>
-                              )}
+                                <p style={{ fontSize: '11px', color: isCurrentCluster ? TEAL : 'rgba(255,255,255,0.35)', margin: 0, fontWeight: isCurrentCluster ? 600 : 400 }}>
+                                  {clusterStartYr}{clusterEndYr ? ` — ${clusterEndYr}` : ''}
+                                </p>
+                              </div>
+
+                              {/* Roles within this company, nested */}
+                              <div style={{
+                                display: 'flex', flexDirection: 'column', gap: '14px',
+                                paddingLeft: '14px', borderLeft: `2px solid ${companyColor}25`,
+                              }}>
+                                {cluster.map((role, ri) => {
+                                  const startYr = role.start_date ? role.start_date.slice(0, 4) : ''
+                                  const endYr = role.is_current ? 'Present' : role.end_date ? role.end_date.slice(0, 4) : ''
+                                  const duration = (() => {
+                                    if (!startYr) return ''
+                                    const start = parseInt(startYr)
+                                    const end = role.is_current ? new Date().getFullYear() : parseInt(endYr) || new Date().getFullYear()
+                                    const yrs = end - start
+                                    if (yrs === 0) return '< 1 yr'
+                                    return `${yrs} yr${yrs > 1 ? 's' : ''}`
+                                  })()
+                                  const isPromotionWithinCluster = ri > 0
+
+                                  return (
+                                    <div key={ri}>
+                                      {isPromotionWithinCluster && (
+                                        <p style={{ fontSize: '10px', fontWeight: 600, color: companyColor, margin: '0 0 3px', letterSpacing: '0.04em' }}>
+                                          ↑ PROMOTED
+                                        </p>
+                                      )}
+                                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                                        <p style={{
+                                          fontSize: '13px', fontWeight: 600, margin: 0,
+                                          color: role.is_current ? '#fff' : 'rgba(255,255,255,0.75)',
+                                        }}>
+                                          {role.title}
+                                        </p>
+                                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                          <p style={{ fontSize: '11px', color: role.is_current ? TEAL : 'rgba(255,255,255,0.35)', margin: 0, fontWeight: role.is_current ? 600 : 400 }}>
+                                            {startYr}{endYr ? ` — ${endYr}` : ''}
+                                          </p>
+                                          {duration && (
+                                            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)', margin: 0 }}>
+                                              {duration}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {role.description && (
+                                        <p style={{
+                                          fontSize: '12px', color: 'rgba(255,255,255,0.5)',
+                                          margin: '5px 0 0', lineHeight: 1.6,
+                                        }}>
+                                          {role.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </div>
                             </div>
                           </div>
-
-                          {role.description && (
-                            <p style={{
-                              fontSize: '11px', color: 'rgba(255,255,255,0.3)',
-                              margin: '6px 0 0', lineHeight: 1.5,
-                              display: '-webkit-box', WebkitLineClamp: role.is_current ? 3 : 2,
-                              WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
-                            }}>
-                              {role.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </JourneyEntry>
-                  )
-                })}
-              </div>
+                        </JourneyEntry>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
             </div>
           </div>
         )}
