@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import ProjectManager from '@/components/profile/ProjectManager'
 
 const TEAL = '#10B981'
@@ -43,6 +43,18 @@ interface DNAData {
 
 const IMPACT_ICONS: Record<string, string> = {
   Optimizer: '⚙️', Builder: '🏗️', Scaler: '📈', Fixer: '🔧', Strategist: '🎯',
+}
+
+// Deterministic color per company — same company always gets the same
+// color across renders, without needing to hardcode every company name
+const COMPANY_COLOR_PALETTE = ['#10B981', '#3B82F6', '#F59E0B', '#EC4899', '#7F77DD', '#06B6D4', '#F97316']
+function getCompanyColor(company: string): string {
+  if (!company) return TEAL
+  let hash = 0
+  for (let i = 0; i < company.length; i++) {
+    hash = company.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return COMPANY_COLOR_PALETTE[Math.abs(hash) % COMPANY_COLOR_PALETTE.length]
 }
 
 const EFFORT_COLOR: Record<string, string> = {
@@ -371,6 +383,35 @@ function DecisionResult({ result, onClose }: { result: Record<string, unknown>; 
   )
 }
 
+function JourneyEntry({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisible(true) },
+      { threshold: 0.2 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateX(0)' : 'translateX(-12px)',
+        transition: `opacity 0.5s ease ${delay}ms, transform 0.5s ease ${delay}ms`,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
 function ExpandableSkills({ skills }: { skills: string[] }) {
   const [expanded, setExpanded] = useState(false)
   const visible = expanded ? skills : skills.slice(0, 10)
@@ -590,57 +631,65 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
                     if (yrs === 0) return '< 1 yr'
                     return `${yrs} yr${yrs > 1 ? 's' : ''}`
                   })()
+                  const companyColor = getCompanyColor(role.company)
 
                   return (
-                    <div key={i} style={{ display: 'flex', gap: '16px', paddingBottom: isLast ? '0' : '20px' }}>
-                      {/* Timeline dot */}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                        <div style={{
-                          width: '15px', height: '15px', borderRadius: '50%', marginTop: '2px',
-                          background: role.is_current ? TEAL : isFirst ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.1)',
-                          border: `2px solid ${role.is_current ? TEAL : isFirst ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.15)'}`,
-                          flexShrink: 0,
-                        }} />
-                      </div>
-
-                      {/* Role content */}
-                      <div style={{ flex: 1, paddingTop: '0' }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
-                          <div>
-                            <p style={{
-                              fontSize: '13px', fontWeight: 600, margin: '0 0 2px',
-                              color: role.is_current ? '#fff' : 'rgba(255,255,255,0.7)',
-                            }}>
-                              {role.title}
-                            </p>
-                            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
-                              {role.company}
-                            </p>
-                          </div>
-                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <p style={{ fontSize: '11px', color: role.is_current ? TEAL : 'rgba(255,255,255,0.3)', margin: '0 0 2px', fontWeight: role.is_current ? 600 : 400 }}>
-                              {startYr}{endYr ? ` — ${endYr}` : ''}
-                            </p>
-                            {duration && (
-                              <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)', margin: 0 }}>
-                                {duration}
-                              </p>
-                            )}
-                          </div>
+                    <JourneyEntry key={i} delay={i * 80}>
+                      <div style={{ display: 'flex', gap: '16px', paddingBottom: isLast ? '0' : '20px' }}>
+                        {/* Timeline dot — colored by company, current role pulses */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                          <div style={{
+                            width: '15px', height: '15px', borderRadius: '50%', marginTop: '2px',
+                            background: role.is_current ? companyColor : `${companyColor}40`,
+                            border: `2px solid ${companyColor}`,
+                            boxShadow: role.is_current ? `0 0 10px ${companyColor}80` : 'none',
+                            flexShrink: 0,
+                          }} />
                         </div>
 
-                        {role.is_current && role.description && (
-                          <p style={{
-                            fontSize: '11px', color: 'rgba(255,255,255,0.3)',
-                            margin: '6px 0 0', lineHeight: 1.5,
-                            display: '-webkit-box', WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
-                          }}>
-                            {role.description}
-                          </p>
-                        )}
+                        {/* Role content */}
+                        <div style={{
+                          flex: 1, paddingTop: '0', paddingLeft: '14px',
+                          borderLeft: `2px solid ${companyColor}25`,
+                          marginLeft: '-1px',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                            <div>
+                              <p style={{
+                                fontSize: '13px', fontWeight: 600, margin: '0 0 2px',
+                                color: role.is_current ? '#fff' : 'rgba(255,255,255,0.7)',
+                              }}>
+                                {role.title}
+                              </p>
+                              <p style={{ fontSize: '12px', color: companyColor, margin: 0, fontWeight: 500 }}>
+                                {role.company}
+                              </p>
+                            </div>
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <p style={{ fontSize: '11px', color: role.is_current ? TEAL : 'rgba(255,255,255,0.3)', margin: '0 0 2px', fontWeight: role.is_current ? 600 : 400 }}>
+                                {startYr}{endYr ? ` — ${endYr}` : ''}
+                              </p>
+                              {duration && (
+                                <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)', margin: 0 }}>
+                                  {duration}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {role.is_current && role.description && (
+                            <p style={{
+                              fontSize: '11px', color: 'rgba(255,255,255,0.3)',
+                              margin: '6px 0 0', lineHeight: 1.5,
+                              display: '-webkit-box', WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
+                            }}>
+                              {role.description}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    </JourneyEntry>
                   )
                 })}
               </div>
