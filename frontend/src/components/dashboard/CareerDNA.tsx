@@ -621,7 +621,9 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
               }} />
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                {[...data.work_history].reverse().map((role, i, arr) => {
+                {[...data.work_history]
+                  .sort((a, b) => (b.start_date || '').localeCompare(a.start_date || ''))
+                  .map((role, i, arr) => {
                   const isFirst  = i === 0
                   const isLast   = i === arr.length - 1
                   const startYr  = role.start_date ? role.start_date.slice(0, 4) : ''
@@ -636,12 +638,12 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
                   })()
                   const companyColor = getCompanyColor(role.company)
 
-                  // A "promotion" is a role at the same company as the
-                  // immediately preceding (chronologically earlier) entry —
-                  // shown with a smaller nested marker and "Promoted to"
-                  // framing instead of a full new-company marker
-                  const prevRole = i > 0 ? arr[i - 1] : null
-                  const isPromotion = prevRole && prevRole.company === role.company
+                  // Array is sorted most-recent-first. A "promotion" is a
+                  // role at the same company as the NEXT entry chronologically
+                  // (i.e. the role right after it in array order, which is
+                  // the role that came right before it in time)
+                  const olderRole = i < arr.length - 1 ? arr[i + 1] : null
+                  const isPromotion = olderRole && olderRole.company === role.company
 
                   return (
                     <JourneyEntry key={i} delay={i * 80}>
@@ -650,10 +652,10 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
                             smaller nested marker for a promotion within
                             the same company */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: '15px' }}>
-                          {isPromotion ? (
+                          {isPromotion && !role.is_current ? (
                             <div style={{
                               width: '8px', height: '8px', borderRadius: '50%', marginTop: '5px',
-                              background: role.is_current ? companyColor : `${companyColor}60`,
+                              background: `${companyColor}60`,
                               border: `1.5px solid ${companyColor}`,
                               flexShrink: 0,
                             }} />

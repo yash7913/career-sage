@@ -19,7 +19,8 @@ CRITICAL — generate fields in this exact sequence, because later fields depend
       "start_date": "2021-06",
       "end_date": "2023-11",
       "is_current": false,
-      "employment_type": "full-time"
+      "employment_type": "full-time",
+      "description": "1-2 sentence summary of the role's core responsibility and one concrete achievement, written in first person, based only on what's in the source documents"
     }}
   ],
   "extracted_skills": {{
@@ -67,6 +68,7 @@ education_data:
 work_history:
 - Must be a direct structured expansion of the ROLES line you already wrote in raw_profile_text — same roles, same count, no additions, no omissions. Do not re-derive this independently from the source documents; expand the ROLES line you already committed to.
 - title, company, start_date, end_date, is_current, employment_type for each role from the ROLES line
+- description: 1-2 sentences capturing the core responsibility and one concrete achievement for that specific role, in first person. If multiple source documents describe this role differently (tailored wording), synthesize the most complete, specific version — prefer descriptions with concrete metrics/scale over vague ones. Never fabricate a metric that isn't in any source document.
 - The documents above may include multiple tailored versions of the same resume describing the SAME roles with different wording — when writing the ROLES line itself, treat roles at the same company with the same or near-same title and overlapping dates as ONE role. Do not lose a genuinely distinct earlier-career role just because it's absent from some (but not all) source documents — if it appears in even one document, it belongs in ROLES, and therefore in work_history.
 - title: extract the CORE job title only — remove suffixes, team names, and project names
   - "Lead, Product Management - Productivity Insights" → "Lead Product Manager"
