@@ -2618,10 +2618,11 @@ async def get_career_dna(user_id: str):
         )[:3]
 
         # Share text
+        impact_line = f"Impact Pattern: {impact_pattern}\n" if impact_pattern else ""
         share_text = (
             f"Just got my Career DNA on Career Sage 🧬\n\n"
             f"Cohort: {cohort}\n"
-            f"Impact Pattern: {impact_pattern}\n"
+            f"{impact_line}"
             f"Market Position: {market['label']}\n"
             f"Promotion Readiness: {readiness['verdict']} ({readiness['score']}%)\n"
             f"Most Likely Next Role: {next_role}\n\n"
