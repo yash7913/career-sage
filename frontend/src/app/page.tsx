@@ -278,10 +278,139 @@ function PricingTable() {
   )
 }
 
+function MobileLandingPage({ showAuth, setShowAuth }: { showAuth: boolean; setShowAuth: (v: boolean) => void }) {
+  return (
+    <div style={{
+      minHeight: '100vh', background: '#0d1117', color: '#fff',
+      fontFamily: 'system-ui, sans-serif', display: 'flex', flexDirection: 'column',
+    }}>
+      {/* Simple header */}
+      <div style={{
+        padding: '1.25rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        borderBottom: `1px solid ${BORDER}`,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{
+            width: '28px', height: '28px', borderRadius: '8px',
+            background: 'linear-gradient(135deg, #10B981, #059669)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px',
+          }}>⚡</div>
+          <span style={{ fontSize: '16px', fontWeight: 700 }}>Career Sage</span>
+        </div>
+        <button onClick={() => setShowAuth(true)} style={{
+          fontSize: '13px', color: 'rgba(255,255,255,0.6)', background: 'none', border: 'none', cursor: 'pointer',
+        }}>
+          Sign in
+        </button>
+      </div>
+
+      {/* Hero — headline, one-liner, one CTA */}
+      <div style={{ padding: '2.5rem 1.25rem 2rem', flex: 1 }}>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: '6px',
+          padding: '5px 12px', borderRadius: '999px', marginBottom: '1.5rem',
+          background: 'rgba(16,185,129,0.1)', border: `1px solid ${TEAL_BORDER}`,
+        }}>
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: TEAL }} />
+          <span style={{ fontSize: '11px', color: TEAL, fontWeight: 600 }}>Live · 12,481 roles scraped today</span>
+        </div>
+
+        <h1 style={{ fontSize: '34px', fontWeight: 800, lineHeight: 1.15, margin: '0 0 1rem', letterSpacing: '-1px' }}>
+          The command center for your career hunt.
+        </h1>
+
+        <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, margin: '0 0 2rem' }}>
+          Career Sage ingests every relevant role across LinkedIn, Naukri, Greenhouse and Lever — ranks them against your profile, and streams tailored resumes the second you click apply.
+        </p>
+
+        <button onClick={() => setShowAuth(true)} style={{
+          width: '100%', padding: '14px', borderRadius: '999px',
+          background: 'linear-gradient(135deg, #10B981, #059669)',
+          color: '#fff', border: 'none', fontSize: '15px', fontWeight: 700, cursor: 'pointer',
+          marginBottom: '2.5rem',
+        }}>
+          ⚡ Try one free optimization
+        </button>
+
+        {/* Brief value props — three short lines instead of full module sections */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2.5rem' }}>
+          {[
+            { icon: '🧬', title: 'Career DNA', desc: 'Your professional identity, scored against your cohort and the top decile.' },
+            { icon: '📊', title: 'Promotion Readiness', desc: 'A live readiness score with the specific gaps holding you back.' },
+            { icon: '⚡', title: 'Ranked job feed', desc: 'Every role scored by skill overlap, seniority fit, and impact correlation.' },
+          ].map(item => (
+            <div key={item.title} style={{
+              padding: '1rem', borderRadius: '12px',
+              background: '#161b22', border: `1px solid ${BORDER}`,
+              display: 'flex', gap: '12px', alignItems: 'flex-start',
+            }}>
+              <span style={{ fontSize: '20px', flexShrink: 0 }}>{item.icon}</span>
+              <div>
+                <p style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 3px' }}>{item.title}</p>
+                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0, lineHeight: 1.5 }}>{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Simple stats row instead of full telemetry section */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px',
+          padding: '1rem', borderRadius: '12px',
+          background: '#161b22', border: `1px solid ${BORDER}`, marginBottom: '2.5rem',
+        }}>
+          {[['94%', 'Avg match'], ['1.2s', 'First token'], ['250+', 'Sources']].map(([v, l]) => (
+            <div key={l} style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '18px', fontWeight: 700, color: TEAL, margin: '0 0 2px' }}>{v}</p>
+              <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>{l}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Simple pricing summary instead of full comparison table */}
+        <div style={{
+          padding: '1.25rem', borderRadius: '14px',
+          background: '#161b22', border: `1px solid ${TEAL_BORDER}`, marginBottom: '2rem',
+        }}>
+          <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.08em', margin: '0 0 8px' }}>SIMPLE PRICING</p>
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, margin: '0 0 12px' }}>
+            Free to start — 2 resume generations a month, full job discovery feed. Upgrade to Pro for unlimited generations, unlimited tracks, and salary intelligence.
+          </p>
+          <button onClick={() => setShowAuth(true)} style={{
+            width: '100%', padding: '11px', borderRadius: '8px',
+            background: 'rgba(16,185,129,0.12)', color: TEAL,
+            border: `1px solid ${TEAL_BORDER}`, fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+          }}>
+            See full pricing on desktop →
+          </button>
+        </div>
+
+        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)', textAlign: 'center', margin: 0 }}>
+          For the full experience — detailed comparisons, live job feed preview — visit on desktop.
+        </p>
+      </div>
+
+      <div style={{ padding: '1.5rem', textAlign: 'center', borderTop: `1px solid ${BORDER}` }}>
+        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)', margin: 0 }}>© 2026 Career Sage</p>
+      </div>
+
+      {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
+    </div>
+  )
+}
+
 export default function LandingPage() {
   const [showAuth, setShowAuth] = useState(false)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const [activeSection, setActiveSection] = useState('')
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
 useEffect(() => {
     const observers: IntersectionObserver[] = []
@@ -315,6 +444,10 @@ const [showTop, setShowTop] = useState(false)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  if (isMobile) {
+    return <MobileLandingPage showAuth={showAuth} setShowAuth={setShowAuth} />
+  }
 
   return (
     <main style={{ background: BG, minHeight: '100vh', color: '#fff', fontFamily: 'system-ui, -apple-system, sans-serif', overflowX: 'hidden' }}>
