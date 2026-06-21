@@ -430,21 +430,37 @@ const res = await fetch(
         </div>
       )}
 
-      {/* LinkedIn PDF import — hidden during onboarding, handled automatically */}
+      {/* LinkedIn PDF import — hidden during onboarding, handled automatically.
+          Strongly emphasized when no LinkedIn export exists yet, since it's
+          typically the single most complete/current source of work history —
+          quieter once one's already in the vault. */}
       {!isOnboarding && <div style={{
-        border: `1px solid ${BORDER}`,
+        border: `1px solid ${hasLinkedinExport ? BORDER : 'rgba(16,185,129,0.3)'}`,
         borderRadius: '12px',
         padding: '1rem 1.25rem',
         marginBottom: '1rem',
-        background: 'rgba(255,255,255,0.02)',
+        background: hasLinkedinExport ? 'rgba(255,255,255,0.02)' : 'rgba(16,185,129,0.05)',
       }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
           <div style={{ flex: 1 }}>
-            <p style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.7)', margin: '0 0 4px' }}>
-              Also import from LinkedIn
+            {!hasLinkedinExport && (
+              <span style={{
+                display: 'inline-block', fontSize: '10px', fontWeight: 700,
+                color: TEAL, background: 'rgba(16,185,129,0.15)',
+                padding: '2px 8px', borderRadius: '999px', marginBottom: '6px',
+                letterSpacing: '0.05em',
+              }}>
+                RECOMMENDED
+              </span>
+            )}
+            <p style={{ fontSize: '13px', fontWeight: 600, color: hasLinkedinExport ? 'rgba(255,255,255,0.7)' : '#fff', margin: '0 0 4px' }}>
+              {hasLinkedinExport ? 'LinkedIn export added' : 'Import your LinkedIn export'}
             </p>
-            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0, lineHeight: 1.6 }}>
-              On LinkedIn: <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Me</strong> → <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Settings & Privacy</strong> → <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Data Privacy</strong> → <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Get a copy of your data</strong> → tick <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Profile</strong> → <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Request archive</strong>. Ready in under a minute.
+            <p style={{ fontSize: '11px', color: hasLinkedinExport ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.45)', margin: 0, lineHeight: 1.6 }}>
+              {hasLinkedinExport
+                ? 'You can add an updated export anytime if your profile has changed.'
+                : <>Your LinkedIn profile is usually the single most complete record of your work history — it catches roles that get trimmed from tailored resumes. On LinkedIn: <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Me</strong> → <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Settings & Privacy</strong> → <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Data Privacy</strong> → <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Get a copy of your data</strong> → tick <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Profile</strong> → <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Request archive</strong>. Ready in under a minute.</>
+              }
             </p>
             {linkedinResult && (
               <p style={{
@@ -457,9 +473,9 @@ const res = await fetch(
           </div>
           <label style={{
             padding: '7px 14px', borderRadius: '8px', cursor: 'pointer',
-            background: linkedinImporting ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.05)',
-            border: `1px solid ${linkedinImporting ? 'rgba(16,185,129,0.3)' : BORDER}`,
-            color: linkedinImporting ? TEAL : 'rgba(255,255,255,0.5)',
+            background: linkedinImporting ? 'rgba(16,185,129,0.1)' : hasLinkedinExport ? 'rgba(255,255,255,0.05)' : TEAL,
+            border: `1px solid ${linkedinImporting ? 'rgba(16,185,129,0.3)' : hasLinkedinExport ? BORDER : TEAL}`,
+            color: linkedinImporting ? TEAL : hasLinkedinExport ? 'rgba(255,255,255,0.5)' : '#fff',
             fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap',
             flexShrink: 0,
           }}>
