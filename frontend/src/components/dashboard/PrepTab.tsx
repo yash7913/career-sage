@@ -18,10 +18,13 @@ interface TrackerCard {
 interface PrepTabProps {
   userId: string
   tier?: string
+  initialSection?: string
 }
 
-export default function PrepTab({ userId, tier }: PrepTabProps) {
-  const [section, setSection] = useState<'stories' | 'interview'>('stories')
+export default function PrepTab({ userId, tier, initialSection }: PrepTabProps) {
+  const [section, setSection] = useState<'stories' | 'interview'>(
+    initialSection === 'interview' ? 'interview' : 'stories'
+  )
   const [appliedJobs, setAppliedJobs] = useState<TrackerCard[]>([])
   const [selectedJob, setSelectedJob] = useState<TrackerCard | null>(null)
   const [loading, setLoading] = useState(false)

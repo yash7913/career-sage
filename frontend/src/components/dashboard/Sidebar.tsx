@@ -13,13 +13,24 @@ interface SidebarProps {
   cohort: string | null
   tier: string
   activeTab: string
-  setActiveTab: (tab: string) => void
+  setActiveTab: (tab: string, section?: string) => void
   hasProfile: boolean
   hasTracks: boolean
   tracks: { track_id: string; track_name: string; track_color: string }[]
   impactPattern?: string
   searchStatus?: string
   onSearchStatusChange?: (status: string) => void
+}
+
+const SUB_ITEMS: Record<string, { key: string; label: string }[]> = {
+  prep: [
+    { key: 'stories', label: '📖 STAR Stories' },
+    { key: 'interview', label: '🎯 Interview Qs' },
+  ],
+  tools: [
+    { key: 'intelligence', label: '🧠 Intelligence' },
+    { key: 'assets', label: '✦ Assets' },
+  ],
 }
 
 const COLOR_MAP: Record<string, string> = {
@@ -71,6 +82,7 @@ export default function Sidebar({
   const [collapsed, setCollapsed] = useState(false)
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+  const [expandedNav, setExpandedNav] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -133,7 +145,7 @@ export default function Sidebar({
         flexShrink: 0,
       }}>
         {!collapsed && (
-          <a href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button onClick={() => setActiveTab('career')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{
               width: '26px', height: '26px', borderRadius: '7px',
               background: 'linear-gradient(135deg, #10B981, #059669)',
@@ -143,17 +155,17 @@ export default function Sidebar({
             <span style={{ fontSize: '14px', fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>
               Career Sage
             </span>
-          </a>
+          </button>
         )}
         {collapsed && (
-          <a href="/" style={{ textDecoration: 'none' }}>
+          <button onClick={() => setActiveTab('career')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'none' }}>
             <div style={{
               width: '26px', height: '26px', borderRadius: '7px',
               background: 'linear-gradient(135deg, #10B981, #059669)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '13px',
             }}>⚡</div>
-          </a>
+          </button>
         )}
         {!collapsed && (
           <button onClick={() => setCollapsed(true)} style={{
@@ -271,38 +283,75 @@ export default function Sidebar({
       {/* Main nav */}
       <nav style={{ flex: 1, padding: collapsed ? '1rem 0' : '1rem 0.75rem', overflowY: 'auto' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '1rem' }}>
-          {navItems.map(item => (
-            <button
-              key={item.key}
-              onClick={() => !item.locked && setActiveTab(item.key)}
-              title={item.locked ? 'Complete your profile first' : item.label}
-              style={{
-                display: 'flex', alignItems: 'center',
-                gap: collapsed ? 0 : '10px',
-                padding: collapsed ? '10px 0' : '9px 12px',
-                borderRadius: '9px', border: 'none',
-                cursor: item.locked ? 'not-allowed' : 'pointer',
-                justifyContent: collapsed ? 'center' : 'flex-start',
-                background: activeTab === item.key ? 'rgba(16,185,129,0.12)' : 'transparent',
-                transition: 'all 0.15s', width: '100%',
-                opacity: item.locked ? 0.35 : 1,
-                boxShadow: activeTab === item.key ? 'inset 0 0 0 1px rgba(16,185,129,0.25)' : 'none',
-              }}
-            >
-              <span style={{ fontSize: '16px', flexShrink: 0 }}>{item.icon}</span>
-              {!collapsed && (
-                <span style={{
-                  fontSize: '13px', fontWeight: activeTab === item.key ? 600 : 400,
-                  color: activeTab === item.key ? TEAL : 'rgba(255,255,255,0.5)',
-                }}>
-                  {item.label}
-                </span>
-              )}
-              {!collapsed && item.locked && (
-                <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'rgba(255,255,255,0.2)' }}>🔒</span>
-              )}
-            </button>
-          ))}
+          {navItems.map(item => {
+            const subItems = SUB_ITEMS[item.key]
+            const isExpanded = expandedNav === item.key && !collapsed
+            return (
+              <div key={item.key}>
+                <button
+                  onClick={() => {
+                    if (item.locked) return
+                    if (subItems && activeTab === item.key) {
+                      // Already on this tab — toggle the sub-item expander
+                      setExpandedNav(isExpanded ? null : item.key)
+                    } else {
+                      setActiveTab(item.key)
+                      if (subItems) setExpandedNav(item.key)
+                    }
+                  }}
+                  title={item.locked ? 'Complete your profile first' : item.label}
+                  style={{
+                    display: 'flex', alignItems: 'center',
+                    gap: collapsed ? 0 : '10px',
+                    padding: collapsed ? '10px 0' : '9px 12px',
+                    borderRadius: '9px', border: 'none',
+                    cursor: item.locked ? 'not-allowed' : 'pointer',
+                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    background: activeTab === item.key ? 'rgba(16,185,129,0.12)' : 'transparent',
+                    transition: 'all 0.15s', width: '100%',
+                    opacity: item.locked ? 0.35 : 1,
+                    boxShadow: activeTab === item.key ? 'inset 0 0 0 1px rgba(16,185,129,0.25)' : 'none',
+                  }}
+                >
+                  <span style={{ fontSize: '16px', flexShrink: 0 }}>{item.icon}</span>
+                  {!collapsed && (
+                    <span style={{
+                      fontSize: '13px', fontWeight: activeTab === item.key ? 600 : 400,
+                      color: activeTab === item.key ? TEAL : 'rgba(255,255,255,0.5)',
+                    }}>
+                      {item.label}
+                    </span>
+                  )}
+                  {!collapsed && item.locked && (
+                    <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'rgba(255,255,255,0.2)' }}>🔒</span>
+                  )}
+                  {!collapsed && subItems && !item.locked && (
+                    <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'rgba(255,255,255,0.25)' }}>
+                      {isExpanded ? '▾' : '▸'}
+                    </span>
+                  )}
+                </button>
+                {isExpanded && subItems && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', marginLeft: '14px', marginTop: '2px' }}>
+                    {subItems.map(sub => (
+                      <button
+                        key={sub.key}
+                        onClick={() => setActiveTab(item.key, sub.key)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '8px',
+                          padding: '7px 12px', borderRadius: '7px', border: 'none',
+                          cursor: 'pointer', textAlign: 'left',
+                          background: 'transparent',
+                        }}
+                      >
+                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>{sub.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
 
         {/* Active tracks */}
@@ -351,14 +400,6 @@ export default function Sidebar({
         )}
         {!collapsed && (
           <>
-            <a href="/" style={{
-              display: 'flex', alignItems: 'center', gap: '10px',
-              padding: '8px 12px', borderRadius: '8px',
-              textDecoration: 'none', color: 'rgba(255,255,255,0.3)', fontSize: '13px',
-            }}>
-              <span style={{ fontSize: '14px' }}>←</span>
-              Home
-            </a>
             <button
               onClick={handleSignOut}
               disabled={signingOut}

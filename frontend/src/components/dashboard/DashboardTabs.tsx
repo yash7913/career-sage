@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import DiscoveryFeed from '@/components/jobs/DiscoveryFeed'
 import KanbanBoard from '@/components/tracker/KanbanBoard'
 import VaultUpload from '@/components/profile/VaultUpload'
@@ -95,11 +96,32 @@ export default function DashboardTabs({
   topMatchScore, generationCount, profileSkills = [],
   hasProfile, hasTracks, initialTab, impactPattern = '', salaryTargetLpa,
 }: DashboardTabsProps) {
-  const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
-  const tabFromUrl = params?.get('tab') || null
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const tabFromUrl = searchParams.get('tab')
   const defaultTab = tabFromUrl || initialTab || (hasTracks ? 'career' : 'profile')
-  const [activeTab, setActiveTab] = useState<string>(defaultTab)
+  const [activeTab, setActiveTabState] = useState<string>(defaultTab)
   const [trackerKey, setTrackerKey] = useState(0)
+
+  // Two-way URL sync — changing tabs updates the URL (enables back/forward,
+  // bookmarking, and direct links), and is the single source of truth for
+  // which tab renders. Sub-tab navigation (Prep/Tools sections) also gets
+  // a query param so those are linkable/shareable too.
+  const setActiveTab = useCallback((tab: string, section?: string) => {
+    setActiveTabState(tab)
+    const newParams = new URLSearchParams(searchParams.toString())
+    newParams.set('tab', tab)
+    if (section) {
+      newParams.set('section', section)
+    } else {
+      newParams.delete('section')
+    }
+    router.push(`${pathname}?${newParams.toString()}`, { scroll: false })
+  }, [pathname, router, searchParams])
+
+  const activeSection = searchParams.get('section') || undefined
   const [searchStatus, setSearchStatus] = useState('ACTIVE')
   const [showOnboarding, setShowOnboarding] = useState(!hasProfile)
 
@@ -243,12 +265,12 @@ export default function DashboardTabs({
 
           {/* Prep tab */}
           {activeTab === 'prep' && (
-            <PrepTab userId={userId} tier={tier} />
+            <PrepTab userId={userId} tier={tier} initialSection={activeSection} />
           )}
 
           {/* Tools tab */}
           {activeTab === 'tools' && (
-            <ToolsTab userId={userId} tier={tier} />
+            <ToolsTab userId={userId} tier={tier} initialSection={activeSection} />
           )}
 
           {/* Profile tab — minimal setup only */}

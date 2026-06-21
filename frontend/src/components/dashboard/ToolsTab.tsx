@@ -12,10 +12,12 @@ const CARD = '#161b22'
 interface ToolsTabProps {
   userId: string
   tier?: string
+  initialSection?: string
 }
-
-export default function ToolsTab({ userId, tier }: ToolsTabProps) {
-  const [section, setSection] = useState<'intelligence' | 'assets'>('intelligence')
+export default function ToolsTab({ userId, tier, initialSection }: ToolsTabProps) {
+  const [section, setSection] = useState<'intelligence' | 'assets'>(
+    initialSection === 'assets' ? 'assets' : 'intelligence'
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
