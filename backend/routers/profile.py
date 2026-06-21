@@ -91,35 +91,71 @@ async def save_document(req: DocumentSaveRequest):
             return {"status": "exists", "doc_id": existing.data[0]["doc_id"]}
 
         # For resumes specifically — multiple uploaded versions of "the same
-        # resume" are common (re-exports, minor edits) and create noisy
-        # duplicate active documents that all get sent to extraction. Flag
-        # likely-duplicate resumes by filename similarity so the frontend can
-        # offer to replace the old one rather than silently stacking up.
+        # resume" are common (tailored variants for different jobs) and
+        # create noisy duplicate active documents. Filename similarity alone
+        # misses this (e.g. "Resume_Google.pdf" vs "Resume_Microsoft.pdf" can
+        # be 90%+ identical content with completely different names), so we
+        # compare actual extracted text content, not just filenames.
         likely_duplicate_of = None
+        similarity_score = None
+
         if req.doc_tag in ("RESUME", "LINKEDIN_EXPORT"):
-            import difflib
-            import re as _re
+            try:
+                from services.profile_extractor import extract_text_from_bytes
+                import difflib
 
-            def _normalize(name: str) -> str:
-                name = _re.sub(r'\.[^/.]+$', '', name)  # strip extension
-                name = _re.sub(r'\s*\(\d+\)\s*$', '', name)  # strip "(2)" suffix
-                name = _re.sub(r'[-_\s]+', ' ', name).strip().lower()
-                return name
+                new_bytes = supabase.storage.from_("user-documents").download(req.storage_path)
+                new_text = extract_text_from_bytes(new_bytes, req.file_name)
 
-            same_tag_docs = supabase.table("user_documents")\
-                .select("doc_id, file_name")\
-                .eq("user_id", req.user_id)\
-                .eq("doc_tag", req.doc_tag)\
-                .eq("is_active", True)\
-                .execute()
+                if new_text and len(new_text.strip()) > 100:
+                    same_tag_docs = supabase.table("user_documents")\
+                        .select("doc_id, file_name, storage_path")\
+                        .eq("user_id", req.user_id)\
+                        .eq("doc_tag", req.doc_tag)\
+                        .eq("is_active", True)\
+                        .execute()
 
-            new_norm = _normalize(req.file_name)
-            for doc in (same_tag_docs.data or []):
-                existing_norm = _normalize(doc["file_name"])
-                similarity = difflib.SequenceMatcher(None, new_norm, existing_norm).ratio()
-                if similarity > 0.7:
-                    likely_duplicate_of = {"doc_id": doc["doc_id"], "file_name": doc["file_name"]}
-                    break
+                    best_match = None
+                    best_score = 0.0
+
+                    for doc in (same_tag_docs.data or []):
+                        try:
+                            existing_bytes = supabase.storage.from_("user-documents").download(doc["storage_path"])
+                            existing_text = extract_text_from_bytes(existing_bytes, doc["file_name"])
+                            if not existing_text or len(existing_text.strip()) < 100:
+                                continue
+
+                            # Compare on a normalized excerpt rather than full
+                            # text — full-document diffing is slow and minor
+                            # formatting differences shouldn't matter; what
+                            # matters is whether the substantive content overlaps
+                            score = difflib.SequenceMatcher(
+                                None,
+                                new_text[:5000].lower(),
+                                existing_text[:5000].lower()
+                            ).ratio()
+
+                            if score > best_score:
+                                best_score = score
+                                best_match = doc
+                        except Exception:
+                            continue
+
+                    # Threshold: above 0.75 content similarity = likely the
+                    # same underlying resume with minor tailoring (different
+                    # job titles, reordered bullets), not a genuinely distinct
+                    # version. Below that, treat as distinct enough to keep.
+                    if best_match and best_score > 0.75:
+                        likely_duplicate_of = {"doc_id": best_match["doc_id"], "file_name": best_match["file_name"]}
+                        similarity_score = round(best_score * 100)
+            except Exception as e:
+                # Never let similarity checking block an upload — worst case,
+                # a near-duplicate slips through and gets caught at extraction
+                try:
+                    from logger import get_logger
+                    get_logger(__name__).warning(f"Similarity check failed, allowing upload: {e}")
+                except Exception:
+                    pass
 
         result = supabase.table("user_documents").insert({
             "user_id": req.user_id,
@@ -132,6 +168,7 @@ async def save_document(req: DocumentSaveRequest):
         response = {"status": "saved", "doc_id": result.data[0]["doc_id"]}
         if likely_duplicate_of:
             response["likely_duplicate_of"] = likely_duplicate_of
+            response["similarity_score"] = similarity_score
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
