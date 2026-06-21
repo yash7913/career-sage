@@ -157,9 +157,9 @@ export default function DashboardTabs({
         cohort={cohort}
         tier={tier}
         activeTab={activeTab}
-        setActiveTab={(tab) => {
+        setActiveTab={(tab, section) => {
           if (tab === 'pipeline') setTrackerKey(prev => prev + 1)
-          setActiveTab(tab)
+          setActiveTab(tab, section)
         }}
         hasProfile={hasProfile}
         hasTracks={hasTracks}
