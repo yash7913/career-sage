@@ -56,10 +56,14 @@ function formatSize(bytes: number) {
 
 export default function VaultUpload({
   onExtractionComplete,
+  onUploadSuccess,
   isOnboarding = false,
+  existingDocCount = null,
 }: {
   onExtractionComplete?: () => void
+  onUploadSuccess?: () => void
   isOnboarding?: boolean
+  existingDocCount?: number | null
 }) {
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [extracting, setExtracting] = useState(false)
@@ -69,30 +73,13 @@ export default function VaultUpload({
   const [linkedinResult, setLinkedinResult] = useState<string | null>(null)
   const [pendingLinkedinFiles, setPendingLinkedinFiles] = useState<File[]>([])
   const [uploadLimitMessage, setUploadLimitMessage] = useState<string | null>(null)
-  const [existingDocCount, setExistingDocCount] = useState(0)
-  const [docCountLoaded, setDocCountLoaded] = useState(false)
   const supabase = createClient()
 
-  useEffect(() => {
-    const fetchExistingCount = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        setDocCountLoaded(true)
-        return
-      }
-      try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/documents/${user.id}`)
-        if (res.ok) {
-          const data = await res.json()
-          setExistingDocCount((data.documents || []).length)
-        }
-      } catch {
-      } finally {
-        setDocCountLoaded(true)
-      }
-    }
-    fetchExistingCount()
-  }, [])
+  // existingDocCount is passed down from the parent (ProfileTab), which
+  // fetches it once via DocumentManager's sibling call — avoids this
+  // component needing its own fetch with its own race condition against
+  // the file picker, which is what caused the "still checking" bug.
+  const docCountLoaded = existingDocCount !== null
 
   const handleLinkedinPdf = async (file: File) => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -135,15 +122,10 @@ export default function VaultUpload({
       } = await supabase.auth.getUser()
       if (!user) return
 
-      // Guard against the race where a file is dropped before the existing
-      // document count has finished loading — without this, the cap check
-      // below would compare against 0 instead of the real count.
-      if (!docCountLoaded) {
-        setUploadLimitMessage('Still checking your current document count — please try again in a moment.')
-        return
-      }
-
-      const currentCount = existingDocCount + files.length
+      // If the parent hasn't loaded the count yet, fall back to only
+      // counting files in this session — better to under-protect briefly
+      // than block a normal first upload with a dead-end error.
+      const currentCount = (docCountLoaded ? existingDocCount! : 0) + files.length
       const remainingSlots = MAX_DOCS - currentCount
 
       if (remainingSlots <= 0) {
@@ -259,6 +241,10 @@ const res = await fetch(
                 : f
             )
           )
+
+          if (!isDuplicate) {
+            onUploadSuccess?.()
+          }
         } catch (err: unknown) {
           const message =
             err instanceof Error ? err.message : 'Upload failed'

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import DiscoveryFeed from '@/components/jobs/DiscoveryFeed'
 import KanbanBoard from '@/components/tracker/KanbanBoard'
@@ -326,6 +326,15 @@ function ProfileTab({
   onTrackCreated: () => void
   tier?: string
 }) {
+  const [docCount, setDocCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/documents/${userId}`)
+      .then(r => r.json())
+      .then(data => setDocCount((data.documents || []).length))
+      .catch(() => setDocCount(0))
+  }, [userId])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
@@ -337,10 +346,16 @@ function ProfileTab({
         <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1rem', lineHeight: 1.6 }}>
           Add resumes, LinkedIn exports, certifications and project docs. Career Sage extracts your profile automatically.
         </p>
-        <VaultUpload onExtractionComplete={() => setTimeout(() => window.location.reload(), 2000)} />
+        <VaultUpload
+          existingDocCount={docCount}
+          onExtractionComplete={() => {
+            setTimeout(() => window.location.reload(), 2000)
+          }}
+          onUploadSuccess={() => setDocCount(prev => (prev ?? 0) + 1)}
+        />
         <div style={{ marginTop: '1.5rem' }}>
           <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: '0 0 10px' }}>
-            YOUR UPLOADED FILES
+            YOUR UPLOADED FILES {docCount !== null && `(${docCount}/10)`}
           </p>
           <DocumentManager userId={userId} />
         </div>
