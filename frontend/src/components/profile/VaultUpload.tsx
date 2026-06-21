@@ -261,11 +261,14 @@ const res = await fetch(
     [supabase]
   )
 
+  const isOverLimit = docCountLoaded && (existingDocCount! + files.length) >= MAX_DOCS
+
   const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
     onDrop,
     accept: ACCEPTED_TYPES,
     maxSize: 10 * 1024 * 1024,
     maxFiles: MAX_DOCS,
+    disabled: isOverLimit,
   })
 
   const updateTag = (fileName: string, tag: DocTag) => {
@@ -333,20 +336,23 @@ const res = await fetch(
       <div
         {...getRootProps()}
         style={{
-          border: `1.5px dashed ${isDragActive ? TEAL : 'rgba(255,255,255,0.15)'}`,
+          border: `1.5px dashed ${isOverLimit ? 'rgba(239,68,68,0.3)' : isDragActive ? TEAL : 'rgba(255,255,255,0.15)'}`,
           borderRadius: '14px',
           padding: '2.5rem',
           textAlign: 'center',
-          cursor: 'pointer',
-          background: isDragActive
+          cursor: isOverLimit ? 'not-allowed' : 'pointer',
+          background: isOverLimit
+            ? 'rgba(239,68,68,0.04)'
+            : isDragActive
             ? 'rgba(16,185,129,0.06)'
             : 'rgba(255,255,255,0.02)',
+          opacity: isOverLimit ? 0.6 : 1,
           transition: 'all 0.2s',
           marginBottom: '1rem',
         }}
       >
         <input {...getInputProps()} />
-        <div style={{ fontSize: '32px', marginBottom: '12px' }}>📂</div>
+        <div style={{ fontSize: '32px', marginBottom: '12px' }}>{isOverLimit ? '🚫' : '📂'}</div>
         <p
           style={{
             fontSize: '15px',
@@ -355,7 +361,9 @@ const res = await fetch(
             margin: '0 0 6px',
           }}
         >
-          {isDragActive
+          {isOverLimit
+            ? `Document limit reached (${MAX_DOCS} max)`
+            : isDragActive
             ? 'Drop your files here'
             : 'Drag and drop your documents'}
         </p>
@@ -366,21 +374,24 @@ const res = await fetch(
             margin: '0 0 16px',
           }}
         >
-          PDF, DOCX, MD, TXT, PPTX — up to 20MB each
+          {isOverLimit
+            ? 'Remove a file from your vault below to upload a new one'
+            : 'PDF, DOCX, MD, TXT, PPTX — up to 10MB each'}
         </p>
         <button
+          disabled={isOverLimit}
           style={{
             padding: '8px 20px',
             borderRadius: '8px',
-            background: TEAL,
-            color: '#fff',
+            background: isOverLimit ? 'rgba(255,255,255,0.06)' : TEAL,
+            color: isOverLimit ? 'rgba(255,255,255,0.3)' : '#fff',
             border: 'none',
             fontSize: '13px',
             fontWeight: 600,
-            cursor: 'pointer',
+            cursor: isOverLimit ? 'not-allowed' : 'pointer',
           }}
         >
-          Browse files
+          {isOverLimit ? 'Limit reached' : 'Browse files'}
         </button>
       </div>
 
