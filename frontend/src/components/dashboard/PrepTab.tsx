@@ -25,6 +25,16 @@ export default function PrepTab({ userId, tier, initialSection }: PrepTabProps) 
   const [section, setSection] = useState<'stories' | 'interview'>(
     initialSection === 'interview' ? 'interview' : 'stories'
   )
+
+  // useState's initializer only runs on first mount — without this effect,
+  // clicking a different sub-item in the sidebar after this component is
+  // already mounted has no visible effect, since React reuses the existing
+  // component instance rather than remounting it.
+  useEffect(() => {
+    if (initialSection === 'interview' || initialSection === 'stories') {
+      setSection(initialSection)
+    }
+  }, [initialSection])
   const [appliedJobs, setAppliedJobs] = useState<TrackerCard[]>([])
   const [selectedJob, setSelectedJob] = useState<TrackerCard | null>(null)
   const [loading, setLoading] = useState(false)

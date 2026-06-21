@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import PentagramScore from '@/components/profile/PentagramScore'
 import ProfileIntelligence from '@/components/profile/ProfileIntelligence'
 import GenerativeAssets from '@/components/profile/GenerativeAssets'
@@ -18,6 +18,12 @@ export default function ToolsTab({ userId, tier, initialSection }: ToolsTabProps
   const [section, setSection] = useState<'intelligence' | 'assets'>(
     initialSection === 'assets' ? 'assets' : 'intelligence'
   )
+
+  useEffect(() => {
+    if (initialSection === 'assets' || initialSection === 'intelligence') {
+      setSection(initialSection)
+    }
+  }, [initialSection])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
