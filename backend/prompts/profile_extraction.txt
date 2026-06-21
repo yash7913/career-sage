@@ -3,9 +3,25 @@ You are a precise, conservative data extraction engine. Your only job is to extr
 DOCUMENTS:
 {documents_text}
 
-Extract and return a JSON object with exactly these fields. Return ONLY the JSON object — no preamble, no markdown fences, no commentary, no trailing text.
+Extract and return a JSON object with exactly these fields, IN THIS ORDER. Return ONLY the JSON object — no preamble, no markdown fences, no commentary, no trailing text.
+
+CRITICAL — generate fields in this exact sequence, because later fields depend on earlier ones:
+1. First, write raw_profile_text. Its ROLES line is your single, authoritative scan of every distinct role across all source documents.
+2. Then, write work_history as a structured expansion of that exact same ROLES line — every role listed in ROLES must appear in work_history, and work_history must not contain any role that ISN'T in ROLES. These two fields describe the same underlying list of roles in two different formats; they must never disagree.
+3. Then fill in the remaining fields.
 
 {{
+  "raw_profile_text": "...",
+  "work_history": [
+    {{
+      "title": "Software Engineer",
+      "company": "Acme Corp",
+      "start_date": "2021-06",
+      "end_date": "2023-11",
+      "is_current": false,
+      "employment_type": "full-time"
+    }}
+  ],
   "extracted_skills": {{
     "technical": ["skill1"],
     "languages": ["Python", "SQL"],
@@ -24,24 +40,13 @@ Extract and return a JSON object with exactly these fields. Return ONLY the JSON
       "source_confidence": "explicit"
     }}
   ],
-  "work_history": [
-    {{
-      "title": "Software Engineer",
-      "company": "Acme Corp",
-      "start_date": "2021-06",
-      "end_date": "2023-11",
-      "is_current": false,
-      "employment_type": "full-time"
-    }}
-  ],
   "years_of_experience": 4,
   "seniority_level": "mid",
   "extracted_summary": "...",
   "career_tracks": ["software engineering"],
   "certifications": [],
   "phone": null,
-  "linkedin_url": null,
-  "raw_profile_text": "..."
+  "linkedin_url": null
 }}
 
 FIELD RULES:
@@ -60,9 +65,9 @@ education_data:
 - source_confidence: explicit if stated directly, inferred if calculated, unknown if absent
 
 work_history:
-- Extract every role including part-time, freelance, contract
-- IMPORTANT: the documents above may include multiple versions of the same person's resume (e.g. tailored for different job applications), describing the SAME roles with different wording or emphasis. Treat roles that clearly refer to the same position (same company, same or near-same title, same or overlapping dates) as ONE role — do not duplicate them in the output.
-- However, do NOT let this deduplication cause you to drop a genuinely DISTINCT role just because it only appears in some of the source documents (e.g. an earlier-career role that was trimmed from some tailored resume versions but appears in others, or only in a LinkedIn export). If a role appears in even one source document, include it.
+- Must be a direct structured expansion of the ROLES line you already wrote in raw_profile_text — same roles, same count, no additions, no omissions. Do not re-derive this independently from the source documents; expand the ROLES line you already committed to.
+- title, company, start_date, end_date, is_current, employment_type for each role from the ROLES line
+- The documents above may include multiple tailored versions of the same resume describing the SAME roles with different wording — when writing the ROLES line itself, treat roles at the same company with the same or near-same title and overlapping dates as ONE role. Do not lose a genuinely distinct earlier-career role just because it's absent from some (but not all) source documents — if it appears in even one document, it belongs in ROLES, and therefore in work_history.
 - title: extract the CORE job title only — remove suffixes, team names, and project names
   - "Lead, Product Management - Productivity Insights" → "Lead Product Manager"
   - "Senior Software Engineer - Payments Platform" → "Senior Software Engineer"

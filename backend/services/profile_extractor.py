@@ -312,6 +312,7 @@ async def extract_and_save_profile(user_id: str) -> dict:
     update_data = {
         "extracted_skills":          flat_skills,
         "education_data":            extracted.get("education_data", []),
+        "work_history":              extracted.get("work_history", []),
         "extracted_summary":         extracted.get("extracted_summary", ""),
         "raw_profile_text":          extracted.get("raw_profile_text", ""),
         "profile_completeness_score": completeness,
