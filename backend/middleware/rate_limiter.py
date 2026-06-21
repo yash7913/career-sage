@@ -73,7 +73,7 @@ async def check_generation_limit(user_id: str, action: str = "resume_generation"
                 status_code=429,
                 detail={
                     "error": "generation_limit_reached",
-                    "message": f"You've used all {limit} free {action.replace('_', ' ')}s this month.",
+                    "message": f"You've used all {limit} free {action.replace('_', ' ').rstrip('s')}s this month.",
                     "limit": limit,
                     "used": count,
                     "upgrade_prompt": "Upgrade to Pro for unlimited access.",

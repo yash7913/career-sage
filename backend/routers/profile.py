@@ -654,7 +654,11 @@ Return only the JSON object, no markdown."""
 
         return data
 
+    except HTTPException:
+        raise
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 class OfferAnalysisRequest(BaseModel):
@@ -748,6 +752,8 @@ Return only JSON, no markdown."""
         return json.loads(content)
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/inferred-skills/{user_id}")
@@ -808,7 +814,7 @@ Return format:
         client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         message = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=1000,
+            max_tokens=2500,
             messages=[{"role": "user", "content": prompt}]
         )
 
@@ -816,7 +822,17 @@ Return format:
         content = message.content[0].text.strip()
         content = re.sub(r'^```json\s*', '', content)
         content = re.sub(r'\s*```$', '', content)
-        inferred = json.loads(content)
+        try:
+            inferred = json.loads(content)
+        except json.JSONDecodeError:
+            # Response was likely truncated mid-array — recover whatever
+            # complete entries exist rather than failing the whole request
+            inferred = []
+            for obj_match in re.finditer(r'\{[^{}]*\}', content):
+                try:
+                    inferred.append(json.loads(obj_match.group()))
+                except json.JSONDecodeError:
+                    continue
 
         inferred = [
             s for s in inferred
@@ -828,6 +844,8 @@ Return format:
         return {"inferred_skills": inferred}
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 
