@@ -198,3 +198,16 @@ input, textarea, select {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(350%); }
 }
+
+@media (max-width: 640px) {
+  .cs-decision-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .cs-decision-modal {
+    max-height: 92vh !important;
+  }
+  .cs-decision-modal-inner {
+    padding: 1.25rem !important;
+    max-height: 92vh !important;
+  }
+}

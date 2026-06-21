@@ -286,7 +286,7 @@ function DecisionResult({ result, onClose }: { result: Record<string, unknown>; 
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem',
     }}>
-      <div style={{ position: 'relative', maxWidth: '720px', width: '100%', maxHeight: '85vh' }}>
+      <div className="cs-decision-modal" style={{ position: 'relative', maxWidth: '720px', width: '100%', maxHeight: '85vh' }}>
         {/* Close button — fixed outside the scrollable card, always visible */}
         <button onClick={onClose} style={{
           position: 'absolute', top: '-14px', right: '-14px', zIndex: 10,
@@ -297,7 +297,7 @@ function DecisionResult({ result, onClose }: { result: Record<string, unknown>; 
           boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
         }}>✕</button>
 
-        <div style={{
+        <div className="cs-decision-modal-inner" style={{
           background: '#1a2030', border: `1px solid ${BORDER}`, borderRadius: '16px',
           padding: '2rem', width: '100%', maxHeight: '85vh', overflowY: 'auto',
         }}>
@@ -321,7 +321,7 @@ function DecisionResult({ result, onClose }: { result: Record<string, unknown>; 
         </p>
 
         {/* Detail grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div className="cs-decision-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           {Object.entries(result).map(([key, val]) => {
             if (['recommendation', 'confidence', 'summary', 'decision_type'].includes(key)) return null
 
