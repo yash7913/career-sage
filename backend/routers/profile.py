@@ -538,7 +538,6 @@ class GenerateStarRequest(BaseModel):
 @router.post("/generate-star-stories")
 async def generate_star_stories(req: GenerateStarRequest):
     try:
-        await check_generation_limit(req.user_id, "star_stories")
         import anthropic
         import json
         profile = supabase.table("user_profiles").select("*").eq("user_id", req.user_id).execute()
@@ -547,6 +546,9 @@ async def generate_star_stories(req: GenerateStarRequest):
 
         p = profile.data[0]
 
+        # Check cache BEFORE quota — viewing already-generated stories should
+        # never cost against the monthly limit. Quota only applies to actually
+        # generating new content.
         if not req.force_regenerate:
             cached = p.get("generated_star_stories")
             if cached:
@@ -554,6 +556,9 @@ async def generate_star_stories(req: GenerateStarRequest):
                     cached = json.loads(cached)
                 if isinstance(cached, dict) and cached.get("stories"):
                     return cached
+
+        # Only check quota once we know we actually need to generate
+        await check_generation_limit(req.user_id, "star_stories")
 
         name = p.get("full_name") or "the candidate"
         raw_text = p.get("raw_profile_text") or ""

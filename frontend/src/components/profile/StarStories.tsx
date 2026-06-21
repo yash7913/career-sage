@@ -38,9 +38,12 @@ export default function StarStories({ userId }: { userId: string }) {
     loadStories()
   }, [])
 
+  const [quotaError, setQuotaError] = useState<string | null>(null)
+
   const loadStories = async (forceRegenerate = false, userTweak = '') => {
     if (forceRegenerate) setRegenerating(true)
     else setLoading(true)
+    setQuotaError(null)
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/generate-star-stories`, {
         method: 'POST',
@@ -54,6 +57,11 @@ export default function StarStories({ userId }: { userId: string }) {
       if (res.ok) {
         const data = await res.json()
         setStories(data.stories || [])
+      } else if (res.status === 429) {
+        const data = await res.json()
+        // Keep whatever stories are already showing — quota only blocks
+        // generating NEW ones, never hides what's already there
+        setQuotaError(data.detail?.message || 'Monthly generation limit reached.')
       }
     } finally {
       setLoading(false)
@@ -79,9 +87,21 @@ export default function StarStories({ userId }: { userId: string }) {
   )
 
   if (!stories.length) return (
-    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>
-      No stories generated yet.
-    </p>
+    <div>
+      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>
+        No stories generated yet.
+      </p>
+      {quotaError && (
+        <div style={{
+          marginTop: '10px', padding: '10px 14px', borderRadius: '8px',
+          background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
+        }}>
+          <p style={{ fontSize: '12px', color: 'rgba(245,158,11,0.9)', margin: 0 }}>
+            ⚠ {quotaError}
+          </p>
+        </div>
+      )}
+    </div>
   )
 
   const story = stories[activeStory]
@@ -186,6 +206,17 @@ export default function StarStories({ userId }: { userId: string }) {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {quotaError && (
+        <div style={{
+          padding: '10px 14px', borderRadius: '8px',
+          background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
+        }}>
+          <p style={{ fontSize: '12px', color: 'rgba(245,158,11,0.9)', margin: 0 }}>
+            ⚠ {quotaError} You can still view and copy your existing stories above.
+          </p>
         </div>
       )}
 
