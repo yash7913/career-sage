@@ -1,5 +1,6 @@
 from typing import Optional
 import json
+import os
 
 COHORT_WEIGHTS = {
     "Technical PM":       {"technical": 0.25, "domain": 0.20, "impact": 0.25, "leadership": 0.15, "learning": 0.15},
@@ -116,23 +117,85 @@ def compute_domain_expertise(raw_text: str, work_history: list, years_exp: int =
 
 
 def compute_impact_magnitude(raw_text: str) -> float:
+    """Regex-based fallback score — fast, but brittle. Only counts explicit
+    numeric metrics and keyword matches, so genuine impact described in
+    narrative language (without a %/number) scores artificially low. Used as
+    an instant fallback before the AI assessment completes, and as a safety
+    net if the AI call fails."""
     if not raw_text:
         return 0.0
-
     import re
     text_lower = raw_text.lower()
     metric_count = 0
     for pattern in METRIC_PATTERNS:
         matches = re.findall(pattern, text_lower)
         metric_count += len(matches)
-
     scale_keywords = ["million", "billion", "lakh", "crore", "enterprise", "global", "nationwide"]
     scale_bonus = sum(3 for kw in scale_keywords if kw in text_lower)
-
     ownership_count = sum(1 for w in OWNERSHIP_WORDS if w in text_lower)
-
     raw = min(metric_count * 4, 50) + min(scale_bonus, 20) + min(ownership_count * 3, 30)
     return min(round(raw), 100)
+
+
+async def compute_impact_magnitude_ai(raw_text: str, cohort: str, fallback_score: float) -> float:
+    """Reads the user's actual career narrative and assesses impact
+    holistically — scope of ownership, scale of outcomes, and evidence of
+    real-world effect — rather than only counting regex-matched numbers.
+    This catches genuine impact described in narrative language that the
+    keyword-based fallback misses entirely, which was producing unfairly
+    low, demoralizing scores for users with real accomplishments."""
+    if not raw_text or len(raw_text.strip()) < 50:
+        return fallback_score
+
+    try:
+        import anthropic
+        import json
+        import re as _re
+        from logger import get_logger
+        log = get_logger(__name__)
+
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+        prompt = f"""You are assessing the career IMPACT of a {cohort} based on their profile text. Impact means: scope of ownership, scale of outcomes, and evidence of real business or technical effect — NOT just whether numbers/percentages are explicitly written.
+
+Profile text:
+{raw_text[:3000]}
+
+Score their impact magnitude from 0-100, where:
+- 0-25: Minimal evidence of ownership or outcomes, mostly task-execution language
+- 26-50: Some ownership of work, outcomes implied but not well-evidenced
+- 51-75: Clear ownership of meaningful initiatives, outcomes are evident even if not always quantified
+- 76-100: Strong, clear evidence of significant scope, scale, and measurable or clearly substantial outcomes
+
+Be FAIR and GENEROUS in reading intent — if someone describes leading a platform serving thousands of users, or improving a process significantly, that IS impact even without an exact percentage. Do not penalize narrative phrasing just because it lacks a number. Conversely, do not inflate vague claims with no real substance.
+
+Return ONLY valid JSON: {{"score": <int 0-100>, "reasoning": "one sentence why"}}"""
+
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=200,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        content = message.content[0].text.strip()
+        content = _re.sub(r'^```json\s*', '', content)
+        content = _re.sub(r'\s*```$', '', content)
+        result = json.loads(content)
+        score = result.get("score")
+
+        if isinstance(score, (int, float)) and 0 <= score <= 100:
+            # Take the higher of the two scores — the AI assessment corrects
+            # for the regex method's blind spots, never makes things worse
+            return max(round(score), fallback_score)
+
+        return fallback_score
+    except Exception as e:
+        try:
+            from logger import get_logger
+            get_logger(__name__).warning(f"AI impact scoring failed, using fallback: {e}")
+        except Exception:
+            pass
+        return fallback_score
 
 
 def compute_leadership_signals(raw_text: str, work_history: list) -> float:
@@ -182,13 +245,12 @@ def compute_learning_velocity(raw_text: str, education: list, skills: list) -> f
     return min(round(raw), 100)
 
 
-def compute_pentagram(profile: dict) -> dict:
+async def compute_pentagram(profile: dict) -> dict:
     skills = profile.get("extracted_skills") or []
     raw_text = profile.get("raw_profile_text") or ""
     education = profile.get("education_data") or []
     cohort = profile.get("cohort") or "Career Explorer"
     years_exp = profile.get("years_of_experience") or 0
-
     work_history = []
     if raw_text:
         import re
@@ -198,7 +260,6 @@ def compute_pentagram(profile: dict) -> dict:
                 role_str = role_str.strip()
                 if role_str:
                     work_history.append({"title": role_str, "company": ""})
-
     if isinstance(skills, list):
         skill_list = []
         for s in skills:
@@ -208,14 +269,16 @@ def compute_pentagram(profile: dict) -> dict:
                 skill_list.extend(v for v in s.values() if isinstance(v, str))
         skills = skill_list
 
+    impact_fallback = compute_impact_magnitude(raw_text)
+    impact_score = await compute_impact_magnitude_ai(raw_text, cohort, impact_fallback)
+
     scores = {
         "technical_depth": compute_technical_depth(skills, raw_text, years_exp),
         "domain_expertise": compute_domain_expertise(raw_text, work_history, years_exp),
-        "impact_magnitude": compute_impact_magnitude(raw_text),
+        "impact_magnitude": impact_score,
         "leadership_signals": compute_leadership_signals(raw_text, work_history),
         "learning_velocity": compute_learning_velocity(raw_text, education, skills),
     }
-
     weights = COHORT_WEIGHTS.get(cohort, DEFAULT_WEIGHTS)
     weighted = sum(scores[k.replace(" ", "_").replace("-", "_")] * w for k, w in [
         ("technical_depth", weights["technical"]),
@@ -224,11 +287,9 @@ def compute_pentagram(profile: dict) -> dict:
         ("leadership_signals", weights["leadership"]),
         ("learning_velocity", weights["learning"]),
     ])
-
     scores["composite_score"] = min(round(weighted), 100)
     scores["cohort"] = cohort
     scores["weights"] = weights
-
     return scores
 
 

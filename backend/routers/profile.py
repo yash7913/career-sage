@@ -267,7 +267,7 @@ async def get_pentagram(user_id: str):
             raise HTTPException(status_code=404, detail="Profile not found")
 
         p = profile.data[0]
-        scores = compute_pentagram(p)
+        scores = await compute_pentagram(p)
         cohort = scores.get("cohort", "Career Explorer")
 
         cohort_avg = COHORT_AVERAGES.get(cohort, COHORT_AVERAGES["Career Explorer"])
@@ -2543,7 +2543,7 @@ async def get_career_dna(user_id: str):
         if cached_penta and isinstance(cached_penta, dict) and cached_penta.get("composite_score"):
             penta = cached_penta
         else:
-            penta = compute_pentagram(p)
+            penta = await compute_pentagram(p)
             supabase.table("user_profiles").update({"pentagram_scores": penta}).eq("user_id", user_id).execute()
 
         # Trajectory
