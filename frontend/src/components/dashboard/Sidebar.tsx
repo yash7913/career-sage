@@ -13,6 +13,7 @@ interface SidebarProps {
   cohort: string | null
   tier: string
   activeTab: string
+  activeSection?: string
   setActiveTab: (tab: string, section?: string) => void
   hasProfile: boolean
   hasTracks: boolean
@@ -76,7 +77,7 @@ const STATUS_OPTIONS = [
 
 export default function Sidebar({
   userId, userEmail, userName, cohort, tier,
-  activeTab, setActiveTab, hasProfile, hasTracks, tracks,
+  activeTab, activeSection, setActiveTab, hasProfile, hasTracks, tracks,
   impactPattern, searchStatus = 'ACTIVE', onSearchStatusChange,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
@@ -333,20 +334,24 @@ export default function Sidebar({
                 </button>
                 {isExpanded && subItems && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', marginLeft: '14px', marginTop: '2px' }}>
-                    {subItems.map(sub => (
-                      <button
-                        key={sub.key}
-                        onClick={() => setActiveTab(item.key, sub.key)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '8px',
-                          padding: '7px 12px', borderRadius: '7px', border: 'none',
-                          cursor: 'pointer', textAlign: 'left',
-                          background: 'transparent',
-                        }}
-                      >
-                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>{sub.label}</span>
-                      </button>
-                    ))}
+                    {subItems.map(sub => {
+                      const isSubActive = activeTab === item.key && activeSection === sub.key
+                      return (
+                        <button
+                          key={sub.key}
+                          onClick={() => setActiveTab(item.key, sub.key)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            padding: '7px 12px', borderRadius: '7px', border: 'none',
+                            cursor: 'pointer', textAlign: 'left',
+                            background: isSubActive ? 'rgba(16,185,129,0.1)' : 'transparent',
+                            boxShadow: isSubActive ? 'inset 0 0 0 1px rgba(16,185,129,0.2)' : 'none',
+                          }}
+                        >
+                          <span style={{ fontSize: '11px', fontWeight: isSubActive ? 600 : 400, color: isSubActive ? TEAL : 'rgba(255,255,255,0.4)' }}>{sub.label}</span>
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
               </div>

@@ -109,19 +109,36 @@ export default function DashboardTabs({
   // bookmarking, and direct links), and is the single source of truth for
   // which tab renders. Sub-tab navigation (Prep/Tools sections) also gets
   // a query param so those are linkable/shareable too.
+  const [activeSection, setActiveSectionState] = useState<string | undefined>(
+    searchParams.get('section') || undefined
+  )
+
+  // Tab changes go through Next's router (server round-trip is fine — tabs
+  // load different heavy components). Section changes are purely
+  // client-side state with a lightweight history.replaceState for
+  // bookmarking — going through router.push for sub-tabs caused a full
+  // server re-render and 1.5s+ delay for what should be instant.
   const setActiveTab = useCallback((tab: string, section?: string) => {
     setActiveTabState(tab)
-    const newParams = new URLSearchParams(searchParams.toString())
+    setActiveSectionState(section)
+
+    const newParams = new URLSearchParams(window.location.search)
     newParams.set('tab', tab)
     if (section) {
       newParams.set('section', section)
     } else {
       newParams.delete('section')
     }
-    router.push(`${pathname}?${newParams.toString()}`, { scroll: false })
-  }, [pathname, router, searchParams])
 
-  const activeSection = searchParams.get('section') || undefined
+    if (tab !== activeTab) {
+      // Tab actually changed — real navigation needed (different component tree)
+      router.push(`${pathname}?${newParams.toString()}`, { scroll: false })
+    } else {
+      // Same tab, just a different section — update the URL without
+      // triggering Next's server-component fetch
+      window.history.replaceState(null, '', `${pathname}?${newParams.toString()}`)
+    }
+  }, [pathname, router, activeTab])
   const [searchStatus, setSearchStatus] = useState('ACTIVE')
   const [showOnboarding, setShowOnboarding] = useState(!hasProfile)
 
@@ -157,6 +174,7 @@ export default function DashboardTabs({
         cohort={cohort}
         tier={tier}
         activeTab={activeTab}
+        activeSection={activeSection}
         setActiveTab={(tab, section) => {
           if (tab === 'pipeline') setTrackerKey(prev => prev + 1)
           setActiveTab(tab, section)
