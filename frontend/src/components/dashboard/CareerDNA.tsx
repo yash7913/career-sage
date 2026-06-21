@@ -609,7 +609,10 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
               </p>
             </div>
 
-            <div style={{ position: 'relative' }}>
+            <div style={{
+              position: 'relative', maxHeight: '480px', overflowY: 'auto',
+              paddingRight: '6px',
+            }}>
               {/* Vertical line */}
               <div style={{
                 position: 'absolute', left: '7px', top: '8px',
@@ -618,9 +621,9 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
               }} />
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                {[...data.work_history].reverse().map((role, i) => {
+                {[...data.work_history].reverse().map((role, i, arr) => {
                   const isFirst  = i === 0
-                  const isLast   = i === data.work_history.length - 1
+                  const isLast   = i === arr.length - 1
                   const startYr  = role.start_date ? role.start_date.slice(0, 4) : ''
                   const endYr    = role.is_current ? 'Present' : role.end_date ? role.end_date.slice(0, 4) : ''
                   const duration = (() => {
@@ -633,18 +636,36 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
                   })()
                   const companyColor = getCompanyColor(role.company)
 
+                  // A "promotion" is a role at the same company as the
+                  // immediately preceding (chronologically earlier) entry —
+                  // shown with a smaller nested marker and "Promoted to"
+                  // framing instead of a full new-company marker
+                  const prevRole = i > 0 ? arr[i - 1] : null
+                  const isPromotion = prevRole && prevRole.company === role.company
+
                   return (
                     <JourneyEntry key={i} delay={i * 80}>
                       <div style={{ display: 'flex', gap: '16px', paddingBottom: isLast ? '0' : '20px' }}>
-                        {/* Timeline dot — colored by company, current role pulses */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                          <div style={{
-                            width: '15px', height: '15px', borderRadius: '50%', marginTop: '2px',
-                            background: role.is_current ? companyColor : `${companyColor}40`,
-                            border: `2px solid ${companyColor}`,
-                            boxShadow: role.is_current ? `0 0 10px ${companyColor}80` : 'none',
-                            flexShrink: 0,
-                          }} />
+                        {/* Timeline dot — full marker for a new company,
+                            smaller nested marker for a promotion within
+                            the same company */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: '15px' }}>
+                          {isPromotion ? (
+                            <div style={{
+                              width: '8px', height: '8px', borderRadius: '50%', marginTop: '5px',
+                              background: role.is_current ? companyColor : `${companyColor}60`,
+                              border: `1.5px solid ${companyColor}`,
+                              flexShrink: 0,
+                            }} />
+                          ) : (
+                            <div style={{
+                              width: '15px', height: '15px', borderRadius: '50%', marginTop: '2px',
+                              background: role.is_current ? companyColor : `${companyColor}40`,
+                              border: `2px solid ${companyColor}`,
+                              boxShadow: role.is_current ? `0 0 10px ${companyColor}80` : 'none',
+                              flexShrink: 0,
+                            }} />
+                          )}
                         </div>
 
                         {/* Role content */}
@@ -655,15 +676,22 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
                         }}>
                           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                             <div>
+                              {isPromotion && (
+                                <p style={{ fontSize: '10px', fontWeight: 600, color: companyColor, margin: '0 0 2px', letterSpacing: '0.04em' }}>
+                                  ↑ PROMOTED
+                                </p>
+                              )}
                               <p style={{
                                 fontSize: '13px', fontWeight: 600, margin: '0 0 2px',
                                 color: role.is_current ? '#fff' : 'rgba(255,255,255,0.7)',
                               }}>
                                 {role.title}
                               </p>
-                              <p style={{ fontSize: '12px', color: companyColor, margin: 0, fontWeight: 500 }}>
-                                {role.company}
-                              </p>
+                              {!isPromotion && (
+                                <p style={{ fontSize: '12px', color: companyColor, margin: 0, fontWeight: 500 }}>
+                                  {role.company}
+                                </p>
+                              )}
                             </div>
                             <div style={{ textAlign: 'right', flexShrink: 0 }}>
                               <p style={{ fontSize: '11px', color: role.is_current ? TEAL : 'rgba(255,255,255,0.3)', margin: '0 0 2px', fontWeight: role.is_current ? 600 : 400 }}>
@@ -677,11 +705,11 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
                             </div>
                           </div>
 
-                          {role.is_current && role.description && (
+                          {role.description && (
                             <p style={{
                               fontSize: '11px', color: 'rgba(255,255,255,0.3)',
                               margin: '6px 0 0', lineHeight: 1.5,
-                              display: '-webkit-box', WebkitLineClamp: 2,
+                              display: '-webkit-box', WebkitLineClamp: role.is_current ? 3 : 2,
                               WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
                             }}>
                               {role.description}
