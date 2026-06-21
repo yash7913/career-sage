@@ -669,11 +669,10 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
                                 </p>
                               </div>
 
-                              {/* Roles within this company, nested */}
-                              <div style={{
-                                display: 'flex', flexDirection: 'column', gap: '14px',
-                                paddingLeft: '14px', borderLeft: `2px solid ${companyColor}25`,
-                              }}>
+                              {/* Roles within this company, nested with
+                                  their own small "sub-bullet" marker each,
+                                  like a Word doc bullet/sub-bullet structure */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 {cluster.map((role, ri) => {
                                   const startYr = role.start_date ? role.start_date.slice(0, 4) : ''
                                   const endYr = role.is_current ? 'Present' : role.end_date ? role.end_date.slice(0, 4) : ''
@@ -688,39 +687,50 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
                                   const isPromotionWithinCluster = ri > 0
 
                                   return (
-                                    <div key={ri}>
-                                      {isPromotionWithinCluster && (
-                                        <p style={{ fontSize: '10px', fontWeight: 600, color: companyColor, margin: '0 0 3px', letterSpacing: '0.04em' }}>
-                                          ↑ PROMOTED
-                                        </p>
-                                      )}
-                                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
-                                        <p style={{
-                                          fontSize: '13px', fontWeight: 600, margin: 0,
-                                          color: role.is_current ? '#fff' : 'rgba(255,255,255,0.75)',
-                                        }}>
-                                          {role.title}
-                                        </p>
-                                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                          <p style={{ fontSize: '11px', color: role.is_current ? TEAL : 'rgba(255,255,255,0.35)', margin: 0, fontWeight: role.is_current ? 600 : 400 }}>
-                                            {startYr}{endYr ? ` — ${endYr}` : ''}
-                                          </p>
-                                          {duration && (
-                                            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)', margin: 0 }}>
-                                              {duration}
-                                            </p>
-                                          )}
-                                        </div>
+                                    <div key={ri} style={{ display: 'flex', gap: '10px' }}>
+                                      {/* Sub-bullet marker for this role */}
+                                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: '6px', paddingTop: '6px' }}>
+                                        <div style={{
+                                          width: '6px', height: '6px', borderRadius: '50%',
+                                          background: role.is_current ? companyColor : `${companyColor}70`,
+                                          flexShrink: 0,
+                                        }} />
                                       </div>
 
-                                      {role.description && (
-                                        <p style={{
-                                          fontSize: '12px', color: 'rgba(255,255,255,0.5)',
-                                          margin: '5px 0 0', lineHeight: 1.6,
-                                        }}>
-                                          {role.description}
-                                        </p>
-                                      )}
+                                      <div style={{ flex: 1 }}>
+                                        {isPromotionWithinCluster && (
+                                          <p style={{ fontSize: '10px', fontWeight: 600, color: companyColor, margin: '0 0 3px', letterSpacing: '0.04em' }}>
+                                            ↑ PROMOTED
+                                          </p>
+                                        )}
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                                          <p style={{
+                                            fontSize: '13px', fontWeight: 600, margin: 0,
+                                            color: role.is_current ? '#fff' : 'rgba(255,255,255,0.75)',
+                                          }}>
+                                            {role.title}
+                                          </p>
+                                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                            <p style={{ fontSize: '11px', color: role.is_current ? TEAL : 'rgba(255,255,255,0.35)', margin: 0, fontWeight: role.is_current ? 600 : 400 }}>
+                                              {startYr}{endYr ? ` — ${endYr}` : ''}
+                                            </p>
+                                            {duration && (
+                                              <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)', margin: 0 }}>
+                                                {duration}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+
+                                        {role.description && (
+                                          <p style={{
+                                            fontSize: '12px', color: 'rgba(255,255,255,0.5)',
+                                            margin: '5px 0 0', lineHeight: 1.6,
+                                          }}>
+                                            {role.description}
+                                          </p>
+                                        )}
+                                      </div>
                                     </div>
                                   )
                                 })}
