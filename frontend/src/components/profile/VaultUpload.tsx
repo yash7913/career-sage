@@ -59,11 +59,13 @@ export default function VaultUpload({
   onUploadSuccess,
   isOnboarding = false,
   existingDocCount = null,
+  hasLinkedinExport = false,
 }: {
   onExtractionComplete?: () => void
-  onUploadSuccess?: () => void
+  onUploadSuccess?: (docTag?: string) => void
   isOnboarding?: boolean
   existingDocCount?: number | null
+  hasLinkedinExport?: boolean
 }) {
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [extracting, setExtracting] = useState(false)
@@ -244,7 +246,15 @@ const res = await fetch(
           )
 
           if (!isDuplicate) {
-            onUploadSuccess?.()
+            // Read the current tag from state rather than a closure variable —
+            // classification runs async and may resolve before or after this
+            // point, so the live state is the source of truth for what tag
+            // this file actually ended up with
+            setFiles(currentFiles => {
+              const thisFile = currentFiles.find(f => f.name === file.name)
+              onUploadSuccess?.(thisFile?.tag || initialTag)
+              return currentFiles
+            })
           }
         } catch (err: unknown) {
           const message =

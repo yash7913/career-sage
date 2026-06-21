@@ -351,8 +351,8 @@ function ProfileTab({
   tier?: string
 }) {
   const [docCount, setDocCount] = useState<number | null>(null)
+  const [hasLinkedinExport, setHasLinkedinExport] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
-
   const handleSignOut = async () => {
     setSigningOut(true)
     const { createClient } = await import('@/lib/supabase/client')
@@ -360,11 +360,14 @@ function ProfileTab({
     await supabase.auth.signOut()
     window.location.href = '/'
   }
-
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/documents/${userId}`)
       .then(r => r.json())
-      .then(data => setDocCount((data.documents || []).length))
+      .then(data => {
+        const docs = data.documents || []
+        setDocCount(docs.length)
+        setHasLinkedinExport(docs.some((d: { doc_tag: string }) => d.doc_tag === 'LINKEDIN_EXPORT'))
+      })
       .catch(() => setDocCount(0))
   }, [userId])
 
@@ -381,10 +384,14 @@ function ProfileTab({
         </p>
         <VaultUpload
           existingDocCount={docCount}
+          hasLinkedinExport={hasLinkedinExport}
           onExtractionComplete={() => {
             setTimeout(() => window.location.reload(), 2000)
           }}
-          onUploadSuccess={() => setDocCount(prev => (prev ?? 0) + 1)}
+          onUploadSuccess={(docTag) => {
+            setDocCount(prev => (prev ?? 0) + 1)
+            if (docTag === 'LINKEDIN_EXPORT') setHasLinkedinExport(true)
+          }}
         />
         <div style={{ marginTop: '1.5rem' }}>
           <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: '0 0 10px' }}>
