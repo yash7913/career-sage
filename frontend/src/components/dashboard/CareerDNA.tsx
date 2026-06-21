@@ -423,11 +423,30 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
       .finally(() => setLoading(false))
   }, [userId])
 
+  const ogImageUrl = `${process.env.NEXT_PUBLIC_API_URL?.includes('localhost') ? '' : ''}/api/og/career-dna/${userId}`
+
   const handleShare = () => {
     if (!data) return
-    navigator.clipboard.writeText(data.share_text)
+    const fullUrl = `${window.location.origin}${ogImageUrl}`
+    const shareText = `${data.share_text}\n\n${fullUrl}`
+    navigator.clipboard.writeText(shareText)
     setCopied(true)
     setTimeout(() => setCopied(false), 2500)
+  }
+
+  const handleDownloadCard = async () => {
+    try {
+      const res = await fetch(ogImageUrl)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'career-dna-card.png'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {}
   }
 
   const handleAsk = async () => {
@@ -512,15 +531,25 @@ export default function CareerDNA({ userId, skills = [] }: CareerDNAProps) {
                 </span>
               </div>
             </div>
-            <button onClick={handleShare} style={{
-              padding: '8px 16px', borderRadius: '8px',
-              background: copied ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)',
-              border: `1px solid ${copied ? TEAL : BORDER}`,
-              color: copied ? TEAL : 'rgba(255,255,255,0.5)',
-              fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
-            }}>
-              {copied ? '✓ Copied!' : '🔗 Share Career DNA'}
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={handleDownloadCard} style={{
+                padding: '8px 16px', borderRadius: '8px',
+                background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`,
+                color: 'rgba(255,255,255,0.5)',
+                fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+              }}>
+                ⬇ Download card
+              </button>
+              <button onClick={handleShare} style={{
+                padding: '8px 16px', borderRadius: '8px',
+                background: copied ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${copied ? TEAL : BORDER}`,
+                color: copied ? TEAL : 'rgba(255,255,255,0.5)',
+                fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+              }}>
+                {copied ? '✓ Link copied!' : '🔗 Share Career DNA'}
+              </button>
+            </div>
           </div>
           <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: '12px 0 0', lineHeight: 1.6 }}>
             {data.trajectory.description}
