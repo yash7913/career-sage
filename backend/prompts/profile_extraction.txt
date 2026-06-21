@@ -61,6 +61,8 @@ education_data:
 
 work_history:
 - Extract every role including part-time, freelance, contract
+- IMPORTANT: the documents above may include multiple versions of the same person's resume (e.g. tailored for different job applications), describing the SAME roles with different wording or emphasis. Treat roles that clearly refer to the same position (same company, same or near-same title, same or overlapping dates) as ONE role — do not duplicate them in the output.
+- However, do NOT let this deduplication cause you to drop a genuinely DISTINCT role just because it only appears in some of the source documents (e.g. an earlier-career role that was trimmed from some tailored resume versions but appears in others, or only in a LinkedIn export). If a role appears in even one source document, include it.
 - title: extract the CORE job title only — remove suffixes, team names, and project names
   - "Lead, Product Management - Productivity Insights" → "Lead Product Manager"
   - "Senior Software Engineer - Payments Platform" → "Senior Software Engineer"

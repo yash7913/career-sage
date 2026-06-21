@@ -141,11 +141,14 @@ async def save_document(req: DocumentSaveRequest):
                         except Exception:
                             continue
 
-                    # Threshold: above 0.75 content similarity = likely the
-                    # same underlying resume with minor tailoring (different
-                    # job titles, reordered bullets), not a genuinely distinct
-                    # version. Below that, treat as distinct enough to keep.
-                    if best_match and best_score > 0.75:
+                    # Threshold: above 0.55 content similarity = likely the
+                    # same underlying resume with tailored wording (AI-rewritten
+                    # bullets for different job applications often share only
+                    # 55-75% raw text overlap despite describing identical
+                    # roles/facts — calibrated against real tailored resume
+                    # pairs, not just exact-copy duplicates). Below that,
+                    # treat as distinct enough to keep without a warning.
+                    if best_match and best_score > 0.55:
                         likely_duplicate_of = {"doc_id": best_match["doc_id"], "file_name": best_match["file_name"]}
                         similarity_score = round(best_score * 100)
             except Exception as e:

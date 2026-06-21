@@ -84,42 +84,118 @@ async def extract_and_save_profile(user_id: str) -> dict:
     if not docs.data:
         raise ValueError("No documents found for this user")
 
-    # Prioritise: best resume first, then other resumes, skip projects/slides
-    # This keeps the prompt focused and fast
-    priority_order = {"RESUME": 0, "LINKEDIN_EXPORT": 1, "OTHER": 2, "CERTIFICATION": 3}
+    # Document selection strategy:
+    # 1. ALWAYS include the LinkedIn export if one exists — it's typically
+    #    the single most complete record of work history, since tailored
+    #    resumes often trim older/less-relevant roles to fit a page limit.
+    # 2. Among RESUME docs, filter out near-duplicates by content similarity
+    #    (not just tag+recency) — multiple tailored resume variants for
+    #    different job applications often describe the SAME roles with
+    #    different wording. Sending 4 near-identical resumes wastes the
+    #    character budget on redundant content instead of genuinely
+    #    distinct information, which is exactly what caused an entire
+    #    earlier-career role (American Express) to go missing despite
+    #    being present in every uploaded resume.
+    # 3. With duplicates filtered, widen the pool — more genuinely distinct
+    #    documents can now fit before hitting the character budget.
+    import difflib
+
     relevant_docs = [
         d for d in docs.data
         if d.get("doc_tag") in ("RESUME", "LINKEDIN_EXPORT", "OTHER", "CERTIFICATION")
     ]
-    relevant_docs.sort(key=lambda d: priority_order.get(d.get("doc_tag"), 99))
 
-    # Only process up to 3 documents — beyond that adds noise not signal
-    relevant_docs = relevant_docs[:3]
+    linkedin_docs = [d for d in relevant_docs if d.get("doc_tag") == "LINKEDIN_EXPORT"]
+    resume_docs = [d for d in relevant_docs if d.get("doc_tag") == "RESUME"]
+    other_docs = [d for d in relevant_docs if d.get("doc_tag") not in ("LINKEDIN_EXPORT", "RESUME")]
+
+    # Most recent LinkedIn export first (guaranteed inclusion)
+    linkedin_docs.sort(key=lambda d: d.get("created_at", ""), reverse=True)
+    linkedin_docs = linkedin_docs[:1]
+
+    # Most recent resumes first, as tiebreak ordering before similarity filtering
+    resume_docs.sort(key=lambda d: d.get("created_at", ""), reverse=True)
+
+    # Filter near-duplicate resumes by content — keep the first (most
+    # recent) of each cluster of similar resumes, skip near-duplicates
+    selected_resumes = []
+    resume_texts = []
+    for doc in resume_docs:
+        if len(selected_resumes) >= 5:  # cap distinct resumes considered
+            break
+        try:
+            file_bytes = supabase.storage.from_("user-documents").download(doc["storage_path"])
+            text = extract_text_from_bytes(file_bytes, doc["file_name"])
+            if not text or len(text.strip()) < 100:
+                continue
+
+            is_duplicate = False
+            for existing_text in resume_texts:
+                score = difflib.SequenceMatcher(None, text[:5000].lower(), existing_text[:5000].lower()).ratio()
+                if score > 0.55:
+                    is_duplicate = True
+                    break
+
+            if not is_duplicate:
+                selected_resumes.append((doc, text))
+                resume_texts.append(text)
+        except Exception as e:
+            print(f"[Extraction] Failed to process {doc.get('file_name')}: {e}")
+            continue
+
+    other_docs.sort(key=lambda d: d.get("created_at", ""), reverse=True)
+    other_docs = other_docs[:2]
 
     all_text = ""
-    for doc in relevant_docs:
+    doc_names_used = []
+
+    for doc in linkedin_docs:
         try:
             file_bytes = supabase.storage.from_("user-documents").download(doc["storage_path"])
             text = extract_text_from_bytes(file_bytes, doc["file_name"])
             if text:
-                # Cap each doc at 4000 chars to keep total under 12000
-                all_text += f"\n\n--- {doc['file_name']} ({doc['doc_tag']}) ---\n{text[:4000]}"
+                print(f"[Extraction] Using LinkedIn export: {doc['file_name']} — {len(text)} chars available, sending {min(len(text), 8000)}")
+                all_text += f"\n\n--- {doc['file_name']} (LINKEDIN_EXPORT) ---\n{text[:8000]}"
+                doc_names_used.append(doc['file_name'])
         except Exception as e:
-            continue
+            print(f"[Extraction] Failed to process LinkedIn export {doc.get('file_name')}: {e}")
+
+    for doc, text in selected_resumes:
+        print(f"[Extraction] Using distinct resume: {doc['file_name']} — {len(text)} chars available, sending {min(len(text), 7000)}")
+        all_text += f"\n\n--- {doc['file_name']} (RESUME) ---\n{text[:7000]}"
+        doc_names_used.append(doc['file_name'])
+
+    for doc in other_docs:
+        try:
+            file_bytes = supabase.storage.from_("user-documents").download(doc["storage_path"])
+            text = extract_text_from_bytes(file_bytes, doc["file_name"])
+            if text:
+                print(f"[Extraction] Using doc: {doc['file_name']} ({doc['doc_tag']}) — {len(text)} chars available, sending {min(len(text), 5000)}")
+                all_text += f"\n\n--- {doc['file_name']} ({doc['doc_tag']}) ---\n{text[:5000]}"
+                doc_names_used.append(doc['file_name'])
+        except Exception as e:
+            print(f"[Extraction] Failed to process {doc.get('file_name')}: {e}")
+
+    print(f"[Extraction] Final selection — {len(doc_names_used)} distinct docs: {doc_names_used}")
 
     if not all_text.strip():
         raise ValueError("Could not extract text from any uploaded documents")
 
-    prompt = load_prompt("profile_extraction.txt", documents_text=all_text[:14000])
+    # Budget: 1 LinkedIn (8000) + up to 5 distinct resumes (7000 each = 35000)
+    # + 2 other docs (5000 each = 10000) = up to 53000 max. Raised the final
+    # cap accordingly so distinct content from multiple genuinely different
+    # resumes isn't re-truncated after already being deduplicated above.
+    prompt = load_prompt("profile_extraction.txt", documents_text=all_text[:45000])
     print(f"Sending {len(prompt)} chars to Claude...")
 
     message = claude.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=2000,
+        max_tokens=3000,
         messages=[{"role": "user", "content": prompt}]
     )
 
     raw = message.content[0].text.strip()
+    print(f"[Extraction] Claude response: {len(raw)} chars, stop_reason: {message.stop_reason}")
 
     raw = re.sub(r'^```(?:json)?\s*', '', raw, flags=re.MULTILINE)
     raw = re.sub(r'\s*```$', '', raw, flags=re.MULTILINE)
