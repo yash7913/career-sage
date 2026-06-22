@@ -133,6 +133,7 @@ export default function DashboardTabs({
   const [careerDNAData, setCareerDNAData] = useState<DNAData | null>(null)
   const [careerDNALoading, setCareerDNALoading] = useState(true)
   const [careerDNAStale, setCareerDNAStale] = useState(false)
+  const [docRefreshKey, setDocRefreshKey] = useState(0)
 
   // Tab changes go through Next's router (server round-trip is fine — tabs
   // load different heavy components). Section changes are purely
@@ -361,7 +362,9 @@ export default function DashboardTabs({
               hasProfile={hasProfile}
               onTrackCreated={() => setActiveTab('discover')}
               tier={tier}
-              onExtractionComplete={() => setTimeout(() => setCareerDNAStale(true), 2000)}
+              onExtractionComplete={() => setCareerDNAStale(true)}
+              docRefreshKey={docRefreshKey}
+              onDocUploaded={() => setDocRefreshKey(prev => prev + 1)}
             />
           )}
 
@@ -389,7 +392,7 @@ export default function DashboardTabs({
 }
 
 function ProfileTab({
-  userId, tracks, hasProfile, onTrackCreated, tier, onExtractionComplete,
+  userId, tracks, hasProfile, onTrackCreated, tier, onExtractionComplete, docRefreshKey, onDocUploaded,
 }: {
   userId: string
   tracks: Track[]
@@ -397,6 +400,8 @@ function ProfileTab({
   onTrackCreated: () => void
   tier?: string
   onExtractionComplete?: () => void
+  docRefreshKey?: number
+  onDocUploaded?: () => void
 }) {
   const [docCount, setDocCount] = useState<number | null>(null)
   const [hasLinkedinExport, setHasLinkedinExport] = useState(false)
@@ -439,13 +444,14 @@ function ProfileTab({
           onUploadSuccess={(docTag) => {
             setDocCount(prev => (prev ?? 0) + 1)
             if (docTag === 'LINKEDIN_EXPORT') setHasLinkedinExport(true)
+            onDocUploaded?.()
           }}
         />
         <div style={{ marginTop: '1.5rem' }}>
           <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: '0 0 10px' }}>
             YOUR UPLOADED FILES {docCount !== null && `(${docCount}/10)`}
           </p>
-          <DocumentManager userId={userId} />
+          <DocumentManager userId={userId} refreshKey={docRefreshKey} />
         </div>
       </div>
 

@@ -834,22 +834,9 @@ export default function CareerDNA({ userId, skills = [], initialSection, onSecti
           </>
         )}
 
-        {/* ══ OUTLOOK ══ */}
-        {section === 'outlook' && (
+        {/* ══ OUTLOOK ══ — always mounted, CSS hidden when inactive to prevent ProfileIntelligence/InferredSkills re-fetching */}
+        <div style={{ display: section === 'outlook' ? 'flex' : 'none', flexDirection: 'column', gap: '12px' }}>
           <>
-            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
-              <CardHeader label="Profile Intelligence" />
-              <ProfileIntelligence userId={userId} />
-            </div>
-
-            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
-              <CardHeader label="Inferred Skills" />
-              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.55)', margin: '0 0 1rem', lineHeight: 1.5 }}>
-                Skills evidenced in your work history but not explicitly listed. Accept ones that belong on your profile.
-              </p>
-              <InferredSkills userId={userId} />
-            </div>
-
             <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
               <CardHeader label={`Full Benchmark Analysis vs ${data.cohort}s`} />
               <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
@@ -869,14 +856,33 @@ export default function CareerDNA({ userId, skills = [], initialSection, onSecti
                           <span style={{ fontSize: '12px', fontWeight: 700, color: b.color }}>{b.position}</span>
                         </div>
                       </div>
-                      <div style={{ height: '4px', borderRadius: '999px', background: 'rgba(255,255,255,0.06)', marginBottom: '8px' }}>
-                        <div style={{ height: '4px', borderRadius: '999px', width: `${Math.min(100, (b.user / b.top) * 100)}%`, background: b.color }} />
+                      <div style={{ position: 'relative', height: '6px', borderRadius: '999px', background: 'rgba(255,255,255,0.06)', marginBottom: '4px' }}>
+                        <div style={{ position: 'absolute', left: 0, top: 0, height: '6px', borderRadius: '999px', width: `${b.user}%`, background: b.color, opacity: 0.85 }} />
+                        <div style={{ position: 'absolute', top: '-2px', left: `${b.avg}%`, transform: 'translateX(-50%)', width: '2px', height: '10px', background: 'rgba(255,255,255,0.4)', borderRadius: '1px' }} />
+                        <div style={{ position: 'absolute', top: '-2px', left: `${b.top}%`, transform: 'translateX(-50%)', width: '2px', height: '10px', background: 'rgba(245,158,11,0.7)', borderRadius: '1px' }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)' }}>Cohort avg: {b.avg}</span>
+                        <span style={{ fontSize: '10px', color: 'rgba(245,158,11,0.5)' }}>Top 10%: {b.top}</span>
                       </div>
                       <p style={{ fontSize: '12px', color: DIM_TEXT, margin: 0, lineHeight: 1.6 }}>{b.context}</p>
                     </div>
                   ))}
                 </div>
               </div>
+            </div>
+
+            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+              <CardHeader label="Profile Intelligence" />
+              <ProfileIntelligence userId={userId} />
+            </div>
+
+            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+              <CardHeader label="Inferred Skills" />
+              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.55)', margin: '0 0 1rem', lineHeight: 1.5 }}>
+                Skills evidenced in your work history but not explicitly listed. Accept ones that belong on your profile.
+              </p>
+              <InferredSkills userId={userId} />
             </div>
 
             <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
@@ -928,7 +934,7 @@ export default function CareerDNA({ userId, skills = [], initialSection, onSecti
               <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)', margin: 0 }}>⚠ {data.compensation.note}</p>
             </div>
           </>
-        )}
+        </div>
 
         {/* ══ DECISIONS ══ */}
         {section === 'decisions' && (

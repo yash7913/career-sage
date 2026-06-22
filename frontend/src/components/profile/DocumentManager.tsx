@@ -21,18 +21,19 @@ interface Document {
   created_at: string
 }
 
-export default function DocumentManager({ userId }: { userId: string }) {
+export default function DocumentManager({ userId, refreshKey }: { userId: string; refreshKey?: number }) {
   const [docs, setDocs]       = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState<string | null>(null)
 
   useEffect(() => {
+    setLoading(true)
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/documents/${userId}`)
       .then(r => r.json())
       .then(data => setDocs(data.documents || []))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [userId])
+  }, [userId, refreshKey])
 
   const handleToggle = async (docId: string, currentActive: boolean) => {
     setToggling(docId)

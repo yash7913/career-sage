@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from middleware.rate_limiter import check_generation_limit, increment_generation_count
 from pydantic import BaseModel
@@ -705,6 +706,76 @@ Return only the JSON object, no markdown."""
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+class StarFromGistRequest(BaseModel):
+    user_id: str
+    theme: str
+    gist: str
+
+@router.post("/star-stories-from-gist")
+async def star_stories_from_gist(req: StarFromGistRequest):
+    try:
+        import anthropic
+        import json
+        import re
+        if not req.gist.strip():
+            raise HTTPException(status_code=400, detail="Gist cannot be empty")
+
+        profile = supabase.table("user_profiles").select("full_name, cohort, raw_profile_text").eq("user_id", req.user_id).execute()
+        if not profile.data:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        p = profile.data[0]
+        name = p.get("full_name") or "the candidate"
+        cohort = p.get("cohort") or ""
+
+        prompt = f"""You are an expert interview coach helping structure a STAR story.
+
+Candidate: {name}
+Cohort: {cohort}
+Theme: {req.theme}
+
+The candidate has described what happened in their own words:
+\"\"\"{req.gist}\"\"\"
+
+Structure this into a STAR story. CRITICAL RULES:
+- Only use details the candidate provided. Never invent metrics, outcomes, names, or facts not in their gist.
+- If the candidate did not mention a specific number or outcome, write around it without fabricating one.
+- Keep the candidate's voice and perspective.
+- Each section should feel natural, not templated.
+
+Return ONLY valid JSON:
+{{
+  "theme": "{req.theme}",
+  "title": "One line title summarising the story",
+  "situation": "2-3 sentences setting context from what they described",
+  "task": "1-2 sentences describing their specific responsibility",
+  "action": "3-4 sentences describing the steps they took",
+  "result": "2-3 sentences on outcomes — only what they mentioned",
+  "keywords": ["keyword1", "keyword2", "keyword3"]
+}}
+
+Return only the JSON object, no markdown."""
+
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        import re
+        content = message.content[0].text.strip()
+        content = re.sub(r'^```json\s*', '', content)
+        content = re.sub(r'\s*```$', '', content)
+        story = json.loads(content)
+        return {"story": story}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 class OfferAnalysisRequest(BaseModel):
     user_id: str
