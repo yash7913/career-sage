@@ -24,13 +24,19 @@ interface SidebarProps {
 }
 
 const SUB_ITEMS: Record<string, { key: string; label: string }[]> = {
+  career: [
+    { key: 'overview',  label: '⚡ Overview' },
+    { key: 'journey',   label: '🗺 Journey' },
+    { key: 'outlook',   label: '🔭 Outlook' },
+    { key: 'decisions', label: '🧭 Decisions' },
+  ],
   prep: [
     { key: 'stories', label: '📖 STAR Stories' },
     { key: 'interview', label: '🎯 Interview Qs' },
   ],
   tools: [
-    { key: 'intelligence', label: '🧠 Intelligence' },
-    { key: 'assets', label: '✦ Assets' },
+    { key: 'evaluate', label: '🔍 Job Evaluator' },
+    { key: 'resume',   label: '✦ Assets' },
   ],
 }
 

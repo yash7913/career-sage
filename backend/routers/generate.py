@@ -456,6 +456,11 @@ class EvaluateRequest(BaseModel):
     job_id: str
     resume_text: str
 
+class EvaluateJDRequest(BaseModel):
+    user_id: str
+    job_description: str
+    resume_text: Optional[str] = None
+
 @router.post("/evaluate")
 async def evaluate_resume(req: EvaluateRequest):
     try:
@@ -520,6 +525,84 @@ One paragraph summary of fit.
             "fit_score": fit_score,
             "job_title": job_title,
             "company": company,
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/evaluate-jd")
+async def evaluate_jd(req: EvaluateJDRequest):
+    try:
+        profile = supabase.table("user_profiles").select("*").eq("user_id", req.user_id).execute()
+        if not profile.data:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        p = profile.data[0]
+        candidate_text = req.resume_text if req.resume_text else (p.get("raw_profile_text") or "")
+        if not candidate_text.strip():
+            raise HTTPException(status_code=400, detail="No profile or resume text available")
+
+        skills: list = p.get("extracted_skills") or []
+        jd_lower = req.job_description.lower()
+        matched_skills = [s for s in skills if s.lower() in jd_lower]
+
+        prompt = f"""You are an expert ATS analyst and recruiter. Evaluate this candidate against the job description.
+
+JOB DESCRIPTION:
+{req.job_description[:3000]}
+
+CANDIDATE PROFILE/RESUME:
+{candidate_text[:3000]}
+
+Provide a structured evaluation with these exact sections:
+
+### ATS KEYWORD COVERAGE
+Create a markdown table:
+| Keyword | In Resume? | Where |
+|---|---|---|
+
+Then write: ATS Match Strength: [Very High / High / Medium / Low]
+And: Estimated ATS Score: [0-100]%
+
+### RECRUITER ASSESSMENT
+**Strongest sections:** List the 2-3 strongest parts of this candidate's profile for this specific role.
+**Critical gaps:** What's missing that this role specifically needs.
+**Red flags:** Anything that might cause a recruiter to pause.
+**Suggested improvements:** Top 3 specific changes to improve fit for this role.
+
+### OVERALL FIT
+Overall fit score: [0-100]%
+One paragraph summary of fit.
+"""
+
+        message = anthropic_client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        content = message.content[0].text
+        ats_match = re.search(r'Estimated ATS Score:\s*\**(\d+)%', content, re.IGNORECASE)
+        fit_match = re.search(r'Overall fit score:\s*\**(\d+)%', content, re.IGNORECASE)
+        ats_score = int(ats_match.group(1)) if ats_match else 0
+        fit_score = int(fit_match.group(1)) if fit_match else 0
+
+        gap_keywords = []
+        for line in content.split('\n'):
+            if '✗' in line or '✕' in line or ('|' in line and 'No' in line):
+                parts = line.split('|')
+                if len(parts) >= 2:
+                    kw = parts[1].strip().strip('*').strip()
+                    if kw and len(kw) < 40:
+                        gap_keywords.append(kw)
+
+        return {
+            "ats_score": ats_score,
+            "fit_score": fit_score,
+            "matched_skills": matched_skills[:10],
+            "skill_gaps": gap_keywords[:8],
+            "evaluation": content,
         }
 
     except Exception as e:

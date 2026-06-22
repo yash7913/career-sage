@@ -1,6 +1,8 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import ProjectManager from '@/components/profile/ProjectManager'
+import ProfileIntelligence from '@/components/profile/ProfileIntelligence'
+import InferredSkills from '@/components/profile/InferredSkills'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -835,6 +837,19 @@ export default function CareerDNA({ userId, skills = [], initialSection, onSecti
         {/* ══ OUTLOOK ══ */}
         {section === 'outlook' && (
           <>
+            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+              <CardHeader label="Profile Intelligence" />
+              <ProfileIntelligence userId={userId} />
+            </div>
+
+            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+              <CardHeader label="Inferred Skills" />
+              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.55)', margin: '0 0 1rem', lineHeight: 1.5 }}>
+                Skills evidenced in your work history but not explicitly listed. Accept ones that belong on your profile.
+              </p>
+              <InferredSkills userId={userId} />
+            </div>
+
             <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
               <CardHeader label={`Full Benchmark Analysis vs ${data.cohort}s`} />
               <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>

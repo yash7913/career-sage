@@ -1,9 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
-import PentagramScore from '@/components/profile/PentagramScore'
-import ProfileIntelligence from '@/components/profile/ProfileIntelligence'
 import GenerativeAssets from '@/components/profile/GenerativeAssets'
-import InferredSkills from '@/components/profile/InferredSkills'
+import JobEvaluator from '@/components/tools/JobEvaluator'
 
 const TEAL = '#10B981'
 const BORDER = 'rgba(255,255,255,0.07)'
@@ -15,13 +13,14 @@ interface ToolsTabProps {
   initialSection?: string
   onSectionChange?: (section: string) => void
 }
+
 export default function ToolsTab({ userId, tier, initialSection, onSectionChange }: ToolsTabProps) {
-  const [section, setSection] = useState<'intelligence' | 'assets'>(
-    initialSection === 'assets' ? 'assets' : 'intelligence'
+  const [section, setSection] = useState<'evaluate' | 'resume'>(
+    initialSection === 'resume' ? 'resume' : 'evaluate'
   )
 
   useEffect(() => {
-    if (initialSection === 'assets' || initialSection === 'intelligence') {
+    if (initialSection === 'resume' || initialSection === 'evaluate') {
       setSection(initialSection)
     }
   }, [initialSection])
@@ -36,12 +35,12 @@ export default function ToolsTab({ userId, tier, initialSection, onSectionChange
         borderRadius: '12px', padding: '6px',
       }}>
         {[
-          { key: 'intelligence', label: '🧠 Profile Intelligence', desc: 'Pentagram score, trajectory, hidden strengths' },
-          { key: 'assets', label: '✦ Generative Assets', desc: 'LinkedIn, bios, pitches, brand statements' },
+          { key: 'evaluate', label: '🔍 Job Evaluator', desc: 'Paste any JD — get ATS + recruiter fit scores' },
+          { key: 'resume',   label: '✦ Generative Assets', desc: 'LinkedIn, bios, pitches, brand statements' },
         ].map(s => (
           <button
             key={s.key}
-            onClick={() => { setSection(s.key as 'intelligence' | 'assets'); onSectionChange?.(s.key) }}
+            onClick={() => { setSection(s.key as 'evaluate' | 'resume'); onSectionChange?.(s.key) }}
             style={{
               flex: 1, padding: '10px 12px', borderRadius: '8px',
               border: 'none', cursor: 'pointer', textAlign: 'left',
@@ -58,57 +57,18 @@ export default function ToolsTab({ userId, tier, initialSection, onSectionChange
         ))}
       </div>
 
-      {/* Intelligence section */}
-      {section === 'intelligence' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-
-          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
-            <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 1.5rem' }}>
-              PROFILE SCORE
-            </p>
-            <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              <PentagramScore userId={userId} size={280} variant="full" />
-              <div style={{ flex: 1, minWidth: '220px' }}>
-                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: '0 0 1rem', lineHeight: 1.6 }}>
-                  Your pentagram shows 5 dimensions of professional strength compared to your cohort average and top 10%. Hover any axis to see your score vs the benchmark.
-                </p>
-                <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.08em', margin: '0 0 6px' }}>
-                  HOW SCORES ARE COMPUTED
-                </p>
-                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0, lineHeight: 1.65 }}>
-                  Technical Depth — skills breadth and quality. Domain Expertise — company tenure and tier. Impact Magnitude — quantified achievements. Leadership Signals — team and stakeholder language. Learning Velocity — education, certs, skill diversity.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
-            <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 1.25rem' }}>
-              CAREER INTELLIGENCE
-            </p>
-            <ProfileIntelligence userId={userId} />
-          </div>
-
-          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
-            <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 4px' }}>
-              INFERRED SKILLS
-            </p>
-            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1.25rem', lineHeight: 1.5 }}>
-              Skills evidenced in your work history but not explicitly listed. Accept ones that belong on your profile.
-            </p>
-            <InferredSkills userId={userId} />
-          </div>
-
-        </div>
+      {/* Job Evaluator */}
+      {section === 'evaluate' && (
+        <JobEvaluator userId={userId} />
       )}
 
-      {/* Assets section */}
-      {section === 'assets' && (
+      {/* Generative Assets */}
+      {section === 'resume' && (
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
-          <p style={{ fontSize: '11px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 4px' }}>
+          <p style={{ fontSize: '10px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 4px' }}>
             GENERATIVE PROFILE ASSETS
           </p>
-          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: '0 0 1.25rem', lineHeight: 1.5 }}>
+          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.55)', margin: '0 0 1.25rem', lineHeight: 1.5 }}>
             One-click generation of LinkedIn summaries, elevator pitches, bios, and personal brand statements — all tailored to your profile. Generated once and cached. Tweak and regenerate anytime.
           </p>
           <GenerativeAssets userId={userId} tier={tier} />
