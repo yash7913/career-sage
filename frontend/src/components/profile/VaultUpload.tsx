@@ -103,6 +103,27 @@ export default function VaultUpload({
       const data = await res.json()
       if (data.status === 'ok') {
         setLinkedinResult(`✓ ${data.skills_added} skills added · ${data.roles_found} roles found`)
+        // Save file record to user_documents so it appears in the vault
+        try {
+          const arrayBuffer = await file.arrayBuffer()
+          const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer)
+          const hashArray = Array.from(new Uint8Array(hashBuffer))
+          const fileHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+          const storagePath = `${user.id}/${fileHash}_${file.name}`
+          await supabase.storage.from('user-documents').upload(storagePath, file, { upsert: true, contentType: 'application/pdf' })
+          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/document`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: user.id,
+              file_name: file.name,
+              file_hash: fileHash,
+              storage_path: storagePath,
+              doc_tag: 'LINKEDIN_EXPORT',
+            }),
+          })
+          onUploadSuccess?.('LINKEDIN_EXPORT')
+        } catch {}
         // Mark onboarding complete so tabs unlock immediately
         await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/contact`, {
           method: 'PATCH',
