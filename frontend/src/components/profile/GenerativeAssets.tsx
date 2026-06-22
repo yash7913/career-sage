@@ -28,6 +28,7 @@ const GROUPS = ['Personal Brand', 'LinkedIn', 'Elevator Pitch', 'Bio Variations'
 export default function GenerativeAssets({ userId, tier }: { userId: string; tier?: string }) {
   const [generated, setGenerated] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState<Record<string, boolean>>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [copied, setCopied] = useState<string | null>(null)
   const [activeAsset, setActiveAsset] = useState<string>('brand_statements')
   const isPro = tier === 'PREMIUM_PRO' || tier === 'STUDENT_VERIFIED'
@@ -48,6 +49,7 @@ export default function GenerativeAssets({ userId, tier }: { userId: string; tie
 
   const handleGenerate = async (assetKey: string) => {
     setLoading(prev => ({ ...prev, [assetKey]: true }))
+    setErrors(prev => ({ ...prev, [assetKey]: '' }))
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/generate-asset`, {
         method: 'POST',
@@ -58,7 +60,12 @@ export default function GenerativeAssets({ userId, tier }: { userId: string; tie
         const data = await res.json()
         setGenerated(prev => ({ ...prev, [assetKey]: data.content }))
         setActiveAsset(assetKey)
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setErrors(prev => ({ ...prev, [assetKey]: err.detail || 'Generation failed. Try again.' }))
       }
+    } catch {
+      setErrors(prev => ({ ...prev, [assetKey]: 'Something went wrong. Check your connection.' }))
     } finally {
       setLoading(prev => ({ ...prev, [assetKey]: false }))
     }
@@ -92,8 +99,8 @@ export default function GenerativeAssets({ userId, tier }: { userId: string; tie
                 const isLoading = loading[asset.key]
 
                 return (
+                  <div key={asset.key}>
                   <div
-                    key={asset.key}
                     onClick={() => hasContent && setActiveAsset(asset.key)}
                     style={{
                       padding: '10px 14px', borderRadius: '10px',
@@ -143,6 +150,12 @@ export default function GenerativeAssets({ userId, tier }: { userId: string; tie
                     >
                       {isLoading ? '⟳' : hasContent ? 'Regenerate' : 'Generate'}
                     </button>
+                  </div>
+                  {errors[asset.key] && (
+                    <p style={{ fontSize: '11px', color: 'rgba(239,68,68,0.8)', margin: '4px 0 0' }}>
+                      ⚠ {errors[asset.key]}
+                    </p>
+                  )}
                   </div>
                 )
               })}
