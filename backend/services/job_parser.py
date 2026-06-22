@@ -6,9 +6,7 @@ from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 load_dotenv()
 
-import anthropic
-
-claude = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+from services.claude_client import create_message
 
 
 async def fetch_url_content(url: str) -> str:
@@ -53,7 +51,7 @@ Rules:
 - Return ONLY the JSON object, no preamble, no markdown fences
 """
 
-    message = claude.messages.create(
+    message = create_message(
         model="claude-haiku-4-5-20251001",
         max_tokens=1000,
         messages=[{"role": "user", "content": prompt}]

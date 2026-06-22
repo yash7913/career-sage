@@ -33,7 +33,7 @@ import json
 import re
 import difflib
 from supabase import create_client
-import anthropic
+from services.claude_client import create_message
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -44,7 +44,6 @@ supabase = create_client(
     os.getenv("SUPABASE_URL"),
     os.getenv("SUPABASE_SERVICE_KEY")
 )
-claude = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 
 def _strip_json_fences(raw: str) -> str:
@@ -112,7 +111,7 @@ Rules:
 - Do not merge similar-sounding projects yet — list each mention separately, even if you suspect they're the same project
 - Return ONLY the JSON array, no markdown"""
 
-    message = claude.messages.create(
+    message = create_message(
         model="claude-haiku-4-5-20251001",
         max_tokens=4000,
         messages=[{"role": "user", "content": prompt}]
@@ -191,7 +190,7 @@ Rules:
 - Every input index must appear in exactly one output group
 - Return ONLY the JSON array, no markdown"""
 
-    message = claude.messages.create(
+    message = create_message(
         model="claude-haiku-4-5-20251001",
         max_tokens=1500,
         messages=[{"role": "user", "content": prompt}]
@@ -288,7 +287,7 @@ async def _stage3_enrich_and_save(user_id: str, resolved_projects: list[dict], d
 
             if doc_text:
                 try:
-                    message = claude.messages.create(
+                    message = create_message(
                         model="claude-haiku-4-5-20251001",
                         max_tokens=400,
                         messages=[{"role": "user", "content": f"""Write a professional project summary based ONLY on this source material. Do not add detail that isn't supported by the text.

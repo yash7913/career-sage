@@ -6,15 +6,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from supabase import create_client
-import anthropic
+from services.claude_client import create_message
 from services.prompt_loader import load_prompt
 
 supabase = create_client(
     os.getenv("SUPABASE_URL"),
     os.getenv("SUPABASE_SERVICE_KEY")
 )
-claude = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-
 
 def extract_text_from_bytes(file_bytes: bytes, file_name: str) -> str:
     if file_name.endswith(".pdf"):
@@ -188,7 +186,7 @@ async def extract_and_save_profile(user_id: str) -> dict:
     prompt = load_prompt("profile_extraction.txt", documents_text=all_text[:45000])
     print(f"Sending {len(prompt)} chars to Claude...")
 
-    message = claude.messages.create(
+    message = create_message(
         model="claude-haiku-4-5-20251001",
         max_tokens=3000,
         messages=[{"role": "user", "content": prompt}]
@@ -319,6 +317,7 @@ async def extract_and_save_profile(user_id: str) -> dict:
         "cohort":                    cohort,
         "years_of_experience":       years_of_experience,
         "seniority_level":           seniority,
+        "updated_at":                datetime.datetime.utcnow().isoformat(),
     }
 
     # Save current role and company if found

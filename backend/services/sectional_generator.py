@@ -1,10 +1,9 @@
 import os
 import asyncio
-import anthropic
+from services.claude_client import create_message
 from dotenv import load_dotenv
 load_dotenv()
 
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 MODEL = "claude-haiku-4-5-20251001"
 
 
@@ -184,7 +183,7 @@ Output ONLY the recruiter notes, no preamble.
 
 async def generate_section(section_name: str, prompt: str) -> tuple[str, str]:
     try:
-        message = client.messages.create(
+        message = create_message(
             model=MODEL,
             max_tokens=1500,
             messages=[{"role": "user", "content": prompt}]

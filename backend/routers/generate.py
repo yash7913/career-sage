@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import re
 import anthropic
+from services.claude_client import create_message
 
 router = APIRouter()
 supabase = create_client(
@@ -505,7 +506,7 @@ Overall fit score: [0-100]%
 One paragraph summary of fit.
 """
 
-        message = anthropic_client.messages.create(
+        message = create_message(
             model="claude-haiku-4-5-20251001",
             max_tokens=2000,
             messages=[{"role": "user", "content": prompt}]

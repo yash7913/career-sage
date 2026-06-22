@@ -1,4 +1,5 @@
 from typing import Optional
+from services.claude_client import create_message
 import json
 import os
 import asyncio
@@ -151,7 +152,6 @@ async def compute_domain_expertise_ai(raw_text: str, cohort: str, fallback_score
         import json
         import re as _re
 
-        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
         prompt = f"""You are assessing the DOMAIN EXPERTISE of a {cohort} based on their profile text. Domain expertise means: depth of knowledge in their specific industry/functional area, regardless of company brand recognition.
 
@@ -168,7 +168,7 @@ Be FAIR — expertise at a smaller or less famous company is just as real as exp
 
 Return ONLY valid JSON: {{"score": <int 0-100>, "reasoning": "one sentence why"}}"""
 
-        message = client.messages.create(
+        message = create_message(
             model="claude-haiku-4-5-20251001",
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}]
@@ -206,7 +206,6 @@ async def compute_learning_velocity_ai(raw_text: str, cohort: str, fallback_scor
         import json
         import re as _re
 
-        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
         prompt = f"""You are assessing the LEARNING VELOCITY of a {cohort} based on their profile text. Learning velocity means: evidence of actively growing skills, taking on new challenges, and expanding capability over time — NOT just formal degrees or certifications.
 
@@ -223,7 +222,7 @@ Be FAIR — growth shown through expanding responsibilities, new project types, 
 
 Return ONLY valid JSON: {{"score": <int 0-100>, "reasoning": "one sentence why"}}"""
 
-        message = client.messages.create(
+        message = create_message(
             model="claude-haiku-4-5-20251001",
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}]
@@ -260,7 +259,6 @@ async def compute_leadership_signals_ai(raw_text: str, cohort: str, fallback_sco
         import json
         import re as _re
 
-        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
         prompt = f"""You are assessing the LEADERSHIP SIGNALS of a {cohort} based on their profile text. Leadership means: influencing outcomes, driving initiatives, building consensus, or guiding others — NOT just having a management title.
 
@@ -277,7 +275,7 @@ Be FAIR — leadership without a formal title (influencing peers, driving cross-
 
 Return ONLY valid JSON: {{"score": <int 0-100>, "reasoning": "one sentence why"}}"""
 
-        message = client.messages.create(
+        message = create_message(
             model="claude-haiku-4-5-20251001",
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}]
@@ -314,7 +312,6 @@ async def compute_technical_depth_ai(raw_text: str, skills: list, cohort: str, f
         import json
         import re as _re
 
-        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         skills_str = ", ".join(skills[:30]) if skills else "Not listed"
 
         prompt = f"""You are assessing the TECHNICAL DEPTH of a {cohort} based on their profile text and skills. Technical depth means: genuine mastery and hands-on technical capability — NOT brand recognition of tools/companies used.
@@ -333,7 +330,7 @@ Be FAIR — deep expertise in less-hyped or niche technologies is just as real a
 
 Return ONLY valid JSON: {{"score": <int 0-100>, "reasoning": "one sentence why"}}"""
 
-        message = client.messages.create(
+        message = create_message(
             model="claude-haiku-4-5-20251001",
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}]
@@ -374,7 +371,6 @@ async def compute_impact_magnitude_ai(raw_text: str, cohort: str, fallback_score
         from logger import get_logger
         log = get_logger(__name__)
 
-        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
         prompt = f"""You are assessing the career IMPACT of a {cohort} based on their profile text. Impact means: scope of ownership, scale of outcomes, and evidence of real business or technical effect — NOT just whether numbers/percentages are explicitly written.
 
@@ -391,7 +387,7 @@ Be FAIR and GENEROUS in reading intent — if someone describes leading a platfo
 
 Return ONLY valid JSON: {{"score": <int 0-100>, "reasoning": "one sentence why"}}"""
 
-        message = client.messages.create(
+        message = create_message(
             model="claude-haiku-4-5-20251001",
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}]
