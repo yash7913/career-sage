@@ -362,7 +362,10 @@ export default function DashboardTabs({
               hasProfile={hasProfile}
               onTrackCreated={() => setActiveTab('discover')}
               tier={tier}
-              onExtractionComplete={() => setCareerDNAStale(true)}
+              onExtractionComplete={() => {
+                setCareerDNAStale(true)
+                setActiveTab('career')
+              }}
               docRefreshKey={docRefreshKey}
               onDocUploaded={() => setDocRefreshKey(prev => prev + 1)}
             />
@@ -405,6 +408,8 @@ function ProfileTab({
 }) {
   const [docCount, setDocCount] = useState<number | null>(null)
   const [hasLinkedinExport, setHasLinkedinExport] = useState(false)
+  const [linkedinExportDate, setLinkedinExportDate] = useState<string | null>(null)
+  const [linkedinExportName, setLinkedinExportName] = useState<string | null>(null)
   const [signingOut, setSigningOut] = useState(false)
   const handleSignOut = async () => {
     setSigningOut(true)
@@ -419,7 +424,10 @@ function ProfileTab({
       .then(data => {
         const docs = data.documents || []
         setDocCount(docs.length)
-        setHasLinkedinExport(docs.some((d: { doc_tag: string }) => d.doc_tag === 'LINKEDIN_EXPORT'))
+        const linkedinDoc = docs.find((d: { doc_tag: string; created_at: string; file_name: string }) => d.doc_tag === 'LINKEDIN_EXPORT')
+        setHasLinkedinExport(!!linkedinDoc)
+        setLinkedinExportDate(linkedinDoc?.created_at || null)
+        setLinkedinExportName(linkedinDoc?.file_name || null)
       })
       .catch(() => setDocCount(0))
   }, [userId])
@@ -438,6 +446,8 @@ function ProfileTab({
         <VaultUpload
           existingDocCount={docCount}
           hasLinkedinExport={hasLinkedinExport}
+          linkedinExportDate={linkedinExportDate}
+          linkedinExportName={linkedinExportName}
           onExtractionComplete={() => {
             onExtractionComplete?.()
           }}
@@ -451,7 +461,7 @@ function ProfileTab({
           <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', margin: '0 0 10px' }}>
             YOUR UPLOADED FILES {docCount !== null && `(${docCount}/10)`}
           </p>
-          <DocumentManager userId={userId} refreshKey={docRefreshKey} />
+          <DocumentManager userId={userId} refreshKey={docRefreshKey} onDelete={() => setDocCount(prev => (prev ?? 1) - 1)} />
         </div>
       </div>
 

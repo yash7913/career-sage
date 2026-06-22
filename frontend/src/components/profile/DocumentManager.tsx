@@ -21,7 +21,7 @@ interface Document {
   created_at: string
 }
 
-export default function DocumentManager({ userId, refreshKey }: { userId: string; refreshKey?: number }) {
+export default function DocumentManager({ userId, refreshKey, onDelete }: { userId: string; refreshKey?: number; onDelete?: () => void }) {
   const [docs, setDocs]       = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState<string | null>(null)
@@ -71,6 +71,7 @@ export default function DocumentManager({ userId, refreshKey }: { userId: string
       })
       if (res.ok) {
         setDocs(prev => prev.filter(d => d.doc_id !== docId))
+        onDelete?.()
       }
     } catch {}
     setToggling(null)

@@ -60,12 +60,16 @@ export default function VaultUpload({
   isOnboarding = false,
   existingDocCount = null,
   hasLinkedinExport = false,
+  linkedinExportDate = null,
+  linkedinExportName = null,
 }: {
   onExtractionComplete?: () => void
   onUploadSuccess?: (docTag?: string) => void
   isOnboarding?: boolean
   existingDocCount?: number | null
   hasLinkedinExport?: boolean
+  linkedinExportDate?: string | null
+  linkedinExportName?: string | null
 }) {
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [extracting, setExtracting] = useState(false)
@@ -456,6 +460,23 @@ const res = await fetch(
             <p style={{ fontSize: '13px', fontWeight: 600, color: hasLinkedinExport ? 'rgba(255,255,255,0.7)' : '#fff', margin: '0 0 4px' }}>
               {hasLinkedinExport ? 'LinkedIn export added' : 'Import your LinkedIn export'}
             </p>
+            {hasLinkedinExport && linkedinExportName && (
+              <p style={{ fontSize: '11px', color: TEAL, margin: '0 0 3px', fontWeight: 500 }}>
+                📄 {linkedinExportName}
+                {linkedinExportDate && (
+                  <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 400, marginLeft: '6px' }}>
+                    · {(() => {
+                      const days = Math.floor((Date.now() - new Date(linkedinExportDate).getTime()) / (1000 * 60 * 60 * 24))
+                      if (days === 0) return 'today'
+                      if (days === 1) return '1 day ago'
+                      if (days < 30) return `${days} days ago`
+                      const months = Math.floor(days / 30)
+                      return `${months} month${months > 1 ? 's' : ''} ago`
+                    })()}
+                  </span>
+                )}
+              </p>
+            )}
             <p style={{ fontSize: '11px', color: hasLinkedinExport ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.45)', margin: 0, lineHeight: 1.6 }}>
               {hasLinkedinExport
                 ? 'You can add an updated export anytime if your profile has changed.'
@@ -645,8 +666,8 @@ const res = await fetch(
               <>⟳ {extractProgress || 'Building your profile...'}</>
             ) : (
               <>
-                ⚡ Build my profile from {doneCount} document{doneCount > 1 ? 's' : ''}
-                {pendingLinkedinFiles.length > 0 && ` + LinkedIn import`}
+                ⚡ Build my profile
+                {pendingLinkedinFiles.length > 0 && ' + LinkedIn import'}
               </>
             )}
           </button>
