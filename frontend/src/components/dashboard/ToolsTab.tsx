@@ -13,8 +13,9 @@ interface ToolsTabProps {
   userId: string
   tier?: string
   initialSection?: string
+  onSectionChange?: (section: string) => void
 }
-export default function ToolsTab({ userId, tier, initialSection }: ToolsTabProps) {
+export default function ToolsTab({ userId, tier, initialSection, onSectionChange }: ToolsTabProps) {
   const [section, setSection] = useState<'intelligence' | 'assets'>(
     initialSection === 'assets' ? 'assets' : 'intelligence'
   )
@@ -40,7 +41,7 @@ export default function ToolsTab({ userId, tier, initialSection }: ToolsTabProps
         ].map(s => (
           <button
             key={s.key}
-            onClick={() => setSection(s.key as 'intelligence' | 'assets')}
+            onClick={() => { setSection(s.key as 'intelligence' | 'assets'); onSectionChange?.(s.key) }}
             style={{
               flex: 1, padding: '10px 12px', borderRadius: '8px',
               border: 'none', cursor: 'pointer', textAlign: 'left',

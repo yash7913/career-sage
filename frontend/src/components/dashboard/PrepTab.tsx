@@ -19,9 +19,10 @@ interface PrepTabProps {
   userId: string
   tier?: string
   initialSection?: string
+  onSectionChange?: (section: string) => void
 }
 
-export default function PrepTab({ userId, tier, initialSection }: PrepTabProps) {
+export default function PrepTab({ userId, tier, initialSection, onSectionChange }: PrepTabProps) {
   const [section, setSection] = useState<'stories' | 'interview'>(
     initialSection === 'interview' ? 'interview' : 'stories'
   )
@@ -75,7 +76,7 @@ export default function PrepTab({ userId, tier, initialSection }: PrepTabProps) 
         ].map(s => (
           <button
             key={s.key}
-            onClick={() => setSection(s.key as 'stories' | 'interview')}
+            onClick={() => { setSection(s.key as 'stories' | 'interview'); onSectionChange?.(s.key) }}
             style={{
               flex: 1, padding: '10px 12px', borderRadius: '8px',
               border: 'none', cursor: 'pointer', textAlign: 'left',

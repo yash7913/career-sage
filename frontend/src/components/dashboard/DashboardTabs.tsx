@@ -86,6 +86,23 @@ interface DashboardTabsProps {
   impactPattern?: string
 }
 
+interface DNAData {
+  full_name: string; cohort: string; impact_pattern: string; seniority_level: string
+  years_of_experience: number; next_role: string
+  trajectory: { trajectory: string; description: string; color: string; icon: string }
+  pentagram: { scores: Record<string, number>; composite: number; cohort_avg: Record<string, number>; top_decile: Record<string, number> }
+  promotion_readiness: { score: number; verdict: string; verdict_color: string; timeline: string; top_gaps: { axis: string; gap: number; user: number; top_decile: number }[] }
+  recommended_actions: { action: string; points: number; effort: string; gap_axis: string }[]
+  market_position: { percentile: number; label: string }
+  market_benchmarks: { axis: string; user: number; avg: number; top: number; delta: number; position: string; color: string; context: string }[]
+  career_paths: { path: string; probability: number; timeline: string; key_requirement: string }[]
+  compensation: { current_range: { low: number; high: number }; current_mid: number; next_level_range: { low: number; high: number }; currency: string; note: string }
+  top_strengths: { axis: string; score: number; vs_avg: number }[]
+  work_history: { title: string; company: string; start_date: string; end_date: string | null; is_current: boolean; description?: string }[]
+  skill_categories: Record<string, string[]>
+  share_text: string
+}
+
 const COLOR_MAP: Record<string, string> = {
   teal: '#10B981', purple: '#7F77DD',
   blue: '#3B82F6', amber: '#F59E0B', coral: '#F97316',
@@ -113,12 +130,32 @@ export default function DashboardTabs({
   const [activeSection, setActiveSectionState] = useState<string | undefined>(
     searchParams.get('section') || undefined
   )
+  const [careerDNAData, setCareerDNAData] = useState<DNAData | null>(null)
+  const [careerDNALoading, setCareerDNALoading] = useState(true)
+  const [careerDNAStale, setCareerDNAStale] = useState(false)
 
   // Tab changes go through Next's router (server round-trip is fine — tabs
   // load different heavy components). Section changes are purely
   // client-side state with a lightweight history.replaceState for
   // bookmarking — going through router.push for sub-tabs caused a full
   // server re-render and 1.5s+ delay for what should be instant.
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/career-dna/${userId}`)
+      .then(r => r.json())
+      .then(d => setCareerDNAData(d))
+      .catch(() => {})
+      .finally(() => setCareerDNALoading(false))
+  }, [userId])
+
+  const refreshCareerDNA = () => {
+    setCareerDNALoading(true)
+    setCareerDNAStale(false)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/career-dna/${userId}`)
+      .then(r => r.json())
+      .then(d => setCareerDNAData(d))
+      .catch(() => {})
+      .finally(() => setCareerDNALoading(false))
+  }
   const setActiveTab = useCallback((tab: string, section?: string) => {
     setActiveTabState(tab)
     setActiveSectionState(section)
@@ -288,7 +325,16 @@ export default function DashboardTabs({
           {/* Career tab */}
           {activeTab === 'career' && (
             <div style={{ paddingTop: '8px' }}>
-              <CareerDNA userId={userId} skills={profileSkills} />
+              <CareerDNA
+                userId={userId}
+                skills={profileSkills}
+                initialSection={activeSection}
+                onSectionChange={(s) => setActiveTab('career', s)}
+                data={careerDNAData}
+                loading={careerDNALoading}
+                isStale={careerDNAStale}
+                onRefresh={refreshCareerDNA}
+              />
             </div>
           )}
           
@@ -299,12 +345,12 @@ export default function DashboardTabs({
 
           {/* Prep tab */}
           {activeTab === 'prep' && (
-            <PrepTab userId={userId} tier={tier} initialSection={activeSection} />
+            <PrepTab userId={userId} tier={tier} initialSection={activeSection} onSectionChange={(s) => setActiveTab('prep', s)} />
           )}
 
           {/* Tools tab */}
           {activeTab === 'tools' && (
-            <ToolsTab userId={userId} tier={tier} initialSection={activeSection} />
+            <ToolsTab userId={userId} tier={tier} initialSection={activeSection} onSectionChange={(s) => setActiveTab('tools', s)} />
           )}
 
           {/* Profile tab — minimal setup only */}
@@ -315,6 +361,7 @@ export default function DashboardTabs({
               hasProfile={hasProfile}
               onTrackCreated={() => setActiveTab('discover')}
               tier={tier}
+              onExtractionComplete={() => setTimeout(() => setCareerDNAStale(true), 2000)}
             />
           )}
 
@@ -342,13 +389,14 @@ export default function DashboardTabs({
 }
 
 function ProfileTab({
-  userId, tracks, hasProfile, onTrackCreated, tier,
+  userId, tracks, hasProfile, onTrackCreated, tier, onExtractionComplete,
 }: {
   userId: string
   tracks: Track[]
   hasProfile: boolean
   onTrackCreated: () => void
   tier?: string
+  onExtractionComplete?: () => void
 }) {
   const [docCount, setDocCount] = useState<number | null>(null)
   const [hasLinkedinExport, setHasLinkedinExport] = useState(false)
@@ -386,7 +434,7 @@ function ProfileTab({
           existingDocCount={docCount}
           hasLinkedinExport={hasLinkedinExport}
           onExtractionComplete={() => {
-            setTimeout(() => window.location.reload(), 2000)
+            onExtractionComplete?.()
           }}
           onUploadSuccess={(docTag) => {
             setDocCount(prev => (prev ?? 0) + 1)
