@@ -67,11 +67,13 @@ const jobCards = [
 ]
 
 const modules = [
-  { num: '01', title: 'Distributed ingest engine', desc: 'Crawls 250+ ATS portals, LinkedIn, and Naukri every 12 hours — deduplicates cross-posted listings into a single canonical record.' },
-  { num: '02', title: 'Unified profile graph', desc: 'Upload resumes, decks, or notes in any format. Extracts skills, education, and impact metrics into a semantic profile in under 4.5 seconds.' },
-  { num: '03', title: 'Semantic match and rank', desc: 'Vector embeddings per career track rank every role by skill overlap (40%), seniority (30%), and impact correlation (30%).' },
-  { num: '04', title: 'Generative asset workspace', desc: 'CareerSage rewrites your resume and cover letter per job description in a live-streamed split pane. First token in 1.2 seconds.' },
-  { num: '05', title: 'Auto-synced pipeline tracker', desc: 'Downloading a tailored resume auto-logs a Kanban card. Drag through Draft → Applied → Interviewing → Offer.' },
+  { num: '01', title: 'Career DNA & Pentagram scoring', desc: 'Your profile is scored across 5 axes — Technical Depth, Domain Expertise, Impact Magnitude, Leadership Signals, and Learning Velocity — benchmarked against your peer cohort and the top decile. Every score is AI-assessed from your actual profile, not keywords.' },
+  { num: '02', title: 'Promotion Readiness', desc: 'A live readiness score with your top 3 gaps against the top decile of your cohort, ranked by points gained per effort. Specific, actionable — not generic career advice.' },
+  { num: '03', title: 'Distributed ingest engine', desc: 'Crawls 250+ ATS portals, LinkedIn, and Naukri every 12 hours — deduplicates cross-posted listings into a single canonical record.' },
+  { num: '04', title: 'Unified profile graph', desc: 'Upload resumes, decks, or notes in any format. Extracts skills, education, and impact metrics into a semantic profile in under 4.5 seconds.' },
+  { num: '05', title: 'Semantic match and rank', desc: 'Vector embeddings per career track rank every role by skill overlap (40%), seniority (30%), and impact correlation (30%).' },
+  { num: '06', title: 'Generative asset workspace', desc: 'Career Sage rewrites your resume and cover letter per job description in a live-streamed split pane. First token in 1.2 seconds.' },
+  { num: '07', title: 'Auto-synced pipeline tracker', desc: 'Downloading a tailored resume auto-logs a Kanban card. Drag through Draft → Applied → Interviewing → Offer.' },
 ]
 
 const steps = [
@@ -312,7 +314,7 @@ function MobileLandingPage({ showAuth, setShowAuth }: { showAuth: boolean; setSh
           background: 'rgba(16,185,129,0.1)', border: `1px solid ${TEAL_BORDER}`,
         }}>
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: TEAL }} />
-          <span style={{ fontSize: '11px', color: TEAL, fontWeight: 600 }}>Live · 12,481 roles scraped today</span>
+          <span style={{ fontSize: '11px', color: TEAL, fontWeight: 600 }}>Live · 2,500+ roles indexed across India & UK</span>
         </div>
 
         <h1 style={{ fontSize: '34px', fontWeight: 800, lineHeight: 1.15, margin: '0 0 1rem', letterSpacing: '-1px' }}>
@@ -335,9 +337,9 @@ function MobileLandingPage({ showAuth, setShowAuth }: { showAuth: boolean; setSh
         {/* Brief value props — three short lines instead of full module sections */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2.5rem' }}>
           {[
-            { icon: '🧬', title: 'Career DNA', desc: 'Your professional identity, scored against your cohort and the top decile.' },
-            { icon: '📊', title: 'Promotion Readiness', desc: 'A live readiness score with the specific gaps holding you back.' },
-            { icon: '⚡', title: 'Ranked job feed', desc: 'Every role scored by skill overlap, seniority fit, and impact correlation.' },
+            { icon: '🧬', title: 'Career DNA', desc: 'Scored across 5 axes against your peer cohort — Technical Depth, Impact, Leadership, Domain Expertise, Learning Velocity.' },
+            { icon: '📊', title: 'Promotion Readiness', desc: 'A live readiness score with your top 3 gaps against the top decile, ranked by effort vs points gained.' },
+            { icon: '⚡', title: 'Ranked job feed', desc: 'Every role scored by skill overlap, seniority fit, and impact correlation — not just keywords.' },
           ].map(item => (
             <div key={item.title} style={{
               padding: '1rem', borderRadius: '12px',
@@ -501,7 +503,7 @@ const [showTop, setShowTop] = useState(false)
           <Reveal>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '13px', padding: '5px 14px', borderRadius: '999px', background: TEAL_DIM, border: `1px solid ${TEAL_BORDER}`, color: TEAL, marginBottom: '2rem' }}>
               <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: TEAL, display: 'inline-block', animation: 'pulse 2s infinite' }} />
-              Live ingest · 12,481 roles scraped today
+              Live · 2,500+ roles indexed across India & UK
             </div>
           </Reveal>
           <Reveal delay={80}>
@@ -597,7 +599,7 @@ const [showTop, setShowTop] = useState(false)
           <p style={{ fontSize: '12px', fontWeight: 600, color: TEAL, letterSpacing: '0.1em', margin: '0 0 0.75rem' }}>/ PLATFORM</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', alignItems: 'flex-end', marginBottom: '2rem' }}>
             <h2 style={{ fontSize: '40px', fontWeight: 600, margin: 0, letterSpacing: '-1.5px', lineHeight: 1.1 }}>
-              Five modules.<br />
+              Seven modules.<br />
               <span className="metallic">One operating system.</span>
             </h2>
             <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7, margin: 0 }}>
@@ -656,7 +658,7 @@ const [showTop, setShowTop] = useState(false)
       <section id="telemetry" className="section-anchor" style={{ maxWidth: '1200px', margin: '0 auto 5rem', padding: '0 5%' }}>
         <Reveal>
           <p style={{ fontSize: '12px', fontWeight: 600, color: TEAL, letterSpacing: '0.1em', margin: '0 0 0.75rem' }}>/ GLOBAL TELEMETRY</p>
-          <h2 style={{ fontSize: '40px', fontWeight: 600, margin: '0 0 2rem', letterSpacing: '-1.5px' }}>Live platform metrics.</h2>
+          <h2 style={{ fontSize: '40px', fontWeight: 600, margin: '0 0 2rem', letterSpacing: '-1.5px' }}>Platform at a glance.</h2>
         </Reveal>
         <Reveal delay={80}>
           <div style={{
@@ -665,10 +667,10 @@ const [showTop, setShowTop] = useState(false)
           }}>
             <div style={{ background: CARD, borderRadius: '15px', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
               {[
-                { value: 12481, suffix: '', label: 'Roles scraped today', sub: 'Updated 4 min ago', delay: '0s' },
-                { value: 94, suffix: '%', label: 'Avg match score', sub: 'Across all active users', delay: '0.3s' },
-                { value: 12, suffix: 's', label: 'First token latency', sub: 'Resume generation SLA', delay: '0.6s' },
-                { value: 43, suffix: 's', label: 'Profile extraction', sub: 'Multi-file vault parse', delay: '0.9s' },
+                { value: 250, suffix: '+', label: 'Roles indexed', sub: 'India + UK markets', delay: '0s' },
+                { value: 5, suffix: ' axes', label: 'Career DNA scoring', sub: 'AI-assessed per profile', delay: '0.3s' },
+                { value: 8, suffix: ' cohorts', label: 'Peer benchmarking', sub: 'PM, DS, Eng, Consultant', delay: '0.6s' },
+                { value: 45, suffix: 's', label: 'Profile extraction', sub: 'Multi-file vault parse', delay: '0.9s' },
               ].map((s, i) => (
                 <div key={s.label} className="telemetry-card" style={{
                   padding: '2rem 1.5rem', textAlign: 'center',
