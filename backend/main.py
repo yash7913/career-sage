@@ -5,8 +5,22 @@ from routers import notifications
 from routers import tracker
 from dotenv import load_dotenv
 import os
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
 
 load_dotenv()
+
+sentry_sdk.init(
+    dsn=os.getenv("SENTRY_DSN", ""),
+    integrations=[
+        StarletteIntegration(transaction_style="endpoint"),
+        FastApiIntegration(transaction_style="endpoint"),
+    ],
+    traces_sample_rate=0.2,
+    environment=os.getenv("ENVIRONMENT", "production"),
+    send_default_pii=False,
+)
 
 from routers import jobs, profile, generate, tracker, scraper, tracks
 from scheduler import start_scheduler
