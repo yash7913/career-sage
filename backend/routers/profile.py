@@ -2375,36 +2375,10 @@ def _get_cross_market_comparison(
 
     return comparisons
 
-
-AXIS_CONTEXT: dict[str, dict[str, str]] = {
-    "technical_depth": {
-        "above": "Your technical depth is a strong differentiator. This gives you credibility with engineering teams and makes you a stronger candidate for technical PM roles.",
-        "average": "Your technical depth is on par with your cohort. Consider deepening expertise in a specific area — system design, data infrastructure, or AI/ML — to stand out.",
-        "below": "Technical depth is below your cohort average. This may limit your candidacy for roles requiring close engineering collaboration. Focus on SQL, APIs, or system design fundamentals.",
-    },
-    "domain_expertise": {
-        "above": "You have strong domain expertise relative to your cohort. This is a significant asset when targeting roles in your industry vertical.",
-        "average": "Your domain expertise is average for your cohort. Publishing insights, taking on domain-specific ownership, or deepening in one vertical will move this.",
-        "below": "Domain expertise is below average. This often happens when professionals move across industries frequently. Consider anchoring in one domain for 2–3 years.",
-    },
-    "impact_magnitude": {
-        "above": "Your impact scores are strong — you have clear evidence of business outcomes in your profile. This is one of the most important signals for senior roles.",
-        "average": "Your impact is average for your cohort. Strengthen this by quantifying outcomes in your profile — revenue generated, cost saved, users impacted, efficiency gains.",
-        "below": "Impact Magnitude is the score most affected by how your profile is written, not necessarily how you actually performed. Your move from Software Engineer → Analyst → PM with salary growth from ₹9L to ₹50L+ is itself significant impact — it just needs to be documented with metrics. Add 2–3 quantified outcomes from your Salesforce work to move this score significantly.",
-    },
-    "leadership_signals": {
-        "above": "Your leadership signals are strong. You show clear evidence of influencing teams, driving decisions, and operating above your title.",
-        "average": "Leadership signals are average. To improve: take on cross-functional initiatives, mentor junior team members, or document times you influenced without authority.",
-        "below": "Leadership signals are below average for your cohort. This is common for strong individual contributors who haven't yet had formal leadership opportunities. Leading an org-wide initiative or mentoring 1–2 people will move this quickly.",
-    },
-    "learning_velocity": {
-        "above": "Your learning velocity is strong — you show evidence of consistently acquiring new skills and adapting to new domains.",
-        "average": "Learning velocity is average. Consider adding recent certifications, courses, or new skills adopted in the last 12 months to your profile.",
-        "below": "Learning velocity appears below average. This may reflect that your profile doesn't mention recent upskilling, not that you haven't been learning. Add any new tools, frameworks, or domains you've picked up recently.",
-    },
-}
-
-def _get_market_benchmarks(pentagram_scores: dict, cohort: str) -> list[dict]:
+def _compute_benchmark_brackets(pentagram_scores: dict, cohort: str) -> list[dict]:
+    """The numeric/positional part of benchmarking — position label, color,
+    delta vs cohort. Kept fast and deterministic; the explanatory text is
+    generated separately by AI so it can cite the user's actual evidence."""
     from services.pentagram import COHORT_AVERAGES, TOP_DECILE
 
     cohort_avg = COHORT_AVERAGES.get(cohort, COHORT_AVERAGES["Career Explorer"])
@@ -2416,44 +2390,28 @@ def _get_market_benchmarks(pentagram_scores: dict, cohort: str) -> list[dict]:
         avg_val  = cohort_avg.get(ax, 50)
         top_val  = top_dec.get(ax, 85)
 
-        # How far above or below the cohort average, scaled to cohort spread
         spread = max(top_val - avg_val, 1)
         delta  = user_val - avg_val
 
         if delta >= 0:
-            # Above average — scale 0-100 within avg→top range
             pct_above = min(100, round((delta / spread) * 100))
             if pct_above >= 75:
-                position = "Top 5%"
-                color    = "#10B981"
-                bracket  = "above"
+                position, color, bracket = "Top 5%", "#10B981", "above"
             elif pct_above >= 40:
-                position = "Top 20%"
-                color    = "#10B981"
-                bracket  = "above"
+                position, color, bracket = "Top 20%", "#10B981", "above"
             else:
-                position = "Above average"
-                color    = "#3B82F6"
-                bracket  = "average"
+                position, color, bracket = "Above average", "#3B82F6", "average"
         else:
-            # Below average — scale 0-100 within 0→avg range
             pct_below = min(100, round((abs(delta) / max(avg_val, 1)) * 100))
             if pct_below >= 60:
-                position = "Well below average"
-                color    = "#EF4444"
-                bracket  = "below"
+                position, color, bracket = "Well below average", "#EF4444", "below"
             elif pct_below >= 30:
-                position = "Below average"
-                color    = "#F59E0B"
-                bracket  = "below"
+                position, color, bracket = "Below average", "#F59E0B", "below"
             else:
-                position = "Slightly below average"
-                color    = "#F59E0B"
-                bracket  = "average"
-
-        context = AXIS_CONTEXT.get(ax, {}).get(bracket, "")
+                position, color, bracket = "Slightly below average", "#F59E0B", "average"
 
         benchmarks.append({
+            "axis_key": ax,
             "axis":     label,
             "user":     user_val,
             "avg":      avg_val,
@@ -2461,10 +2419,100 @@ def _get_market_benchmarks(pentagram_scores: dict, cohort: str) -> list[dict]:
             "delta":    round(delta),
             "position": position,
             "color":    color,
-            "context":  context,
+            "bracket":  bracket,
         })
 
     return sorted(benchmarks, key=lambda x: x["delta"], reverse=True)
+
+
+async def _get_market_benchmarks(pentagram_scores: dict, cohort: str, profile: dict) -> list[dict]:
+    """Generates personal, evidence-grounded explanations for each axis —
+    replaces the old static per-bracket lookup table, which gave every
+    user with a similar score the identical generic sentence regardless of
+    who they actually are or what their profile contains. This reads the
+    user's real work history, achievements, certifications, and role
+    progression to ground each explanation in something specific to them."""
+    benchmarks = _compute_benchmark_brackets(pentagram_scores, cohort)
+
+    raw_text = profile.get("raw_profile_text") or ""
+    if not raw_text or len(raw_text.strip()) < 50:
+        # No real profile data to ground explanations in — fall back to a
+        # neutral, honest statement rather than fabricating specifics
+        for b in benchmarks:
+            b["context"] = f"Your {b['axis'].lower()} score is {b['position'].lower()} for your cohort."
+            del b["axis_key"]
+            del b["bracket"]
+        return benchmarks
+
+    try:
+        import anthropic
+        import json
+        import re as _re
+
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+        axis_summaries = "\n".join(
+            f"- {b['axis']}: score {b['user']}/100, {b['position']} (cohort avg {b['avg']})"
+            for b in benchmarks
+        )
+
+        prompt = f"""You are a career analyst writing personalized, specific explanations for someone's five-axis career profile assessment. Each explanation must reference something concrete and specific from their actual background — NOT generic praise that could apply to anyone with a similar score.
+
+Their profile text:
+{raw_text[:3000]}
+
+Their cohort: {cohort}
+
+Their scores:
+{axis_summaries}
+
+For EACH axis below, write a 1-2 sentence explanation that:
+- For Domain Expertise: names their ACTUAL domain/industry specifically (e.g. "enterprise security analytics" not just "your domain"), and gives a verdict on their depth within it
+- For Learning Velocity: cites a SPECIFIC real credential, certification, or skill they picked up, with rough timing if available — not just "you show evidence of learning"
+- For Leadership: cites their ACTUAL role title progression if visible (e.g. "Analyst → Lead → Manager") as evidence, not generic "you show influence"
+- For Impact: cites their SINGLE best, most specific achievement verbatim or near-verbatim from their text — not a category-average statement
+- For Technical Depth: names specific technical skills/tools they've actually used, not "your technical depth is strong"
+
+If their score is below average on an axis, be honest but constructive — name a SPECIFIC, actionable next step grounded in what's already in their profile (e.g. "add a metric to your X achievement" not "quantify your outcomes" generically).
+
+Return ONLY valid JSON in this exact format:
+{{
+  "technical_depth": "...",
+  "domain_expertise": "...",
+  "impact_magnitude": "...",
+  "leadership_signals": "...",
+  "learning_velocity": "..."
+}}"""
+
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1200,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        content = message.content[0].text.strip()
+        content = _re.sub(r'^```json\s*', '', content)
+        content = _re.sub(r'\s*```$', '', content)
+        explanations = json.loads(content)
+
+        for b in benchmarks:
+            axis_key = b.pop("axis_key")
+            b.pop("bracket")
+            b["context"] = explanations.get(axis_key) or f"Your {b['axis'].lower()} score is {b['position'].lower()} for your cohort."
+
+        return benchmarks
+
+    except Exception as e:
+        try:
+            from logger import get_logger
+            get_logger(__name__).warning(f"AI benchmark explanations failed, using neutral fallback: {e}")
+        except Exception:
+            pass
+        for b in benchmarks:
+            b["context"] = f"Your {b['axis'].lower()} score is {b['position'].lower()} for your cohort."
+            b.pop("axis_key", None)
+            b.pop("bracket", None)
+        return benchmarks
 
 async def _categorise_skills_ai(skills: list[str], cohort: str, user_id: str) -> dict[str, list[str]]:
     import anthropic
@@ -2599,8 +2647,9 @@ async def get_career_dna(user_id: str):
         # Market position
         market = _compute_market_position(penta, cohort)
 
-        # Per-axis market benchmarks
-        benchmarks = _get_market_benchmarks(penta, cohort)
+        # Per-axis market benchmarks — now AI-grounded in the user's actual
+        # profile content instead of generic per-bracket template text
+        benchmarks = await _get_market_benchmarks(penta, cohort, p)
 
         # Career paths
         paths = _get_career_paths(cohort, impact_pattern, trajectory)
