@@ -14,6 +14,7 @@ interface Project {
   links: { label: string; url: string }[]
   synthesized_summary: string | null
   created_at: string
+  starred: boolean
 }
 
 interface VaultDoc {
@@ -139,6 +140,19 @@ export default function ProjectManager({ userId }: { userId: string }) {
     try {
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/projects/${projectId}`, { method: 'DELETE' })
       setProjects(prev => prev.filter(p => p.project_id !== projectId))
+    } catch {}
+  }
+
+  const handleStar = async (projectId: string, currentStarred: boolean) => {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/projects/${projectId}/star`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ starred: !currentStarred }),
+      })
+      setProjects(prev => prev.map(p =>
+        p.project_id === projectId ? { ...p, starred: !currentStarred } : p
+      ))
     } catch {}
   }
 
@@ -317,6 +331,17 @@ export default function ProjectManager({ userId }: { userId: string }) {
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
               {editingId !== p.project_id && (
                 <>
+                  <button
+                    onClick={e => { e.stopPropagation(); handleStar(p.project_id, p.starred) }}
+                    title={p.starred ? 'Unstar project' : 'Star to prioritise in resume generation'}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: '15px', padding: '2px', opacity: p.starred ? 1 : 0.3,
+                      transition: 'opacity 0.15s',
+                    }}
+                  >
+                    {p.starred ? '⭐' : '☆'}
+                  </button>
                   {!p.synthesized_summary && (
                     <button
                       onClick={e => { e.stopPropagation(); handleSynthesize(p.project_id) }}

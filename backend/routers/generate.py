@@ -120,7 +120,7 @@ def _rank_projects_for_job(user_id: str, job_title: str, job_description: str, s
     drop into a prompt, or empty string if the user has no projects."""
     try:
         projects = supabase.table("user_projects")\
-            .select("title, description, synthesized_summary, outcomes, tech_stack")\
+            .select("title, description, synthesized_summary, outcomes, tech_stack, starred")\
             .eq("user_id", user_id)\
             .execute()
 
@@ -147,6 +147,10 @@ def _rank_projects_for_job(user_id: str, job_title: str, job_description: str, s
             # Has real content (substantial, not just a one-liner) — small bonus
             if proj.get("synthesized_summary"):
                 score += 1
+
+            # Starred projects get a large bonus — user explicitly flagged these as important
+            if proj.get("starred"):
+                score += 10
 
             scored.append((score, proj))
 

@@ -1132,6 +1132,15 @@ class SynthesizeProjectRequest(BaseModel):
     user_id: str
     project_id: str
 
+@router.patch("/projects/{project_id}/star")
+async def star_project(project_id: str, body: dict):
+    try:
+        starred = body.get("starred", False)
+        supabase.table("user_projects").update({"starred": starred}).eq("project_id", project_id).execute()
+        return {"project_id": project_id, "starred": starred}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/projects/{project_id}/synthesize")
 async def synthesize_project(project_id: str, req: SynthesizeProjectRequest):
     try:
