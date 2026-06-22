@@ -401,6 +401,65 @@ async def get_versions(user_id: str, track_id: str, job_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class ResumeFromJDRequest(BaseModel):
+    user_id: str
+    job_description: str
+    user_tweak: Optional[str] = ""
+
+@router.post("/resume-from-jd")
+async def resume_from_jd(req: ResumeFromJDRequest):
+    try:
+        limit = check_generation_limit(req.user_id)
+        if not limit["allowed"]:
+            raise HTTPException(status_code=402, detail="Generation limit reached. Upgrade to Pro for unlimited access.")
+
+        profile = supabase.table("user_profiles").select("*").eq("user_id", req.user_id).execute()
+        if not profile.data:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        p = profile.data[0]
+        full_name = p.get("full_name") or "Your Name"
+        raw_text = p.get("raw_profile_text") or ""
+        work_history = p.get("work_history") or []
+        skills = p.get("extracted_skills") or []
+        education = p.get("education_data") or []
+
+        work_text = "\n".join([
+            f"- {r.get('title')} at {r.get('company')} ({r.get('start_date','')[:4] if r.get('start_date') else ''} - {'Present' if r.get('is_current') else r.get('end_date','')[:4] if r.get('end_date') else ''}): {r.get('description','')}"
+            for r in work_history
+        ])
+
+        prompt = f"""You are an expert resume writer. Generate a tailored, ATS-optimised resume for the following candidate applying to this specific role.
+
+CANDIDATE PROFILE:
+{raw_text[:2000]}
+
+WORK HISTORY:
+{work_text[:2000]}
+
+SKILLS: {', '.join(skills[:30])}
+
+JOB DESCRIPTION:
+{req.job_description[:2000]}
+
+USER DIRECTION: {req.user_tweak or 'No specific direction provided.'}
+
+Write a complete, professional resume tailored to this role. Format it clearly with sections: Summary, Experience, Skills, Education. Each experience bullet should emphasise outcomes relevant to the JD. Do not fabricate any details not in the profile. Use the candidate's actual metrics and achievements."""
+
+        message = create_message(
+            model="claude-sonnet-4-6",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        resume_text = message.content[0].text
+        return {"resume": resume_text, "full_name": full_name}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/versions/{version_id}")
 async def get_version(version_id: str):

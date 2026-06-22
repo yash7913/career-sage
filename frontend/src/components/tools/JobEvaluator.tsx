@@ -48,6 +48,11 @@ export default function JobEvaluator({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<EvalResult | null>(null)
   const [error, setError] = useState('')
+  const [resumeLoading, setResumeLoading] = useState(false)
+  const [resume, setResume] = useState<string | null>(null)
+  const [resumeError, setResumeError] = useState('')
+  const [resumeCopied, setResumeCopied] = useState(false)
+  const [userTweak, setUserTweak] = useState('')
 
   const handleEvaluate = async () => {
     if (!jdText.trim()) return
@@ -77,6 +82,42 @@ export default function JobEvaluator({ userId }: { userId: string }) {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleGenerateResume = async () => {
+    if (!result) return
+    setResumeLoading(true)
+    setResumeError('')
+    setResume(null)
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/generate/resume-from-jd`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          job_description: jdText,
+          user_tweak: userTweak,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        setResumeError(err.detail || 'Resume generation failed. Try again.')
+        return
+      }
+      const data = await res.json()
+      setResume(data.resume)
+    } catch {
+      setResumeError('Something went wrong. Check your connection.')
+    } finally {
+      setResumeLoading(false)
+    }
+  }
+
+  const handleCopyResume = () => {
+    if (!resume) return
+    navigator.clipboard.writeText(resume)
+    setResumeCopied(true)
+    setTimeout(() => setResumeCopied(false), 2000)
   }
 
   const handleReset = () => {
@@ -253,6 +294,86 @@ export default function JobEvaluator({ userId }: { userId: string }) {
               DETAILED ANALYSIS
             </p>
             <MarkdownRenderer content={result.evaluation} variant="report" />
+          </div>
+
+          {/* Resume generator */}
+          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '1.5rem' }}>
+            <p style={{ fontSize: '10px', fontWeight: 700, color: TEAL, letterSpacing: '0.1em', margin: '0 0 4px' }}>
+              GENERATE TAILORED RESUME
+            </p>
+            <p style={{ fontSize: '12px', color: DIM_TEXT, margin: '0 0 14px', lineHeight: 1.5 }}>
+              Generate a resume tailored to this specific role using your Career Sage profile.
+            </p>
+            <input
+              value={userTweak}
+              onChange={e => setUserTweak(e.target.value)}
+              placeholder="Optional direction — e.g. prioritise my AI product work over generic delivery metrics"
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: '8px', marginBottom: '10px',
+                background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`,
+                color: '#fff', fontSize: '13px', outline: 'none',
+                boxSizing: 'border-box', fontFamily: 'system-ui',
+              }}
+            />
+            {resumeError && (
+              <p style={{ fontSize: '12px', color: 'rgba(239,68,68,0.85)', margin: '0 0 10px' }}>⚠ {resumeError}</p>
+            )}
+            {!resume && (
+              <button
+                onClick={handleGenerateResume}
+                disabled={resumeLoading}
+                style={{
+                  padding: '10px 20px', borderRadius: '8px', border: 'none',
+                  background: resumeLoading ? 'rgba(16,185,129,0.3)' : 'linear-gradient(135deg, #10B981, #059669)',
+                  color: '#fff', fontSize: '13px', fontWeight: 700,
+                  cursor: resumeLoading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {resumeLoading ? '⟳ Generating resume...' : '⚡ Generate resume for this role'}
+              </button>
+            )}
+
+            {resume && (
+              <div style={{ marginTop: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <p style={{ fontSize: '12px', color: DIM_TEXT, margin: 0 }}>Resume generated</p>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={handleCopyResume}
+                      style={{
+                        padding: '6px 14px', borderRadius: '7px',
+                        background: resumeCopied ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.06)',
+                        color: resumeCopied ? TEAL : 'rgba(255,255,255,0.5)',
+                        border: `1px solid ${resumeCopied ? 'rgba(16,185,129,0.3)' : BORDER}`,
+                        fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      {resumeCopied ? '✓ Copied' : 'Copy'}
+                    </button>
+                    <button
+                      onClick={handleGenerateResume}
+                      disabled={resumeLoading}
+                      style={{
+                        padding: '6px 14px', borderRadius: '7px',
+                        background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`,
+                        color: 'rgba(255,255,255,0.4)', fontSize: '12px', cursor: 'pointer',
+                      }}
+                    >
+                      Regenerate
+                    </button>
+                  </div>
+                </div>
+                <pre style={{
+                  fontSize: '12px', color: DIM_TEXT, lineHeight: 1.7,
+                  whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                  background: 'rgba(255,255,255,0.02)', border: `1px solid ${BORDER}`,
+                  borderRadius: '8px', padding: '14px', margin: 0,
+                  fontFamily: 'system-ui, sans-serif',
+                }}>
+                  {resume}
+                </pre>
+              </div>
+            )}
           </div>
 
           <button
