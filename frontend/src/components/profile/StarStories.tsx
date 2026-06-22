@@ -33,6 +33,10 @@ export default function StarStories({ userId }: { userId: string }) {
   const [copied, setCopied] = useState<string | null>(null)
   const [showTweak, setShowTweak] = useState(false)
   const [tweak, setTweak] = useState('')
+  const [gistInputs, setGistInputs] = useState<Record<string, string>>({})
+  const [gistOpen, setGistOpen] = useState<string | null>(null)
+  const [gistLoading, setGistLoading] = useState<string | null>(null)
+  const [gistError, setGistError] = useState<string | null>(null)
 
   useEffect(() => {
     loadStories()
@@ -66,6 +70,34 @@ export default function StarStories({ userId }: { userId: string }) {
     } finally {
       setLoading(false)
       setRegenerating(false)
+    }
+  }
+
+  const handleGistGenerate = async (theme: string) => {
+    const gist = gistInputs[theme]?.trim()
+    if (!gist) return
+    setGistLoading(theme)
+    setGistError(null)
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/star-stories-from-gist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, theme, gist }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        setGistError(err.detail || 'Generation failed. Try again.')
+        return
+      }
+      const data = await res.json()
+      setStories(prev => prev.map(s => s.theme === theme ? data.story : s))
+      setGistOpen(null)
+      setGistInputs(prev => ({ ...prev, [theme]: '' }))
+      setActiveStory(stories.findIndex(s => s.theme === theme))
+    } catch {
+      setGistError('Something went wrong. Try again.')
+    } finally {
+      setGistLoading(null)
     }
   }
 
@@ -128,6 +160,65 @@ export default function StarStories({ userId }: { userId: string }) {
           )
         })}
       </div>
+
+      {/* Gist input for active story theme */}
+      {story && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <button
+            onClick={() => setGistOpen(gistOpen === story.theme ? null : story.theme)}
+            style={{
+              padding: '7px 12px', borderRadius: '8px', alignSelf: 'flex-start',
+              background: 'transparent', border: `1px solid ${BORDER}`,
+              color: 'rgba(255,255,255,0.4)', fontSize: '12px', cursor: 'pointer',
+            }}
+          >
+            {gistOpen === story.theme ? '▲ Hide' : '✍ Write from your own experience'}
+          </button>
+
+          {gistOpen === story.theme && (
+            <div style={{
+              padding: '14px', borderRadius: '10px',
+              background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`,
+              display: 'flex', flexDirection: 'column', gap: '10px',
+            }}>
+              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.55)', margin: 0, lineHeight: 1.5 }}>
+                Describe what happened in your own words. Career Sage will structure it into a STAR story without adding details you did not provide.
+              </p>
+              <textarea
+                value={gistInputs[story.theme] || ''}
+                onChange={e => setGistInputs(prev => ({ ...prev, [story.theme]: e.target.value }))}
+                placeholder={`e.g. I took over a failing project, rebuilt the team process, and we shipped on time after 3 months of delays...`}
+                rows={4}
+                style={{
+                  width: '100%', padding: '10px 12px', borderRadius: '8px',
+                  background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`,
+                  color: '#fff', fontSize: '13px', resize: 'vertical',
+                  boxSizing: 'border-box', outline: 'none',
+                  lineHeight: 1.6, fontFamily: 'system-ui',
+                }}
+              />
+              {gistError && (
+                <p style={{ fontSize: '12px', color: 'rgba(239,68,68,0.85)', margin: 0 }}>⚠ {gistError}</p>
+              )}
+              <button
+                onClick={() => handleGistGenerate(story.theme)}
+                disabled={!gistInputs[story.theme]?.trim() || gistLoading === story.theme}
+                style={{
+                  padding: '9px', borderRadius: '8px',
+                  background: !gistInputs[story.theme]?.trim() || gistLoading === story.theme
+                    ? 'rgba(16,185,129,0.3)'
+                    : 'linear-gradient(135deg, #10B981, #059669)',
+                  color: '#fff', border: 'none', fontSize: '13px',
+                  fontWeight: 700, cursor: !gistInputs[story.theme]?.trim() || gistLoading === story.theme
+                    ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {gistLoading === story.theme ? '⟳ Structuring your story...' : '⚡ Structure into STAR'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Active story */}
       {story && (
