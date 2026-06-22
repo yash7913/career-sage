@@ -459,9 +459,40 @@ export default function CareerDNA({ userId, skills = [], initialSection, onSecti
     setDecisionLoading(null)
   }
 
+  const [loadingStep, setLoadingStep] = useState(0)
+  const LOADING_STEPS = [
+    'Building your career intelligence...',
+    'Scoring your profile against your cohort...',
+    'Evaluating your pentagram axes...',
+    'Calculating promotion readiness...',
+    'Mapping your career paths...',
+    'Almost there...',
+  ]
+
+  useEffect(() => {
+    if (!loading) return
+    const interval = setInterval(() => {
+      setLoadingStep(prev => Math.min(prev + 1, LOADING_STEPS.length - 1))
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [loading])
+
   if (loading) return (
-    <div style={{ padding: '4rem', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>
-      Loading your Career DNA...
+    <div style={{ padding: '4rem', textAlign: 'center' }}>
+      <div style={{ fontSize: '32px', marginBottom: '16px' }}>🧬</div>
+      <p style={{ fontSize: '15px', fontWeight: 600, color: '#fff', margin: '0 0 8px' }}>
+        {LOADING_STEPS[loadingStep]}
+      </p>
+      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', margin: '0 0 24px' }}>
+        This takes 10–20 seconds on first load
+      </p>
+      <div style={{ width: '200px', height: '3px', background: 'rgba(255,255,255,0.06)', borderRadius: '999px', margin: '0 auto' }}>
+        <div style={{
+          height: '3px', borderRadius: '999px', background: '#10B981',
+          animation: 'progress-pulse 2s ease-in-out infinite',
+          width: '40%',
+        }} />
+      </div>
     </div>
   )
 

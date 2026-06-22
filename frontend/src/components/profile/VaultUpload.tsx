@@ -501,7 +501,7 @@ const res = await fetch(
             <p style={{ fontSize: '11px', color: hasLinkedinExport ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.45)', margin: 0, lineHeight: 1.6 }}>
               {hasLinkedinExport
                 ? 'You can add an updated export anytime if your profile has changed.'
-                : <>Your LinkedIn profile is usually the single most complete record of your work history — it catches roles that get trimmed from tailored resumes. On LinkedIn: <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Me</strong> → <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Settings & Privacy</strong> → <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Data Privacy</strong> → <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Get a copy of your data</strong> → tick <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Profile</strong> → <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Request archive</strong>. Ready in under a minute.</>
+                : <>Your LinkedIn profile is usually the single most complete record of your work history — it catches roles that get trimmed from tailored resumes. On LinkedIn: <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Me</strong> → <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Settings & Privacy</strong> → <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Data Privacy</strong> → <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Get a copy of your data</strong> → tick <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Profile</strong> → <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Request archive</strong>. LinkedIn usually delivers the export within a few minutes to a few hours.</>
               }
             </p>
             {linkedinResult && (
@@ -513,26 +513,7 @@ const res = await fetch(
               </p>
             )}
           </div>
-          <label style={{
-            padding: '7px 14px', borderRadius: '8px', cursor: 'pointer',
-            background: linkedinImporting ? 'rgba(16,185,129,0.1)' : hasLinkedinExport ? 'rgba(255,255,255,0.05)' : TEAL,
-            border: `1px solid ${linkedinImporting ? 'rgba(16,185,129,0.3)' : hasLinkedinExport ? BORDER : TEAL}`,
-            color: linkedinImporting ? TEAL : hasLinkedinExport ? 'rgba(255,255,255,0.5)' : '#fff',
-            fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap',
-            flexShrink: 0,
-          }}>
-            {linkedinImporting ? '⏳ Importing...' : '⬆ Upload PDF'}
-            <input
-              type="file"
-              accept=".pdf"
-              style={{ display: 'none' }}
-              disabled={linkedinImporting}
-              onChange={e => {
-                const file = e.target.files?.[0]
-                if (file) handleLinkedinPdf(file)
-              }}
-            />
-          </label>
+          
         </div>
       </div>
     }
@@ -651,15 +632,7 @@ const res = await fetch(
       )}
 
       {/* Extract button */}
-      {!isOnboarding && files.some(f => f.status === 'done' && f.tag === 'LINKEDIN_EXPORT') && (
-        <div style={{
-          padding: '10px 14px', borderRadius: '8px', marginBottom: '8px',
-          background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
-          fontSize: '12px', color: 'rgba(245,158,11,0.8)', lineHeight: 1.5,
-        }}>
-          💡 LinkedIn Export detected — use the <strong>Upload PDF</strong> button in the LinkedIn section above to import it. The extract button below is for resumes only.
-        </div>
-      )}
+      
 
       {doneCount > 0 && !extractionDone && (
         <div>
